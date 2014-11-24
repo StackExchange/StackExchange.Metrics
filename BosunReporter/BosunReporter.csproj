@@ -39,7 +39,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="BosunGauge.cs" />
+    <Compile Include="BosunAggregateGauge.cs" />
     <Compile Include="BosunReporter.cs" />
     <Compile Include="BosunMetric.cs" />
     <Compile Include="BosunReporterOptions.cs" />
