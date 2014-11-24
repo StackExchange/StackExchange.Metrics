@@ -18,8 +18,8 @@ namespace Scratch
             counter.Increment();
             counter.Increment();
 
-            var gauge = reporter.GetMetric<TestGauge>("my_gauge");
-            if (gauge != reporter.GetMetric<TestGauge>("my_gauge"))
+            var gauge = reporter.GetMetric<TestAggregateGauge>("my_gauge");
+            if (gauge != reporter.GetMetric<TestAggregateGauge>("my_gauge"))
                 throw new Exception("WAT?");
 
             var rand = new Random();
@@ -38,7 +38,7 @@ namespace Scratch
     [GaugeAggregator(AggregateMode.Median)]
     [GaugeAggregator(AggregateMode.Percentile, 0.95)]
     [GaugeAggregator(AggregateMode.Percentile, 0.25)]
-    public class TestGauge : BosunGauge
+    public class TestAggregateGauge : BosunAggregateGauge
     {
         //
     }
