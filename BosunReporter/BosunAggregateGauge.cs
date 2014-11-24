@@ -15,9 +15,9 @@ namespace BosunReporter
         private readonly object _tagsLock = new object();
         private Dictionary<string, string> _tagsByAggregator;
 
-        private readonly bool TrackMean;
-        private readonly bool TrackMax;
-        private readonly bool TrackMin;
+        private readonly bool _trackMean;
+        private readonly bool _trackMax;
+        private readonly bool _trackMin;
 
         private Heap<double> _heap;
         private double _min = Double.PositiveInfinity;
@@ -29,9 +29,9 @@ namespace BosunReporter
         {
             _aggregatorStrategy = GetAggregatorStategy();
             // denormalize these for one less level of indirection
-            TrackMean = _aggregatorStrategy.TrackMean;
-            TrackMin = _aggregatorStrategy.SpecialCaseMin;
-            TrackMax = _aggregatorStrategy.SpecialCaseMax;
+            _trackMean = _aggregatorStrategy.TrackMean;
+            _trackMin = _aggregatorStrategy.SpecialCaseMin;
+            _trackMax = _aggregatorStrategy.SpecialCaseMax;
 
             // setup heap, if required.
             if (_aggregatorStrategy.UseMaxHeap)
@@ -45,16 +45,16 @@ namespace BosunReporter
             lock (_recordLock)
             {
                 _count++;
-                if (TrackMean)
+                if (_trackMean)
                 {
                     _sum += value;
                 }
-                if (TrackMax)
+                if (_trackMax)
                 {
                     if (value > _max)
                         _max = value;
                 }
-                if (TrackMin)
+                if (_trackMin)
                 {
                     if (value < _min)
                         _min = value;
@@ -122,11 +122,11 @@ namespace BosunReporter
 
             var snapshot = new Dictionary<double, double>();
 
-            if (TrackMean)
+            if (_trackMean)
                 snapshot[-1.0] = sum/count;
-            if (TrackMax)
+            if (_trackMax)
                 snapshot[1.0] = max;
-            if (TrackMin)
+            if (_trackMin)
                 snapshot[0.0] = min;
 
             if (heap != null)
