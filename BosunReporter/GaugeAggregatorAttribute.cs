@@ -15,63 +15,50 @@ namespace BosunReporter
     public class GaugeAggregatorAttribute : Attribute
     {
         public readonly AggregateMode AggregateMode;
-        public readonly string Name;
+        public readonly string Suffix;
         public readonly double Percentile;
 
         public GaugeAggregatorAttribute(AggregateMode mode) : this(mode, null, Double.NaN) {}
-        public GaugeAggregatorAttribute(AggregateMode mode, string name) : this(mode, name, Double.NaN) {}
+        public GaugeAggregatorAttribute(AggregateMode mode, string suffix) : this(mode, suffix, Double.NaN) {}
         public GaugeAggregatorAttribute(AggregateMode mode, double percentile) : this(mode, null, percentile) {}
         public GaugeAggregatorAttribute(double percentile) : this(AggregateMode.Percentile, null, percentile) {}
 
-        public GaugeAggregatorAttribute(AggregateMode aggregateMode, string name, double percentile)
+        public GaugeAggregatorAttribute(AggregateMode aggregateMode, string suffix, double percentile)
         {
             AggregateMode = aggregateMode;
 
-            string defaultName = null;
+            string defaultSuffix;
             switch (aggregateMode)
             {
                 case AggregateMode.Average:
                     Percentile = -1.0;
-                    defaultName = "average";
+                    defaultSuffix = "_avg";
                     break;
                 case AggregateMode.Median:
                     Percentile = 0.5;
-                    defaultName = "median";
+                    defaultSuffix = "_median";
                     break;
                 case AggregateMode.Percentile:
                     if (Double.IsNaN(percentile) || percentile < 0 || percentile > 1)
                         throw new ArgumentOutOfRangeException("percentile", "Percentile must be specified for gauge aggregators with percentile mode. Percentile must be between 0 and 1 (inclusive)");
                     Percentile = percentile;
-                    defaultName = ((int) (percentile*100)).ToString();
+                    defaultSuffix = "_" + (int)(percentile*100);
                     break;
                 case AggregateMode.Max:
                     Percentile = 1.0;
-                    defaultName = "max";
+                    defaultSuffix = "_max";
                     break;
                 case AggregateMode.Min:
                     Percentile = 0.0;
-                    defaultName = "min";
+                    defaultSuffix = "_min";
                     break;
                 default:
                     throw new Exception("Gauge mode not implemented.");
             }
 
-            Name = String.IsNullOrEmpty(name) ? defaultName : name;
-            if (!Validation.IsValidTagValue(Name))
-                throw new Exception("\"" + Name + "\" is not a valid tag value.");
-        }
-    }
-
-    [AttributeUsage(AttributeTargets.Class)]
-    public class GaugeAggregatorTagNameAttribute : Attribute
-    {
-        public readonly string Name;
-
-        public GaugeAggregatorTagNameAttribute(string name)
-        {
-            Name = name;
-            if (!Validation.IsValidTagName(Name))
-                throw new Exception("\"" + Name + "\" is not a valid tag name.");
+            Suffix = String.IsNullOrEmpty(suffix) ? defaultSuffix : suffix;
+            if (!Validation.IsValidTagValue(Suffix))
+                throw new Exception("\"" + Suffix + "\" is not a valid tag value.");
         }
     }
 }

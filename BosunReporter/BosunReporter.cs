@@ -14,8 +14,13 @@ namespace BosunReporter
     {
         private static readonly DateTime UnixEpoch = new DateTime(1970, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc);
 
-        private readonly Dictionary<string, Type> _nameToType = new Dictionary<string, Type>();
-        private readonly Dictionary<string, BosunMetric> _nameAndTagsToMetric = new Dictionary<string, BosunMetric>();
+        // all of the first-class names which have been claimed (excluding suffixes in aggregate gauges)
+        private readonly Dictionary<string, Type> _rootNameToType = new Dictionary<string, Type>();
+        // this dictionary is to avoid duplicate metrics
+        private readonly Dictionary<string, BosunMetric> _rootNameAndTagsToMetric = new Dictionary<string, BosunMetric>();
+        // All of the name which have been claimed, including the metrics which may have multiple suffixes, mapped to their root metric name.
+        // This is to prevent suffix collisions with other metrics.
+        private readonly Dictionary<string, string> _nameAndSuffixToRootName = new Dictionary<string, string>();
 
         private List<string> _pendingMetrics;
         private readonly object _pendingLock = new object();
@@ -32,7 +37,7 @@ namespace BosunReporter
 
         public IEnumerable<BosunMetric> Metrics
         {
-            get { return _nameAndTagsToMetric.Values.AsEnumerable(); }
+            get { return _rootNameAndTagsToMetric.Values.AsEnumerable(); }
         }
 
         public BosunReporter(BosunReporterOptions options)
@@ -62,33 +67,61 @@ namespace BosunReporter
             }
 
             name = MetricsNamePrefix + name;
-            lock (_nameToType)
+            lock (_rootNameToType)
             {
-                // make sure there's not already another type assigned to this metric
-                if (_nameToType.ContainsKey(name))
+                if (_nameAndSuffixToRootName.ContainsKey(name) && (!_rootNameToType.ContainsKey(name) || _rootNameToType[name] != metricType))
                 {
-                    if (_nameToType[name] != metricType)
+                    if (_rootNameToType.ContainsKey(name))
                     {
                         throw new Exception(
                             String.Format(
                                 "Attempted to create metric name \"{0}\" with Type {1}. This metric name has already been assigned to Type {2}.",
-                                name, metricType.FullName, _nameToType[name].FullName));
+                                name, metricType.FullName, _rootNameToType[name].FullName));
                     }
+
+                    throw new Exception(
+                        String.Format(
+                            "Attempted to create metric name \"{0}\" with Type {1}. This metric name is already in use as a suffix of Type {2}.",
+                            name, metricType.FullName, _rootNameToType[_nameAndSuffixToRootName[name]].FullName));
                 }
                 else
                 {
-                    _nameToType[name] = metricType;
+                    // claim all suffixes. Do this in two passes (check then add) so we don't end up in an inconsistent state.
+                    foreach (var s in metric.Suffixes)
+                    {
+                        var ns = name + s;
+                        
+                        // verify this is a valid metric name at all (it should be, since both parts are pre-validated, but just in case).
+                        if (!Validation.IsValidMetricName(ns))
+                            throw new Exception(String.Format("\"{0}\" is not a valid metric name", ns));
+
+                        if (_nameAndSuffixToRootName.ContainsKey(ns) && _nameAndSuffixToRootName[ns] != name)
+                        {
+                            throw new Exception(
+                                String.Format(
+                                    "Attempted to create metric name \"{0}\" with Type {1}. This metric name is already in use as a suffix of Type {2}.",
+                                    ns, metricType.FullName, _rootNameToType[_nameAndSuffixToRootName[ns]].FullName));
+                        }
+                    }
+
+                    foreach (var s in metric.Suffixes)
+                    {
+                        _nameAndSuffixToRootName[name + s] = name;
+                    }
+
+                    // claim the root type
+                    _rootNameToType[name] = metricType;
                 }
 
                 // see if this metric name and tag combination already exists
-                var nameAndTags = name + metric.SerializeTags();
-                if (_nameAndTagsToMetric.ContainsKey(nameAndTags))
-                    return (T) _nameAndTagsToMetric[nameAndTags];
+                var nameAndTags = name + metric.SerializedTags;
+                if (_rootNameAndTagsToMetric.ContainsKey(nameAndTags))
+                    return (T) _rootNameAndTagsToMetric[nameAndTags];
 
                 // metric doesn't exist yet.
                 metric.Name = name;
                 metric.BosunReporter = this;
-                _nameAndTagsToMetric[nameAndTags] = metric;
+                _rootNameAndTagsToMetric[nameAndTags] = metric;
                 return metric;
             }
         }

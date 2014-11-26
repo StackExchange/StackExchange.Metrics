@@ -12,8 +12,6 @@ namespace BosunReporter
 
         private readonly object _recordLock = new object();
         private readonly GaugeAggregatorStrategy _aggregatorStrategy;
-        private readonly object _tagsLock = new object();
-        private Dictionary<string, string> _tagsByAggregator;
 
         private readonly bool _trackMean;
         private readonly bool _trackMax;
@@ -24,6 +22,11 @@ namespace BosunReporter
         private double _max = Double.NegativeInfinity;
         private double _sum = 0;
         private int _count = 0;
+
+        public override IReadOnlyCollection<string> Suffixes
+        {
+            get { return _aggregatorStrategy.Suffixes; }
+        }
 
         protected BosunAggregateGauge()
         {
@@ -72,24 +75,9 @@ namespace BosunReporter
             if (snapshot == null)
                 yield break;
 
-            if (_tagsByAggregator == null)
-            {
-                lock (_tagsLock)
-                {
-                    if (_tagsByAggregator == null)
-                    {
-                        _tagsByAggregator = new Dictionary<string, string>();
-                        foreach (var a in _aggregatorStrategy.Aggregators)
-                        {
-                            _tagsByAggregator[a.Name] = SerializeTags(a.Name);
-                        }
-                    }
-                }
-            }
-
             foreach (var a in _aggregatorStrategy.Aggregators)
             {
-                yield return ToJson(snapshot[a.Percentile].ToString("0.###############"), _tagsByAggregator[a.Name], unixTimestamp);
+                yield return ToJson(a.Suffix, snapshot[a.Percentile].ToString("0.###############"), unixTimestamp);
             }
         }
 
@@ -166,12 +154,6 @@ namespace BosunReporter
             return snapshot;
         }
 
-        protected override string GetAggregatorTagName()
-        {
-            var attribute = GetType().GetCustomAttribute<GaugeAggregatorTagNameAttribute>();
-            return attribute != null ? attribute.Name : "aggregator";
-        }
-
         private GaugeAggregatorStrategy GetAggregatorStategy()
         {
             var type = GetType();
@@ -190,8 +172,8 @@ namespace BosunReporter
                 var hash = new HashSet<string>();
                 foreach (var r in aggregators)
                 {
-                    if (hash.Contains(r.Name))
-                        throw new Exception(String.Format("{0} has more than one gauge aggregator with the name \"{1}\".", type.FullName, r.Name));
+                    if (hash.Contains(r.Suffix))
+                        throw new Exception(String.Format("{0} has more than one gauge aggregator with the name \"{1}\".", type.FullName, r.Suffix));
                 }
 
                 return _aggregatorsByTypeCache[type] = new GaugeAggregatorStrategy(aggregators);
@@ -200,7 +182,8 @@ namespace BosunReporter
 
         private class GaugeAggregatorStrategy
         {
-            public readonly IReadOnlyCollection<GaugeAggregatorAttribute> Aggregators;
+            public readonly ReadOnlyCollection<GaugeAggregatorAttribute> Aggregators;
+            public readonly ReadOnlyCollection<string> Suffixes;
 
             public readonly bool UseMaxHeap;
             public readonly bool UseMinHeap;
@@ -209,14 +192,17 @@ namespace BosunReporter
             public readonly bool TrackMean;
             public readonly ReadOnlyCollection<double> Percentiles;
 
-            public GaugeAggregatorStrategy(IReadOnlyCollection<GaugeAggregatorAttribute> aggregators)
+            public GaugeAggregatorStrategy(ReadOnlyCollection<GaugeAggregatorAttribute> aggregators)
             {
                 Aggregators = aggregators;
 
                 var percentiles = new List<double>();
+                var suffixes = new List<string>();
 
                 foreach (var r in aggregators)
                 {
+                    suffixes.Add(r.Suffix);
+
                     if (r.Percentile < 0)
                     {
                         TrackMean = true;
@@ -234,6 +220,8 @@ namespace BosunReporter
                         percentiles.Add(r.Percentile);
                     }
                 }
+
+                Suffixes = suffixes.AsReadOnly();
 
                 if (percentiles.Count > 0)
                 {

@@ -22,6 +22,8 @@ namespace Scratch
             if (gauge != reporter.GetMetric<TestAggregateGauge>("my_gauge"))
                 throw new Exception("WAT?");
 
+            //reporter.GetMetric<TestAggregateGauge>("my_gauge_95"); // <- should throw an exception
+
             var rand = new Random();
             for (var i = 0; i < 10000; i++)
             {
@@ -40,7 +42,13 @@ namespace Scratch
     [GaugeAggregator(AggregateMode.Percentile, 0.25)]
     public class TestAggregateGauge : BosunAggregateGauge
     {
-        //
+        [BosunTag("host")]
+        public readonly string Host;
+
+        public TestAggregateGauge()
+        {
+            Host = "bret-host";
+        }
     }
 
     public class TestCounter : BosunCounter

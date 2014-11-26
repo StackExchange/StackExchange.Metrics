@@ -8,22 +8,10 @@ namespace BosunReporter
         public long Value;
 
         private readonly object _tagsLock = new object();
-        private string _tags;
 
         protected override IEnumerable<string> GetSerializedMetrics(string unixTimestamp)
         {
-            if (_tags == null)
-            {
-                lock (_tagsLock)
-                {
-                    if (_tags == null)
-                    {
-                        _tags = SerializeTags();
-                    }
-                }
-            }
-
-            yield return ToJson(Value.ToString("D"), _tags, unixTimestamp);
+            yield return ToJson("", Value.ToString("D"), unixTimestamp);
         }
 
         protected BosunCounter(long value = 0)

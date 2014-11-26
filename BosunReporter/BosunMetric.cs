@@ -12,9 +12,20 @@ namespace BosunReporter
     public abstract class BosunMetric
     {
         private static readonly Dictionary<Type, List<BosunTag>> _tagsByTypeCache = new Dictionary<Type, List<BosunTag>>();
+        private static readonly IReadOnlyCollection<string> NO_SUFFIXES = new List<string> {""}.AsReadOnly();
 
-        public readonly string AggregatorTagName;
         public BosunReporter BosunReporter { get; internal set; }
+
+        public virtual IReadOnlyCollection<string> Suffixes
+        {
+            get { return NO_SUFFIXES; }
+        }
+
+        private string _serializedTags;
+        protected internal string SerializedTags
+        {
+            get { return _serializedTags ?? (_serializedTags = SerializeTags()); }
+        }
 
         private string _name;
         private readonly object _nameLock = new object();
@@ -39,9 +50,6 @@ namespace BosunReporter
 
         protected BosunMetric()
         {
-            // ReSharper disable DoNotCallOverridableMethodsInConstructor
-            AggregatorTagName = GetAggregatorTagName(); // this virtual method is safe to call in the base constructor, as implemented.
-            // ReSharper restore DoNotCallOverridableMethodsInConstructor
         }
 
         internal IEnumerable<string> Serialize(string unixTimestamp)
@@ -54,12 +62,12 @@ namespace BosunReporter
 
         protected abstract IEnumerable<string> GetSerializedMetrics(string unixTimestamp);
 
-        protected string ToJson(string value, string tags, string unixTimestamp)
+        protected string ToJson(string suffix, string value, string unixTimestamp)
         {
-            return "{\"metric\":\""+ _name +"\",\"value\":"+ value +",\"tags\":"+ tags +",\"timestamp\":"+ unixTimestamp +"}";
+            return "{\"metric\":\""+ _name + suffix +"\",\"value\":"+ value +",\"tags\":"+ SerializedTags +",\"timestamp\":"+ unixTimestamp +"}";
         }
 
-        protected internal string SerializeTags(string aggregatorMode = null)
+        private string SerializeTags()
         {
             var sb = new StringBuilder();
             var tags = GetTagsList();
@@ -86,11 +94,6 @@ namespace BosunReporter
 
                 // everything is already validated, so we can skip a more formal JSON parser which would handle escaping
                 sb.Append(",\"" + tag.Name + "\":\"" + value + "\"");
-            }
-
-            if (AggregatorTagName != null)
-            {
-                sb.Append(",\"" + AggregatorTagName + "\":\"" + aggregatorMode + "\"");
             }
 
             if (sb.Length == 0)
@@ -120,21 +123,12 @@ namespace BosunReporter
                     tags.Add(new BosunTag(m, metricTag));
             }
 
-            if (tags.Count == 0 && AggregatorTagName == null)
+            if (tags.Count == 0)
                 throw new TypeInitializationException(type.FullName, new Exception("Type does not contain any Bosun tags. Metrics must have at least one tag to be serializable."));
 
             tags.Sort((a, b) => String.CompareOrdinal(a.Name, b.Name));
             _tagsByTypeCache[type] = tags;
             return tags;
-        }
-
-        /// <summary>
-        /// Note that this virtual method is called from the base constructor. Therefore, if you override this, DO NOT access any instance fields/properties of the child class.
-        /// </summary>
-        /// <returns></returns>
-        protected virtual string GetAggregatorTagName()
-        {
-            return null;
         }
     }
 }
