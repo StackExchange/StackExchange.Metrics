@@ -142,6 +142,9 @@ namespace BosunReporter
         private void Snapshot(object _)
         {
             Debug.WriteLine("BosunReporter: Running metrics snapshot.");
+            if (GetBosunUrl != null)
+                BosunUrl = GetBosunUrl();
+
             EnqueueMetrics(GetSerializedMetrics());
         }
 
@@ -205,9 +208,12 @@ namespace BosunReporter
 
         private void PostToBosun(string body)
         {
-            Uri url = GetBosunUrl != null ? GetBosunUrl() : BosunUrl;
+            var url = BosunUrl;
             if (url == null)
+            {
+                Debug.WriteLine("BosunReporter: BosunUrl is null. Dropping metrics.");
                 return;
+            }
 
             url = new Uri(url, "/api/put");
 
