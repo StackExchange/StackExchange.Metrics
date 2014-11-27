@@ -36,5 +36,9 @@ namespace BosunReporter
         /// It is an indication that data is likely being lost.
         /// </summary>
         public bool ThrowOnQueueFull = true;
+        /// <summary>
+        /// The number of seconds between metric reports.
+        /// </summary>
+        public int ReportingInterval = 30;
     }
 }

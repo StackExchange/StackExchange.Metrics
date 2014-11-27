@@ -46,6 +46,7 @@
     <Compile Include="BosunTag.cs" />
     <Compile Include="BosunTagAttribute.cs" />
     <Compile Include="BosunCounter.cs" />
+    <Compile Include="Exceptions.cs" />
     <Compile Include="GaugeAggregatorAttribute.cs" />
     <Compile Include="Heap.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

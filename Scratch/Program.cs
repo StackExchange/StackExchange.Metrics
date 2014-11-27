@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Diagnostics;
+using System.Threading;
 using BosunReporter;
 
 namespace Scratch
@@ -7,11 +9,15 @@ namespace Scratch
     {
         static void Main(string[] args)
         {
+            Debug.Listeners.Add(new TextWriterTraceListener(Console.Out));
+            Debug.AutoFlush = true;
+
             var options = new BosunReporterOptions()
             {
                 MetricsNamePrefix = "bret.",
                 BosunUrl = new Uri("http://192.168.59.104:8070/"),
-                ThrowOnPostFail = true
+                ThrowOnPostFail = true,
+                ReportingInterval = 5
             };
             var reporter = new BosunReporter.BosunReporter(options);
             var counter = reporter.GetMetric<TestCounter>("my_counter");
@@ -25,12 +31,11 @@ namespace Scratch
             //reporter.GetMetric<TestAggregateGauge>("my_gauge_95"); // <- should throw an exception
 
             var rand = new Random();
-            for (var i = 0; i < 10000; i++)
+            while (true)
             {
                 gauge.Record(rand.NextDouble());
+                Thread.Sleep(5);
             }
-
-            reporter.SnapshotAndFlush();
         }
     }
 
