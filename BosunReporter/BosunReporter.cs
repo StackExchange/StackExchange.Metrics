@@ -167,25 +167,12 @@ namespace BosunReporter
                     FlushBatch();
                 }
             }
-            catch (Exception ex)
+            catch (BosunPostException)
             {
                 // there was a problem flushing - back off for the next five seconds (Bosun may simply be restarting)
                 _skipFlushes = 4;
-
-                if (ex is BosunPostException)
-                {
-                    if (ThrowOnPostFail)
-                        throw;
-                }
-                else if (ex is BosunQueueFullException)
-                {
-                    if (ThrowOnQueueFull)
-                        throw;
-                }
-                else
-                {
+                if (ThrowOnPostFail)
                     throw;
-                }
             }
             finally
             {
@@ -272,7 +259,7 @@ namespace BosunReporter
                     _pendingMetrics.AddRange(metrics.Take(MaxQueueLength - _pendingMetrics.Count));
                 }
 
-                if (_pendingMetrics.Count == MaxQueueLength)
+                if (ThrowOnQueueFull && _pendingMetrics.Count == MaxQueueLength)
                     throw new BosunQueueFullException();
             }
         }
