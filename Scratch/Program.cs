@@ -12,11 +12,23 @@ namespace Scratch
             Debug.Listeners.Add(new TextWriterTraceListener(Console.Out));
             Debug.AutoFlush = true;
 
+            var i = 0;
+            Func<Uri> getUrl = () =>
+            {
+                i++;
+                if (i < 2)
+                    return null;
+                if (i < 6)
+                    return new Uri("http://192.168.59.105:8070/");
+
+                return new Uri("http://192.168.59.104:8070/");
+            };
+
             var options = new BosunReporterOptions()
             {
                 MetricsNamePrefix = "bret.",
-                BosunUrl = new Uri("http://192.168.59.104:8070/"),
-                ThrowOnPostFail = true,
+                GetBosunUrl = getUrl,
+                ThrowOnPostFail = false,
                 ReportingInterval = 5
             };
             var reporter = new BosunReporter.BosunReporter(options);
