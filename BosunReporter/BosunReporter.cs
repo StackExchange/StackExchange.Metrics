@@ -74,9 +74,9 @@ namespace BosunReporter
             var interval = TimeSpan.FromSeconds(ReportingInterval);
             _reportingTimer = new Timer(Snapshot, null, interval, interval);
 
-            // metadata timer - wait one minute to start (so there is some time for metrics to be delcared)
+            // metadata timer - wait 30 seconds to start (so there is some time for metrics to be delcared)
             if (options.MetaDataReportingInterval > 0)
-                _metaDataTimer = new Timer(PostMetaData, null, TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(options.MetaDataReportingInterval));
+                _metaDataTimer = new Timer(PostMetaData, null, TimeSpan.FromSeconds(30), TimeSpan.FromSeconds(options.MetaDataReportingInterval));
         }
 
         public T GetMetric<T>(string name, T metric = null) where T : BosunMetric
