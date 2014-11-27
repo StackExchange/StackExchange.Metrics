@@ -13,6 +13,7 @@ namespace BosunReporter
     {
         private static readonly IReadOnlyCollection<string> NO_SUFFIXES = new List<string> {""}.AsReadOnly();
 
+        public abstract string MetricType { get; }
         public BosunReporter BosunReporter { get; internal set; }
 
         public virtual IReadOnlyCollection<string> Suffixes

@@ -37,9 +37,13 @@ namespace BosunReporter
         /// </summary>
         public bool ThrowOnQueueFull = true;
         /// <summary>
-        /// The number of seconds between metric reports.
+        /// The number of seconds between metric reports (snapshots).
         /// </summary>
         public int ReportingInterval = 30;
+        /// <summary>
+        /// How often to report metadata to Bosun (in seconds). Defaults to one hour. Use 0 to disable metadata reporting.
+        /// </summary>
+        public int MetaDataReportingInterval = 60*60;
         /// <summary>
         /// Allows you to specify a function which takes a property name and returns a tag name.
         /// This may be useful if you want to convert PropertyName to property_name or similar transformations.

@@ -9,6 +9,11 @@ namespace BosunReporter
 
         private readonly object _tagsLock = new object();
 
+        public override string MetricType
+        {
+            get { return "counter"; }
+        }
+
         protected override IEnumerable<string> GetSerializedMetrics(string unixTimestamp)
         {
             yield return ToJson("", Value.ToString("D"), unixTimestamp);

@@ -9,6 +9,7 @@ using System.Net;
 using System.Reflection;
 using System.Text;
 using System.Threading;
+using Jil;
 
 namespace BosunReporter
 {
@@ -31,6 +32,7 @@ namespace BosunReporter
         private int _skipFlushes = 0;
         private Timer _flushTimer;
         private Timer _reportingTimer;
+        private Timer _metaDataTimer;
 
         internal readonly Dictionary<Type, List<BosunTag>> TagsByTypeCache = new Dictionary<Type, List<BosunTag>>();
 
@@ -71,6 +73,10 @@ namespace BosunReporter
             // start reporting timer
             var interval = TimeSpan.FromSeconds(ReportingInterval);
             _reportingTimer = new Timer(Snapshot, null, interval, interval);
+
+            // metadata timer - wait one minute to start (so there is some time for metrics to be delcared)
+            if (options.MetaDataReportingInterval > 0)
+                _metaDataTimer = new Timer(PostMetaData, null, TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(options.MetaDataReportingInterval));
         }
 
         public T GetMetric<T>(string name, T metric = null) where T : BosunMetric
@@ -199,7 +205,7 @@ namespace BosunReporter
 
             try
             {
-                PostToBosun(body);
+                PostToBosun("/api/put", true, sw => sw.Write(body));
             }
             catch (Exception)
             {
@@ -210,29 +216,43 @@ namespace BosunReporter
             }
         }
 
-        private void PostToBosun(string body)
+        private delegate void ApiPostWriter(StreamWriter sw);
+        private void PostToBosun(string path, bool gzip, ApiPostWriter postWriter)
         {
             var url = BosunUrl;
             if (url == null)
             {
-                Debug.WriteLine("BosunReporter: BosunUrl is null. Dropping metrics.");
+                Debug.WriteLine("BosunReporter: BosunUrl is null. Dropping data.");
                 return;
             }
 
-            url = new Uri(url, "/api/put");
+            url = new Uri(url, path);
 
             var request = WebRequest.Create(url);
             request.Method = "POST";
             request.ContentType = "application/json";
-            request.Headers["Content-Encoding"] = "gzip";
+            if (gzip)
+                request.Headers["Content-Encoding"] = "gzip";
 
             try
             {
                 using (var stream = request.GetRequestStream())
-                using (var gzip = new GZipStream(stream, CompressionMode.Compress))
-                using (var sw = new StreamWriter(gzip, new UTF8Encoding(false)))
                 {
-                    sw.Write(body);
+                    if (gzip)
+                    {
+                        using (var gzipStream = new GZipStream(stream, CompressionMode.Compress))
+                        using (var sw = new StreamWriter(gzipStream, new UTF8Encoding(false)))
+                        {
+                            postWriter(sw);
+                        }
+                    }
+                    else
+                    {
+                        using (var sw = new StreamWriter(stream, new UTF8Encoding(false)))
+                        {
+                            postWriter(sw);
+                        }
+                    }
                 }
 
                 request.GetResponse().Close();
@@ -300,6 +320,46 @@ namespace BosunReporter
         {
             var unixTimestamp = ((long)(DateTime.UtcNow - UnixEpoch).TotalSeconds).ToString("D");
             return Metrics.Select(m => m.Serialize(unixTimestamp)).SelectMany(s => s);
+        }
+
+        private void PostMetaData(object _)
+        {
+            if (BosunUrl == null)
+            {
+                Debug.WriteLine("BosunReporter: BosunUrl is null. Not sending metadata.");
+                return;
+            }
+
+            try
+            {
+                Debug.WriteLine("BosunReporter: Gathering metadata.");
+                var metaData = GatherMetaData();
+                Debug.WriteLine("BosunReporter: Sending metadata.");
+                PostToBosun("/api/metadata/put", false,
+                    sw => JSON.Serialize(metaData, sw, new Options(excludeNulls: true)));
+            }
+            catch (BosunPostException)
+            {
+                if (ThrowOnPostFail)
+                    throw;
+            }
+        }
+
+        private IEnumerable<BosunMetaData> GatherMetaData()
+        {
+            var metaList = new List<BosunMetaData>();
+            var nameSet = new HashSet<string>();
+
+            foreach (var metric in Metrics)
+            {
+                if (metric == null || nameSet.Contains(metric.Name))
+                    continue;
+
+                nameSet.Add(metric.Name);
+                metaList.AddRange(BosunMetaData.DefaultMetaData(metric));
+            }
+
+            return metaList;
         }
     }
 }

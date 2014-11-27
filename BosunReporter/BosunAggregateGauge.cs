@@ -23,6 +23,11 @@ namespace BosunReporter
         private double _sum = 0;
         private int _count = 0;
 
+        public override string MetricType
+        {
+            get { return "gauge"; }
+        }
+
         public override IReadOnlyCollection<string> Suffixes
         {
             get { return _aggregatorStrategy.Suffixes; }

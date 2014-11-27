@@ -29,7 +29,7 @@ namespace Scratch
             {
                 MetricsNamePrefix = "bret.",
                 GetBosunUrl = getUrl,
-                ThrowOnPostFail = false,
+                ThrowOnPostFail = true,
                 ReportingInterval = 5,
                 PropertyToTagName = NameTransformers.CamelToLowerSnakeCase
             };
