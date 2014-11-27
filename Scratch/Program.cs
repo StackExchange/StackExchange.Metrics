@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Diagnostics;
+using System.Linq;
 using System.Threading;
 using BosunReporter;
 
@@ -15,11 +16,11 @@ namespace Scratch
             var i = 0;
             Func<Uri> getUrl = () =>
             {
-                i++;
-                if (i < 2)
-                    return null;
-                if (i < 6)
-                    return new Uri("http://192.168.59.105:8070/");
+//                i++;
+//                if (i < 2)
+//                    return null;
+//                if (i < 6)
+//                    return new Uri("http://192.168.59.105:8070/");
 
                 return new Uri("http://192.168.59.104:8070/");
             };
@@ -29,7 +30,8 @@ namespace Scratch
                 MetricsNamePrefix = "bret.",
                 GetBosunUrl = getUrl,
                 ThrowOnPostFail = false,
-                ReportingInterval = 5
+                ReportingInterval = 5,
+                PropertyToTagName = NameTransformers.CamelToLowerSnakeCase
             };
             var reporter = new BosunReporter.BosunReporter(options);
             var counter = reporter.GetMetric<TestCounter>("my_counter");
@@ -59,18 +61,19 @@ namespace Scratch
     [GaugeAggregator(AggregateMode.Percentile, 0.25)]
     public class TestAggregateGauge : BosunAggregateGauge
     {
-        [BosunTag("host")]
-        public readonly string Host;
+        [BosunTag] public readonly string Host;
+        [BosunTag] public readonly string SomeTagName;
 
         public TestAggregateGauge()
         {
             Host = "bret-host";
+            SomeTagName = "Something";
         }
     }
 
     public class TestCounter : BosunCounter
     {
-        [BosunTag("host")]
+        [BosunTag]
         public readonly string Host;
 
         public TestCounter()

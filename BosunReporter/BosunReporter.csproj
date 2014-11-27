@@ -49,6 +49,7 @@
     <Compile Include="Exceptions.cs" />
     <Compile Include="GaugeAggregatorAttribute.cs" />
     <Compile Include="Heap.cs" />
+    <Compile Include="NameTransformers.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Validation.cs" />
   </ItemGroup>

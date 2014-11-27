@@ -11,7 +11,6 @@ namespace BosunReporter
 {
     public abstract class BosunMetric
     {
-        private static readonly Dictionary<Type, List<BosunTag>> _tagsByTypeCache = new Dictionary<Type, List<BosunTag>>();
         private static readonly IReadOnlyCollection<string> NO_SUFFIXES = new List<string> {""}.AsReadOnly();
 
         public BosunReporter BosunReporter { get; internal set; }
@@ -110,24 +109,24 @@ namespace BosunReporter
         private List<BosunTag> GetTagsList()
         {
             var type = GetType();
-            if (_tagsByTypeCache.ContainsKey(type))
-                return _tagsByTypeCache[type];
+            if (BosunReporter.TagsByTypeCache.ContainsKey(type))
+                return BosunReporter.TagsByTypeCache[type];
 
             // build list of tag members of the current type
-            var members = type.GetMembers();
+            var fields = type.GetFields();
             var tags = new List<BosunTag>();
-            foreach (var m in members)
+            foreach (var f in fields)
             {
-                var metricTag = m.GetCustomAttribute<BosunTagAttribute>();
+                var metricTag = f.GetCustomAttribute<BosunTagAttribute>();
                 if (metricTag != null)
-                    tags.Add(new BosunTag(m, metricTag));
+                    tags.Add(new BosunTag(f, metricTag, BosunReporter.PropertyToTagName));
             }
 
             if (tags.Count == 0)
                 throw new TypeInitializationException(type.FullName, new Exception("Type does not contain any Bosun tags. Metrics must have at least one tag to be serializable."));
 
             tags.Sort((a, b) => String.CompareOrdinal(a.Name, b.Name));
-            _tagsByTypeCache[type] = tags;
+            BosunReporter.TagsByTypeCache[type] = tags;
             return tags;
         }
     }

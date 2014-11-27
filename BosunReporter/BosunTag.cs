@@ -9,28 +9,31 @@ namespace BosunReporter
         public readonly FieldInfo FieldInfo;
         public readonly BosunTagAttribute Attribute;
 
-        public BosunTag(MemberInfo memberInfo, BosunTagAttribute attribute)
+        public BosunTag(FieldInfo fieldInfo, BosunTagAttribute attribute, Func<string, string> nameReplacer)
         {
-            if (!(memberInfo is FieldInfo))
-            {
-                throw new InvalidOperationException(
-                    String.Format("The BosunTag attribute can only be applied to readonly string fields. Not properties or methods. {0}.{1} is invalid.",
-                        memberInfo.DeclaringType.FullName, memberInfo.Name));
-            }
-
-            FieldInfo = (FieldInfo)memberInfo;
+            FieldInfo = fieldInfo;
             if (!FieldInfo.IsInitOnly || FieldInfo.FieldType != typeof(string))
             {
                 throw new InvalidOperationException(
                     String.Format("The BosunTag attribute can only be applied to readonly string fields. {0}.{1} is invalid.",
-                        memberInfo.DeclaringType.FullName, memberInfo.Name));
+                        fieldInfo.DeclaringType.FullName, fieldInfo.Name));
             }
 
             Attribute = attribute;
 
-            Name = attribute.Name ?? memberInfo.Name;
+            if (attribute.Name != null)
+                Name = attribute.Name;
+            else if (nameReplacer != null)
+                Name = nameReplacer(fieldInfo.Name);
+            else
+                Name = fieldInfo.Name;
+
             if (!Validation.IsValidTagName(Name))
-                throw new InvalidOperationException(Name + " is not a valid Bosun Tag name.");
+            {
+                throw new InvalidOperationException(
+                    String.Format("\"{0}\" is not a valid Bosun Tag name. Field: {1}.{2}.",
+                        Name, fieldInfo.DeclaringType.FullName, fieldInfo.Name));
+            }
         }
     }
 }

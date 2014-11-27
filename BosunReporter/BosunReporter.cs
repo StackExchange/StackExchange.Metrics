@@ -32,6 +32,8 @@ namespace BosunReporter
         private Timer _flushTimer;
         private Timer _reportingTimer;
 
+        internal readonly Dictionary<Type, List<BosunTag>> TagsByTypeCache = new Dictionary<Type, List<BosunTag>>();
+
         // options
         public readonly string MetricsNamePrefix;
         public Uri BosunUrl;
@@ -41,6 +43,7 @@ namespace BosunReporter
         public bool ThrowOnPostFail;
         public bool ThrowOnQueueFull;
         public readonly int ReportingInterval;
+        public readonly Func<string, string> PropertyToTagName;
 
         public IEnumerable<BosunMetric> Metrics
         {
@@ -60,6 +63,7 @@ namespace BosunReporter
             ThrowOnPostFail = options.ThrowOnPostFail;
             ThrowOnQueueFull = options.ThrowOnQueueFull;
             ReportingInterval = options.ReportingInterval;
+            PropertyToTagName = options.PropertyToTagName;
 
             // start continuous queue-flushing
             _flushTimer = new Timer(Flush, null, 1000, 1000);
@@ -80,6 +84,7 @@ namespace BosunReporter
                     throw new ArgumentNullException("metric", metricType.FullName + " has no public default constructor. Therefore the metric parameter cannot be null.");
                 metric = (T)constructor.Invoke(new object[0]);
             }
+            metric.BosunReporter = this;
 
             name = MetricsNamePrefix + name;
             lock (_rootNameToType)
@@ -133,7 +138,6 @@ namespace BosunReporter
 
                 // metric doesn't exist yet.
                 metric.Name = name;
-                metric.BosunReporter = this;
                 _rootNameAndTagsToMetric[nameAndTags] = metric;
                 return metric;
             }

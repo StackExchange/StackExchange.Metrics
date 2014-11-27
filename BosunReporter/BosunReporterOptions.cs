@@ -40,5 +40,11 @@ namespace BosunReporter
         /// The number of seconds between metric reports.
         /// </summary>
         public int ReportingInterval = 30;
+        /// <summary>
+        /// Allows you to specify a function which takes a property name and returns a tag name.
+        /// This may be useful if you want to convert PropertyName to property_name or similar transformations.
+        /// This function does not apply to any tag names which are set manually via the BosunTag attribute.
+        /// </summary>
+        public Func<string, string> PropertyToTagName;
     }
 }
