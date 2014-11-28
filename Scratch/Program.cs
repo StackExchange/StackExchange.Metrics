@@ -13,15 +13,8 @@ namespace Scratch
             Debug.Listeners.Add(new TextWriterTraceListener(Console.Out));
             Debug.AutoFlush = true;
 
-            var i = 0;
             Func<Uri> getUrl = () =>
             {
-//                i++;
-//                if (i < 2)
-//                    return null;
-//                if (i < 6)
-//                    return new Uri("http://192.168.59.105:8070/");
-
                 return new Uri("http://192.168.59.104:8070/");
             };
 
@@ -44,11 +37,22 @@ namespace Scratch
 
             //reporter.GetMetric<TestAggregateGauge>("my_gauge_95"); // <- should throw an exception
 
-            var rand = new Random();
+            for (var i = 0; i < 6; i++)
+            {
+                new Thread(Run).Start(new Tuple<BosunAggregateGauge, int>(gauge, i));
+            }
+        }
+
+        static void Run(object obj)
+        {
+            var tup = (Tuple<BosunAggregateGauge, int>) obj;
+            var gauge = tup.Item1;
+            var rand = new Random(tup.Item2);
+            var sleep = rand.Next(2, 8);
             while (true)
             {
                 gauge.Record(rand.NextDouble());
-                Thread.Sleep(5);
+                Thread.Sleep(sleep);
             }
         }
     }
