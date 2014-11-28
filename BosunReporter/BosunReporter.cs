@@ -155,7 +155,15 @@ namespace BosunReporter
             if (GetBosunUrl != null)
                 BosunUrl = GetBosunUrl();
 
+#if TRACE
+            var sw = new Stopwatch();
+            sw.Start();
+#endif
             EnqueueMetrics(GetSerializedMetrics());
+#if TRACE
+            sw.Stop();
+            Debug.WriteLine("BosunReporter: Metric Snapshot took {0}ms", sw.ElapsedMilliseconds);
+#endif
         }
 
         private void Flush(object _)
@@ -319,7 +327,7 @@ namespace BosunReporter
         private IEnumerable<string> GetSerializedMetrics()
         {
             var unixTimestamp = ((long)(DateTime.UtcNow - UnixEpoch).TotalSeconds).ToString("D");
-            return Metrics.Select(m => m.Serialize(unixTimestamp)).SelectMany(s => s);
+            return Metrics.AsParallel().Select(m => m.Serialize(unixTimestamp)).SelectMany(s => s);
         }
 
         private void PostMetaData(object _)

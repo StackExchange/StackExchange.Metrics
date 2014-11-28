@@ -23,7 +23,7 @@ namespace Scratch
                 MetricsNamePrefix = "bret.",
                 GetBosunUrl = getUrl,
                 ThrowOnPostFail = true,
-                ReportingInterval = 5,
+                ReportingInterval = 30,
                 PropertyToTagName = NameTransformers.CamelToLowerSnakeCase
             };
             var reporter = new BosunReporter.BosunReporter(options);
@@ -31,28 +31,33 @@ namespace Scratch
             counter.Increment();
             counter.Increment();
 
-            var gauge = reporter.GetMetric<TestAggregateGauge>("my_gauge");
-            if (gauge != reporter.GetMetric<TestAggregateGauge>("my_gauge"))
+            var gauge = reporter.GetMetric("my_gauge", new TestAggregateGauge("1"));
+            if (gauge != reporter.GetMetric("my_gauge", new TestAggregateGauge("1")))
                 throw new Exception("WAT?");
 
             //reporter.GetMetric<TestAggregateGauge>("my_gauge_95"); // <- should throw an exception
 
             for (var i = 0; i < 6; i++)
             {
-                new Thread(Run).Start(new Tuple<BosunAggregateGauge, int>(gauge, i));
+                new Thread(Run).Start(new Tuple<BosunAggregateGauge, BosunAggregateGauge, int>(gauge, reporter.GetMetric("my_gauge", new TestAggregateGauge("2")), i));
             }
         }
 
         static void Run(object obj)
         {
-            var tup = (Tuple<BosunAggregateGauge, int>) obj;
-            var gauge = tup.Item1;
-            var rand = new Random(tup.Item2);
-            var sleep = rand.Next(2, 8);
+            var tup = (Tuple<BosunAggregateGauge, BosunAggregateGauge, int>)obj;
+            var gauge1 = tup.Item1;
+            var gauge2 = tup.Item2;
+            var rand = new Random(tup.Item3);
+            int i;
             while (true)
             {
-                gauge.Record(rand.NextDouble());
-                Thread.Sleep(sleep);
+                for (i = 0; i < 20; i++)
+                {
+                    gauge1.Record(rand.NextDouble());
+                    gauge2.Record(rand.NextDouble());
+                }
+                Thread.Sleep(1);
             }
         }
     }
@@ -68,10 +73,10 @@ namespace Scratch
         [BosunTag] public readonly string Host;
         [BosunTag] public readonly string SomeTagName;
 
-        public TestAggregateGauge()
+        public TestAggregateGauge(string something)
         {
             Host = "bret-host";
-            SomeTagName = "Something";
+            SomeTagName = something;
         }
     }
 
