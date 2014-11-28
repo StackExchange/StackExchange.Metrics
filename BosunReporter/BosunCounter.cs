@@ -7,8 +7,6 @@ namespace BosunReporter
     {
         public long Value;
 
-        private readonly object _tagsLock = new object();
-
         public override string MetricType
         {
             get { return "counter"; }
