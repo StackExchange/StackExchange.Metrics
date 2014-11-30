@@ -14,12 +14,14 @@ namespace BosunReporter
         private readonly GaugeAggregatorStrategy _aggregatorStrategy;
 
         private readonly bool _trackMean;
-        private readonly bool _trackMax;
-        private readonly bool _trackMin;
+        private readonly bool _specialCaseMax;
+        private readonly bool _specialCaseMin;
+        private readonly bool _specialCaseLast;
 
-        private Heap<double> _heap;
+        private List<double> _list;
         private double _min = Double.PositiveInfinity;
         private double _max = Double.NegativeInfinity;
+        private double _last;
         private double _sum = 0;
         private int _count = 0;
 
@@ -38,14 +40,13 @@ namespace BosunReporter
             _aggregatorStrategy = GetAggregatorStategy();
             // denormalize these for one less level of indirection
             _trackMean = _aggregatorStrategy.TrackMean;
-            _trackMin = _aggregatorStrategy.SpecialCaseMin;
-            _trackMax = _aggregatorStrategy.SpecialCaseMax;
+            _specialCaseMin = _aggregatorStrategy.SpecialCaseMin;
+            _specialCaseMax = _aggregatorStrategy.SpecialCaseMax;
+            _specialCaseLast = _aggregatorStrategy.SpecialCaseLast;
 
             // setup heap, if required.
-            if (_aggregatorStrategy.UseMaxHeap)
-                _heap = new Heap<double>(HeapMode.Max);
-            else if (_aggregatorStrategy.UseMinHeap)
-                _heap = new Heap<double>(HeapMode.Min);
+            if (_aggregatorStrategy.UseList)
+                _list = new List<double>();
         }
 
         public void Record(double value)
@@ -57,19 +58,23 @@ namespace BosunReporter
                 {
                     _sum += value;
                 }
-                if (_trackMax)
+                if (_specialCaseLast)
+                {
+                    _last = value;
+                }
+                if (_specialCaseMax)
                 {
                     if (value > _max)
                         _max = value;
                 }
-                if (_trackMin)
+                if (_specialCaseMin)
                 {
                     if (value < _min)
                         _min = value;
                 }
-                if (_heap != null)
+                if (_list != null)
                 {
-                    _heap.Push(value);
+                    _list.Add(value);
                 }
             }
         }
@@ -88,7 +93,8 @@ namespace BosunReporter
 
         private Dictionary<double, double> GetSnapshot()
         {
-            Heap<double> heap;
+            List<double> list;
+            double last;
             double min;
             double max;
             int count;
@@ -99,10 +105,11 @@ namespace BosunReporter
                 if (_count == 0) // there's no data to report if count == 0
                     return null;
 
-                heap = _heap;
-                if (heap != null)
-                    _heap = new Heap<double>(_aggregatorStrategy.UseMaxHeap ? HeapMode.Max : HeapMode.Min);
+                list = _list;
+                if (list != null)
+                    _list = new List<double>();
 
+                last = _last;
                 min = _min;
                 _min = Double.PositiveInfinity;
                 max = _max;
@@ -115,44 +122,29 @@ namespace BosunReporter
 
             var snapshot = new Dictionary<double, double>();
 
+            if (_specialCaseLast)
+                snapshot[-2.0] = last;
             if (_trackMean)
                 snapshot[-1.0] = sum/count;
-            if (_trackMax)
+            if (_specialCaseMax)
                 snapshot[1.0] = max;
-            if (_trackMin)
+            if (_specialCaseMin)
                 snapshot[0.0] = min;
 
-            if (heap != null)
+            if (list != null)
             {
-                var heapLastIndex = heap.Count - 1;
-                var extracted = 0;
-                var percentiles = _aggregatorStrategy.Percentiles;
-                var lastExtracted = Double.NaN;
+                var lastIndex = list.Count - 1;
 
-                if (heap.HeapMode == HeapMode.Max)
+                if (_aggregatorStrategy.TrackLast)
+                    snapshot[-2.0] = list[lastIndex];
+
+                list.Sort();
+                var percentiles = _aggregatorStrategy.Percentiles;
+
+                foreach (var p in percentiles)
                 {
-                    for (var i = percentiles.Count - 1; i > -1; i--)
-                    {
-                        double p = percentiles[i];
-                        var index = (int) Math.Round((1.0 - p)*heapLastIndex);
-                        for (; extracted <= index; extracted++)
-                        {
-                            lastExtracted = heap.Pop();
-                        }
-                        snapshot[p] = lastExtracted;
-                    }
-                }
-                else
-                {
-                    foreach (var p in percentiles)
-                    {
-                        var index = (int) Math.Round(p*heapLastIndex);
-                        for (; extracted <= index; extracted++)
-                        {
-                            lastExtracted = heap.Pop();
-                        }
-                        snapshot[p] = lastExtracted;
-                    }
+                    var index = (int) Math.Round(p*lastIndex);
+                    snapshot[p] = list[index];
                 }
             }
 
@@ -190,10 +182,11 @@ namespace BosunReporter
             public readonly ReadOnlyCollection<GaugeAggregatorAttribute> Aggregators;
             public readonly ReadOnlyCollection<string> Suffixes;
 
-            public readonly bool UseMaxHeap;
-            public readonly bool UseMinHeap;
+            public readonly bool UseList;
             public readonly bool SpecialCaseMax;
             public readonly bool SpecialCaseMin;
+            public readonly bool SpecialCaseLast;
+            public readonly bool TrackLast;
             public readonly bool TrackMean;
             public readonly ReadOnlyCollection<double> Percentiles;
 
@@ -208,9 +201,14 @@ namespace BosunReporter
                 {
                     suffixes.Add(r.Suffix);
 
-                    if (r.Percentile < 0)
+                    if (r.Percentile == -1.0)
                     {
                         TrackMean = true;
+                    }
+                    else if (r.Percentile == -2.0)
+                    {
+                        SpecialCaseLast = true;
+                        TrackLast = true;
                     }
                     else if (r.Percentile == 0.0)
                     {
@@ -230,28 +228,22 @@ namespace BosunReporter
 
                 if (percentiles.Count > 0)
                 {
-                    percentiles.Sort();
+                    UseList = true;
+                    SpecialCaseLast = false;
 
-                    var from100 = 1.0 - percentiles.Last();
-                    var from0 = percentiles[0];
-                    if (from100 < from0 || (SpecialCaseMax && from100 == from0))
+                    if (SpecialCaseMax)
                     {
-                        UseMaxHeap = true;
-                        if (SpecialCaseMax)
-                        {
-                            SpecialCaseMax = false;
-                            percentiles.Add(1.0);
-                        }
+                        percentiles.Add(1.0);
+                        SpecialCaseMax = false;
                     }
-                    else
+
+                    if (SpecialCaseMin)
                     {
-                        UseMinHeap = true;
-                        if (SpecialCaseMin)
-                        {
-                            SpecialCaseMin = false;
-                            percentiles.Insert(0, 0.0);
-                        }
+                        percentiles.Add(0.0);
+                        SpecialCaseMin = false;
                     }
+
+                    percentiles.Sort();
                 }
 
                 Percentiles = percentiles.AsReadOnly();
