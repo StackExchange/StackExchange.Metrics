@@ -155,12 +155,12 @@ namespace BosunReporter
             if (GetBosunUrl != null)
                 BosunUrl = GetBosunUrl();
 
-#if TRACE
+#if DEBUG
             var sw = new Stopwatch();
             sw.Start();
 #endif
             EnqueueMetrics(GetSerializedMetrics());
-#if TRACE
+#if DEBUG
             sw.Stop();
             Debug.WriteLine("BosunReporter: Metric Snapshot took {0}ms", sw.ElapsedMilliseconds);
 #endif
