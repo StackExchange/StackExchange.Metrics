@@ -6,7 +6,8 @@ namespace BosunReporter
     public class BosunReporterOptions
     {
         /// <summary>
-        /// If provided, all metric names will be prefixed with this value. This gives you the ability to keyspace your application.
+        /// If provided, all metric names will be prefixed with this value.
+        /// This gives you the ability to keyspace your application.
         /// For example, you might want to use something like "app1.".
         /// </summary>
         public string MetricsNamePrefix;
@@ -15,8 +16,9 @@ namespace BosunReporter
         /// </summary>
         public Uri BosunUrl;
         /// <summary>
-        /// If the url for the Bosun API can change, provide a function which will be called before each API request. This takes precedence over the BosunUrl option.
-        /// If this function returns null, the request will not be made, and the batch of metrics which would have been sent will be discarded.
+        /// If the url for the Bosun API can change, provide a function which will be called before each API request. 
+        /// This takes precedence over the BosunUrl option. If this function returns null, the request will not be made, 
+        /// and the batch of metrics which would have been sent will be discarded.
         /// </summary>
         public Func<Uri> GetBosunUrl;
         /// <summary>
