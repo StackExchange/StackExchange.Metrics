@@ -11,6 +11,7 @@ namespace BosunReporter
 
         public abstract string MetricType { get; }
         public BosunReporter BosunReporter { get; internal set; }
+        public bool IsAttached { get; internal set; }
 
         public virtual IReadOnlyCollection<string> Suffixes
         {
@@ -25,6 +26,11 @@ namespace BosunReporter
 
         private string _name;
         private readonly object _nameLock = new object();
+
+        internal string MetricKey
+        {
+            get { return _name + SerializedTags; }
+        }
 
         public string Name
         {

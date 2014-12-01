@@ -39,10 +39,15 @@ namespace Scratch
 
             //reporter.GetMetric<TestAggregateGauge>("my_gauge_95"); // <- should throw an exception
 
+            var gauge2 = reporter.GetMetric("my_gauge", new TestAggregateGauge("2"));
             for (var i = 0; i < 6; i++)
             {
-                new Thread(Run).Start(new Tuple<BosunAggregateGauge, BosunAggregateGauge, int>(gauge, reporter.GetMetric("my_gauge", new TestAggregateGauge("2")), i));
+                new Thread(Run).Start(new Tuple<BosunAggregateGauge, BosunAggregateGauge, int>(gauge, gauge2, i));
             }
+
+            Thread.Sleep(TimeSpan.FromSeconds(16));
+            Console.WriteLine("removing...");
+            Console.WriteLine(reporter.RemoveMetric(counter));
         }
 
         static void Run(object obj)
@@ -50,6 +55,10 @@ namespace Scratch
             var tup = (Tuple<BosunAggregateGauge, BosunAggregateGauge, int>)obj;
             var gauge1 = tup.Item1;
             var gauge2 = tup.Item2;
+
+            if (gauge1 == gauge2)
+                throw new Exception("These weren't supposed to be the same... they have different tags.");
+
             var rand = new Random(tup.Item3);
             int i;
             while (true)

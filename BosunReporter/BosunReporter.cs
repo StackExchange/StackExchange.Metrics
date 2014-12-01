@@ -114,6 +114,7 @@ namespace BosunReporter
             metric.BosunReporter = this;
 
             name = MetricsNamePrefix + name;
+            metric.Name = name;
             lock (_rootNameToType)
             {
                 if (_rootNameToType.ContainsKey(name))
@@ -161,14 +162,33 @@ namespace BosunReporter
                 _rootNameToType[name] = metricType;
 
                 // see if this metric name and tag combination already exists
-                var nameAndTags = name + metric.SerializedTags;
-                if (_rootNameAndTagsToMetric.ContainsKey(nameAndTags))
-                    return (T) _rootNameAndTagsToMetric[nameAndTags];
+                var key = metric.MetricKey;
+                if (_rootNameAndTagsToMetric.ContainsKey(key))
+                    return (T) _rootNameAndTagsToMetric[key];
 
                 // metric doesn't exist yet.
-                metric.Name = name;
-                _rootNameAndTagsToMetric[nameAndTags] = metric;
+                _rootNameAndTagsToMetric[key] = metric;
+                metric.IsAttached = true;
                 return metric;
+            }
+        }
+
+        public bool RemoveMetric(BosunMetric metric)
+        {
+            lock (_rootNameToType)
+            {
+                BosunMetric existing;
+                if (_rootNameAndTagsToMetric.TryGetValue(metric.MetricKey, out existing))
+                {
+                    if (metric == existing)
+                    {
+                        _rootNameAndTagsToMetric.Remove(metric.MetricKey);
+                        metric.IsAttached = false;
+                        return true;
+                    }
+                }
+
+                return false;
             }
         }
 

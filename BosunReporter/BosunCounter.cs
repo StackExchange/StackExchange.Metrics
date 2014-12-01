@@ -25,7 +25,7 @@ namespace BosunReporter
 
         public void Increment(long amount = 1)
         {
-            if (BosunReporter == null)
+            if (!IsAttached)
             {
                 var ex = new InvalidOperationException("Attempting to record on a gauge which is not attached to a BosunReporter object.");
                 try

@@ -51,7 +51,7 @@ namespace BosunReporter
 
         public void Record(double value)
         {
-            if (BosunReporter == null)
+            if (!IsAttached)
             {
                 var ex = new InvalidOperationException("Attempting to record on a gauge which is not attached to a BosunReporter object.");
                 try
