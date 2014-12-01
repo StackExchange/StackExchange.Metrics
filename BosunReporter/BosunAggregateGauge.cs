@@ -6,7 +6,7 @@ using System.Reflection;
 
 namespace BosunReporter
 {
-    public abstract class BosunAggregateGauge : BosunMetric
+    public class BosunAggregateGauge : BosunMetric
     {
         private static readonly Dictionary<Type, GaugeAggregatorStrategy> _aggregatorsByTypeCache = new Dictionary<Type, GaugeAggregatorStrategy>();
 
@@ -35,7 +35,7 @@ namespace BosunReporter
             get { return _aggregatorStrategy.Suffixes; }
         }
 
-        protected BosunAggregateGauge()
+        public BosunAggregateGauge()
         {
             _aggregatorStrategy = GetAggregatorStategy();
             // denormalize these for one less level of indirection

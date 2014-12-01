@@ -4,7 +4,7 @@ using System.Threading;
 
 namespace BosunReporter
 {
-    public abstract class BosunCounter : BosunMetric
+    public class BosunCounter : BosunMetric
     {
         public long Value = 0;
 
@@ -18,7 +18,7 @@ namespace BosunReporter
             yield return ToJson("", Value.ToString("D"), unixTimestamp);
         }
 
-        protected BosunCounter()
+        public BosunCounter()
         {
         }
 

@@ -1,12 +1,27 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 
 namespace BosunReporter
 {
-    public abstract class BosunSnapshotGauge : BosunMetric
+    public class BosunSnapshotGauge : BosunMetric
     {
+        public readonly Func<double?> GetValueFunc;
+
         public override string MetricType
         {
             get { return "gauge"; }
+        }
+
+        public BosunSnapshotGauge(Func<double?> getValueFunc)
+        {
+            if (getValueFunc == null)
+                throw new ArgumentNullException("getValueFunc");
+
+            GetValueFunc = getValueFunc;
+        }
+
+        protected BosunSnapshotGauge()
+        {
         }
 
         protected override IEnumerable<string> GetSerializedMetrics(string unixTimestamp)
@@ -18,6 +33,9 @@ namespace BosunReporter
             yield return ToJson("", val.Value.ToString("0.###############"), unixTimestamp);
         }
 
-        protected abstract double? GetValue();
+        protected virtual double? GetValue()
+        {
+            return GetValueFunc();
+        }
     }
 }

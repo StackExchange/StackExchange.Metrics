@@ -48,7 +48,7 @@ namespace Scratch
             }
 
             var si = 0;
-            var snapshot = reporter.GetMetric("no_defaults", new TestSnapshotGauge(() => ++si%5));
+            var snapshot = reporter.GetMetric("my_snapshot", new BosunSnapshotGauge(() => ++si % 5));
 
             Thread.Sleep(TimeSpan.FromSeconds(16));
             Console.WriteLine("removing...");
