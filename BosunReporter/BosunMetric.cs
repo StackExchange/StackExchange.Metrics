@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
 using System.Text;
 
@@ -75,10 +76,10 @@ namespace BosunReporter
             var tags = GetTagsList();
             foreach (var tag in tags)
             {
-                var value = (string)tag.FieldInfo.GetValue(this);
+                var value = tag.IsFromDefault ? BosunReporter.DefaultTags[tag.Name] : (string)tag.FieldInfo.GetValue(this);
                 if (value == null)
                 {
-                    if (tag.Attribute.IsOptional)
+                    if (tag.IsOptional)
                         continue;
 
                     throw new InvalidOperationException(
@@ -123,6 +124,18 @@ namespace BosunReporter
                 var metricTag = f.GetCustomAttribute<BosunTagAttribute>();
                 if (metricTag != null)
                     tags.Add(new BosunTag(f, metricTag, BosunReporter.PropertyToTagName));
+            }
+
+            // get default tags
+            if (type.GetCustomAttribute<IgnoreDefaultBosunTagsAttribute>() == null)
+            {
+                foreach (var name in BosunReporter.DefaultTags.Keys)
+                {
+                    if (tags.Any(t => t.Name == name))
+                        continue;
+
+                    tags.Add(new BosunTag(name));
+                }
             }
 
             if (tags.Count == 0)

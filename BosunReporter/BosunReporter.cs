@@ -1,6 +1,6 @@
-﻿
-using System;
+﻿using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
 using System.IO.Compression;
@@ -46,6 +46,7 @@ namespace BosunReporter
         public bool ThrowOnQueueFull;
         public readonly int ReportingInterval;
         public readonly Func<string, string> PropertyToTagName;
+        public readonly ReadOnlyDictionary<string, string> DefaultTags;
 
         public IEnumerable<BosunMetric> Metrics
         {
@@ -58,14 +59,15 @@ namespace BosunReporter
             if (MetricsNamePrefix != "" && !Validation.IsValidMetricName(MetricsNamePrefix))
                 throw new Exception("\"" + MetricsNamePrefix + "\" is not a valid metric name prefix.");
 
-            BosunUrl = options.BosunUrl;
             GetBosunUrl = options.GetBosunUrl;
+            BosunUrl = GetBosunUrl == null ? options.BosunUrl : GetBosunUrl();
             MaxQueueLength = options.MaxQueueLength;
             BatchSize = options.BatchSize;
             ThrowOnPostFail = options.ThrowOnPostFail;
             ThrowOnQueueFull = options.ThrowOnQueueFull;
             ReportingInterval = options.ReportingInterval;
             PropertyToTagName = options.PropertyToTagName;
+            DefaultTags = ValidateDefaultTags(options.DefaultTags);
 
             // start continuous queue-flushing
             _flushTimer = new Timer(Flush, null, 1000, 1000);
@@ -77,6 +79,24 @@ namespace BosunReporter
             // metadata timer - wait 30 seconds to start (so there is some time for metrics to be delcared)
             if (options.MetaDataReportingInterval > 0)
                 _metaDataTimer = new Timer(PostMetaData, null, TimeSpan.FromSeconds(30), TimeSpan.FromSeconds(options.MetaDataReportingInterval));
+        }
+
+        public ReadOnlyDictionary<string, string> ValidateDefaultTags(Dictionary<string, string> tags)
+        {
+            var defaultTags = tags == null
+                ? new Dictionary<string, string>()
+                : new Dictionary<string, string>(tags);
+
+            foreach (var kvp in defaultTags)
+            {
+                if (!Validation.IsValidTagName(kvp.Key))
+                    throw new Exception(String.Format("\"{0}\" is not a valid Bosun tag name.", kvp.Key));
+
+                if (!Validation.IsValidTagValue(kvp.Value))
+                    throw new Exception(String.Format("\"{0}\" is not a valid Bosun tag value.", kvp.Value));
+            }
+
+            return new ReadOnlyDictionary<string, string>(defaultTags);
         }
 
         public void BindMetric(string name, Type type)

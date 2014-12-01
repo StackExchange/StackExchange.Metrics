@@ -19,5 +19,16 @@ namespace BosunReporter
                 return c.ToString(CultureInfo.InvariantCulture);
             }));
         };
+
+        public static Func<string, string> Sanitize = (s) =>
+        {
+            return Validation.InvalidChars.Replace(s, m =>
+            {
+                if (m.Index == 0 || m.Index + m.Length == s.Length) // beginning and end of string
+                    return "";
+
+                return "_";
+            });
+        };
     }
 }

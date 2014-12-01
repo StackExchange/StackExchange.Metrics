@@ -5,6 +5,7 @@ namespace BosunReporter
     internal static class Validation
     {
         private static readonly Regex _validTsdbString = new Regex(@"^[a-zA-Z0-9\-_./]+$");
+        public static readonly Regex InvalidChars = new Regex(@"[^a-zA-Z0-9\-_./]+");
 
         public static bool IsValidMetricName(string name)
         {

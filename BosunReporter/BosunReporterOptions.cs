@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 
 namespace BosunReporter
 {
@@ -50,5 +51,12 @@ namespace BosunReporter
         /// This function does not apply to any tag names which are set manually via the BosunTag attribute.
         /// </summary>
         public Func<string, string> PropertyToTagName;
+        /// <summary>
+        /// A list of tag names/values which will be automatically inculuded on every metric.
+        /// The IgnoreDefaultTags attribute can be used on classes inheriting from BosunMetric to exclude default tags.
+        /// If an inherited class has a conflicting BosunTag field, it will override the default tag value.
+        /// Default tags will generally not be included in metadata.
+        /// </summary>
+        public Dictionary<string, string> DefaultTags;
     }
 }

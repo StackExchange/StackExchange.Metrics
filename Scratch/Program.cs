@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading;
@@ -24,7 +25,8 @@ namespace Scratch
                 GetBosunUrl = getUrl,
                 ThrowOnPostFail = true,
                 ReportingInterval = 5,
-                PropertyToTagName = NameTransformers.CamelToLowerSnakeCase
+                PropertyToTagName = NameTransformers.CamelToLowerSnakeCase,
+                DefaultTags = new Dictionary<string, string> { {"host", NameTransformers.Sanitize(Environment.MachineName.ToLower())} }
             };
             var reporter = new BosunReporter.BosunReporter(options);
 
@@ -46,7 +48,7 @@ namespace Scratch
             }
 
             var si = 0;
-            var snapshot = reporter.GetMetric("my_snapshot", new TestSnapshotGauge(() => ++si%5));
+            var snapshot = reporter.GetMetric("no_defaults", new TestSnapshotGauge(() => ++si%5));
 
             Thread.Sleep(TimeSpan.FromSeconds(16));
             Console.WriteLine("removing...");
@@ -84,36 +86,36 @@ namespace Scratch
     [GaugeAggregator(AggregateMode.Percentile, 0.25)]
     public class TestAggregateGauge : BosunAggregateGauge
     {
-        [BosunTag] public readonly string Host;
+//        [BosunTag] public readonly string Host;
         [BosunTag] public readonly string SomeTagName;
 
         public TestAggregateGauge(string something)
         {
-            Host = "bret-host";
+//            Host = "bret-host";
             SomeTagName = something;
         }
     }
 
     public class TestCounter : BosunCounter
     {
-        [BosunTag]
-        public readonly string Host;
+//        [BosunTag] public readonly string Host;
 
         public TestCounter()
         {
-            Host = "bret-host";
+//            Host = "bret-host";
         }
     }
 
+    [IgnoreDefaultBosunTags]
     public class TestSnapshotGauge : BosunSnapshotGauge
     {
-        [BosunTag] public readonly string Host;
+        [BosunTag] public readonly string Thing;
 
         public Func<double> GetValueLambda;
 
         public TestSnapshotGauge(Func<double> getValue)
         {
-            Host = "bret-host";
+            Thing = "nothing";
             GetValueLambda = getValue;
         }
 

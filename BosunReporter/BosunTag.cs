@@ -6,11 +6,29 @@ namespace BosunReporter
     internal class BosunTag
     {
         public readonly string Name;
+        public readonly bool IsFromDefault;
+        public readonly bool IsOptional;
         public readonly FieldInfo FieldInfo;
         public readonly BosunTagAttribute Attribute;
 
+        /// <summary>
+        /// Only use this constructor when creating a default tag.
+        /// </summary>
+        public BosunTag(string name)
+        {
+            Name = name;
+            IsFromDefault = true;
+            IsOptional = false;
+        }
+
+        /// <summary>
+        /// Use this constructor when instantiating from a field.
+        /// </summary>
         public BosunTag(FieldInfo fieldInfo, BosunTagAttribute attribute, Func<string, string> nameReplacer)
         {
+            IsFromDefault = false;
+            IsOptional = attribute.IsOptional;
+
             FieldInfo = fieldInfo;
             if (!FieldInfo.IsInitOnly || FieldInfo.FieldType != typeof(string))
             {
