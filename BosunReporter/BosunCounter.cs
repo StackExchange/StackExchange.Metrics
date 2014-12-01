@@ -6,7 +6,7 @@ namespace BosunReporter
 {
     public abstract class BosunCounter : BosunMetric
     {
-        public long Value;
+        public long Value = 0;
 
         public override string MetricType
         {
@@ -18,9 +18,8 @@ namespace BosunReporter
             yield return ToJson("", Value.ToString("D"), unixTimestamp);
         }
 
-        protected BosunCounter(long value = 0)
+        protected BosunCounter()
         {
-            Value = value;
         }
 
         public void Increment(long amount = 1)

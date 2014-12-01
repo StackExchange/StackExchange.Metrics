@@ -45,6 +45,9 @@ namespace Scratch
                 new Thread(Run).Start(new Tuple<BosunAggregateGauge, BosunAggregateGauge, int>(gauge, gauge2, i));
             }
 
+            var si = 0;
+            var snapshot = reporter.GetMetric("my_snapshot", new TestSnapshotGauge(() => ++si%5));
+
             Thread.Sleep(TimeSpan.FromSeconds(16));
             Console.WriteLine("removing...");
             Console.WriteLine(reporter.RemoveMetric(counter));
@@ -99,6 +102,24 @@ namespace Scratch
         public TestCounter()
         {
             Host = "bret-host";
+        }
+    }
+
+    public class TestSnapshotGauge : BosunSnapshotGauge
+    {
+        [BosunTag] public readonly string Host;
+
+        public Func<double> GetValueLambda;
+
+        public TestSnapshotGauge(Func<double> getValue)
+        {
+            Host = "bret-host";
+            GetValueLambda = getValue;
+        }
+
+        protected override double? GetValue()
+        {
+            return GetValueLambda();
         }
     }
 }

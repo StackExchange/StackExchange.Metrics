@@ -51,6 +51,7 @@
     <Compile Include="BosunReporter.cs" />
     <Compile Include="BosunMetric.cs" />
     <Compile Include="BosunReporterOptions.cs" />
+    <Compile Include="BosunSnapshotGauge.cs" />
     <Compile Include="BosunTag.cs" />
     <Compile Include="BosunTagAttribute.cs" />
     <Compile Include="BosunCounter.cs" />
