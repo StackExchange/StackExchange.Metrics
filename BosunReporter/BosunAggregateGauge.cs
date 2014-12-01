@@ -51,6 +51,20 @@ namespace BosunReporter
 
         public void Record(double value)
         {
+            if (BosunReporter == null)
+            {
+                var ex = new InvalidOperationException("Attempting to record on a gauge which is not attached to a BosunReporter object.");
+                try
+                {
+                    ex.Data["Metric"] = Name;
+                    ex.Data["Tags"] = SerializedTags;
+                }
+                finally
+                {
+                    throw ex;
+                }
+            }
+
             lock (_recordLock)
             {
                 _count++;

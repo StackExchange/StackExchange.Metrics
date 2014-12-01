@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Threading;
 
 namespace BosunReporter
@@ -24,6 +25,20 @@ namespace BosunReporter
 
         public void Increment(long amount = 1)
         {
+            if (BosunReporter == null)
+            {
+                var ex = new InvalidOperationException("Attempting to record on a gauge which is not attached to a BosunReporter object.");
+                try
+                {
+                    ex.Data["Metric"] = Name;
+                    ex.Data["Tags"] = SerializedTags;
+                }
+                finally
+                {
+                    throw ex;
+                }
+            }
+
             Interlocked.Add(ref Value, amount);
         }
     }
