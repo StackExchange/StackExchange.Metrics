@@ -23,10 +23,12 @@ namespace Scratch
                 MetricsNamePrefix = "bret.",
                 GetBosunUrl = getUrl,
                 ThrowOnPostFail = true,
-                ReportingInterval = 30,
+                ReportingInterval = 5,
                 PropertyToTagName = NameTransformers.CamelToLowerSnakeCase
             };
             var reporter = new BosunReporter.BosunReporter(options);
+
+            reporter.BindMetric("my_counter", typeof(TestCounter));
             var counter = reporter.GetMetric<TestCounter>("my_counter");
             counter.Increment();
             counter.Increment();

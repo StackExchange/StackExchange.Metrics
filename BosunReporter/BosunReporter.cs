@@ -79,6 +79,24 @@ namespace BosunReporter
                 _metaDataTimer = new Timer(PostMetaData, null, TimeSpan.FromSeconds(30), TimeSpan.FromSeconds(options.MetaDataReportingInterval));
         }
 
+        public void BindMetric(string name, Type type)
+        {
+            name = MetricsNamePrefix + name;
+            lock (_rootNameToType)
+            {
+                if (_rootNameToType.ContainsKey(name) && _rootNameToType[name] != type)
+                {
+                    throw new Exception(
+                        String.Format("Cannot bind metric name \"{0}\" to Type {1}. It has already been bound to {2}",
+                            name, type.FullName, _rootNameToType[name].FullName));
+                }
+
+//                if (type)
+
+                _rootNameToType[name] = type;
+            }
+        }
+
         public T GetMetric<T>(string name, T metric = null) where T : BosunMetric
         {
             var metricType = typeof (T);
@@ -95,16 +113,18 @@ namespace BosunReporter
             name = MetricsNamePrefix + name;
             lock (_rootNameToType)
             {
-                if (_nameAndSuffixToRootName.ContainsKey(name) && (!_rootNameToType.ContainsKey(name) || _rootNameToType[name] != metricType))
+                if (_rootNameToType.ContainsKey(name))
                 {
-                    if (_rootNameToType.ContainsKey(name))
+                    if (_rootNameToType[name] != metricType)
                     {
                         throw new Exception(
                             String.Format(
-                                "Attempted to create metric name \"{0}\" with Type {1}. This metric name has already been assigned to Type {2}.",
+                                "Attempted to create metric name \"{0}\" with Type {1}. This metric name has already been bound to Type {2}.",
                                 name, metricType.FullName, _rootNameToType[name].FullName));
                     }
-
+                }
+                else if (_nameAndSuffixToRootName.ContainsKey(name))
+                {
                     throw new Exception(
                         String.Format(
                             "Attempted to create metric name \"{0}\" with Type {1}. This metric name is already in use as a suffix of Type {2}.",
