@@ -8,7 +8,8 @@ namespace BosunReporter
         Median,
         Percentile,
         Max,
-        Min
+        Min,
+        Last
     }
 
     [AttributeUsage(AttributeTargets.Class, AllowMultiple = true)]
@@ -34,6 +35,10 @@ namespace BosunReporter
                     Percentile = -1.0;
                     defaultSuffix = "_avg";
                     break;
+                case AggregateMode.Last:
+                    Percentile = -2.0;
+                    defaultSuffix = "";
+                    break;
                 case AggregateMode.Median:
                     Percentile = 0.5;
                     defaultSuffix = "_median";
@@ -56,9 +61,9 @@ namespace BosunReporter
                     throw new Exception("Gauge mode not implemented.");
             }
 
-            Suffix = String.IsNullOrEmpty(suffix) ? defaultSuffix : suffix;
-            if (!Validation.IsValidTagValue(Suffix))
-                throw new Exception("\"" + Suffix + "\" is not a valid tag value.");
+            Suffix = suffix ?? defaultSuffix;
+            if (Suffix.Length > 0 && !Validation.IsValidMetricName(Suffix))
+                throw new Exception("\"" + Suffix + "\" is not a valid metric suffix.");
         }
     }
 }

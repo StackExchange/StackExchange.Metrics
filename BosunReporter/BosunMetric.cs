@@ -127,7 +127,7 @@ namespace BosunReporter
             }
 
             // get default tags
-            if (type.GetCustomAttribute<IgnoreDefaultBosunTagsAttribute>() == null)
+            if (type.GetCustomAttribute<IgnoreDefaultBosunTagsAttribute>(true) == null)
             {
                 foreach (var name in BosunReporter.DefaultTags.Keys)
                 {

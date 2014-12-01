@@ -6,6 +6,7 @@ using System.Reflection;
 
 namespace BosunReporter
 {
+    [GaugeAggregator(AggregateMode.Last)]
     public class BosunAggregateGauge : BosunMetric
     {
         private static readonly Dictionary<Type, GaugeAggregatorStrategy> _aggregatorsByTypeCache = new Dictionary<Type, GaugeAggregatorStrategy>();
@@ -176,7 +177,7 @@ namespace BosunReporter
                 if (_aggregatorsByTypeCache.ContainsKey(type))
                     return _aggregatorsByTypeCache[type];
 
-                var aggregators = GetType().GetCustomAttributes<GaugeAggregatorAttribute>().ToList().AsReadOnly();
+                var aggregators = GetType().GetCustomAttributes<GaugeAggregatorAttribute>(false).ToList().AsReadOnly();
                 if (aggregators.Count == 0)
                     throw new Exception(GetType().FullName + " has no GaugeAggregator attributes. All gauges must have at least one.");
 

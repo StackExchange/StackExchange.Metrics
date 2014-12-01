@@ -35,13 +35,13 @@ namespace Scratch
             counter.Increment();
             counter.Increment();
 
-            var gauge = reporter.GetMetric("my_gauge", new TestAggregateGauge("1"));
-            if (gauge != reporter.GetMetric("my_gauge", new TestAggregateGauge("1")))
+            var gauge = reporter.GetMetric("gauge", new TestAggregateGauge("1"));
+            if (gauge != reporter.GetMetric("gauge", new TestAggregateGauge("1")))
                 throw new Exception("WAT?");
 
             //reporter.GetMetric<TestAggregateGauge>("my_gauge_95"); // <- should throw an exception
 
-            var gauge2 = reporter.GetMetric("my_gauge", new TestAggregateGauge("2"));
+            var gauge2 = reporter.GetMetric<BosunAggregateGauge>("gauge2");
             for (var i = 0; i < 6; i++)
             {
                 new Thread(Run).Start(new Tuple<BosunAggregateGauge, BosunAggregateGauge, int>(gauge, gauge2, i));
