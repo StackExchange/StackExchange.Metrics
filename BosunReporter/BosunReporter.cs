@@ -91,7 +91,10 @@ namespace BosunReporter
                             name, type.FullName, _rootNameToType[name].FullName));
                 }
 
-//                if (type)
+                if (!type.IsSubclassOf(typeof (BosunMetric)))
+                {
+                    throw new Exception(String.Format("Cannot bind metric \"{0}\" to Type {1}. It does not inherit from BosunMetric.", name, type.FullName));
+                }
 
                 _rootNameToType[name] = type;
             }
