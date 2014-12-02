@@ -1,0 +1,1 @@
+nuget pack .\BosunReporter\BosunReporter.csproj -Symbols -IncludeReferencedProjects -OutputDirectory .\Nuget

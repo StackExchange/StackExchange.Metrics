@@ -6,7 +6,7 @@ using System.Runtime.InteropServices;
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
 [assembly: AssemblyTitle("BosunReporter")]
-[assembly: AssemblyDescription("")]
+[assembly: AssemblyDescription("A thread-safe C# .NET client for reporting metrics to Bosun (Time Series Alerting Framework).")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("")]
 [assembly: AssemblyProduct("BosunReporter")]
