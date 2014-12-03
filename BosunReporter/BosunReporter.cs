@@ -81,7 +81,7 @@ namespace BosunReporter
                 _metaDataTimer = new Timer(PostMetaData, null, TimeSpan.FromSeconds(30), TimeSpan.FromSeconds(options.MetaDataReportingInterval));
         }
 
-        public ReadOnlyDictionary<string, string> ValidateDefaultTags(Dictionary<string, string> tags)
+        private ReadOnlyDictionary<string, string> ValidateDefaultTags(Dictionary<string, string> tags)
         {
             var defaultTags = tags == null
                 ? new Dictionary<string, string>()
