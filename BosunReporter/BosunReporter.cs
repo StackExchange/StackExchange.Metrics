@@ -17,6 +17,7 @@ namespace BosunReporter
     {
         private static readonly DateTime UnixEpoch = new DateTime(1970, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc);
 
+        private readonly object _metricsLock = new object();
         // all of the first-class names which have been claimed (excluding suffixes in aggregate gauges)
         private readonly Dictionary<string, Type> _rootNameToType = new Dictionary<string, Type>();
         // this dictionary is to avoid duplicate metrics
@@ -106,7 +107,7 @@ namespace BosunReporter
 
         public void BindMetricWithoutPrefix(string name, Type type)
         {
-            lock (_rootNameToType)
+            lock (_metricsLock)
             {
                 if (_rootNameToType.ContainsKey(name) && _rootNameToType[name] != type)
                 {
@@ -143,7 +144,7 @@ namespace BosunReporter
             metric.BosunReporter = this;
 
             metric.Name = name;
-            lock (_rootNameToType)
+            lock (_metricsLock)
             {
                 if (_rootNameToType.ContainsKey(name))
                 {
@@ -203,7 +204,7 @@ namespace BosunReporter
 
         public bool RemoveMetric(BosunMetric metric)
         {
-            lock (_rootNameToType)
+            lock (_metricsLock)
             {
                 BosunMetric existing;
                 if (_rootNameAndTagsToMetric.TryGetValue(metric.MetricKey, out existing))
@@ -398,7 +399,10 @@ namespace BosunReporter
         private IEnumerable<string> GetSerializedMetrics()
         {
             var unixTimestamp = ((long)(DateTime.UtcNow - UnixEpoch).TotalSeconds).ToString("D");
-            return Metrics.AsParallel().Select(m => m.Serialize(unixTimestamp)).SelectMany(s => s);
+            lock (_metricsLock)
+            {
+                return Metrics.AsParallel().Select(m => m.Serialize(unixTimestamp)).SelectMany(s => s).ToList();
+            }
         }
 
         private void PostMetaData(object _)
@@ -429,13 +433,16 @@ namespace BosunReporter
             var metaList = new List<BosunMetaData>();
             var nameSet = new HashSet<string>();
 
-            foreach (var metric in Metrics)
+            lock (_metricsLock)
             {
-                if (metric == null || nameSet.Contains(metric.Name))
-                    continue;
+                foreach (var metric in Metrics)
+                {
+                    if (metric == null || nameSet.Contains(metric.Name))
+                        continue;
 
-                nameSet.Add(metric.Name);
-                metaList.AddRange(BosunMetaData.DefaultMetaData(metric));
+                    nameSet.Add(metric.Name);
+                    metaList.AddRange(BosunMetaData.DefaultMetaData(metric));
+                }
             }
 
             return metaList;
