@@ -101,7 +101,11 @@ namespace BosunReporter
 
         public void BindMetric(string name, Type type)
         {
-            name = MetricsNamePrefix + name;
+            BindMetricWithoutPrefix(MetricsNamePrefix + name, type);
+        }
+
+        public void BindMetricWithoutPrefix(string name, Type type)
+        {
             lock (_rootNameToType)
             {
                 if (_rootNameToType.ContainsKey(name) && _rootNameToType[name] != type)
@@ -122,6 +126,11 @@ namespace BosunReporter
 
         public T GetMetric<T>(string name, T metric = null) where T : BosunMetric
         {
+            return GetMetricWithoutPrefix(MetricsNamePrefix + name, metric);
+        }
+
+        public T GetMetricWithoutPrefix<T>(string name, T metric = null) where T : BosunMetric
+        {
             var metricType = typeof (T);
             if (metric == null)
             {
@@ -133,7 +142,6 @@ namespace BosunReporter
             }
             metric.BosunReporter = this;
 
-            name = MetricsNamePrefix + name;
             metric.Name = name;
             lock (_rootNameToType)
             {
