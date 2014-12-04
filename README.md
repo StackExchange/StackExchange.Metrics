@@ -14,7 +14,8 @@ var collector = new MetricsCollector(new BosunOptions()
 	MetricsNamePrefix = "app_name.",
 	BosunUrl = "http://bosun.mydomain.com:8070",
 	PropertyToTagName = NameTransformers.CamelToLowerSnakeCase,
-	DefaultTags = new Dictionary<string, string> { {"host", NameTransformers.Sanitize(Environment.MachineName.ToLower())} }
+	DefaultTags = new Dictionary<string, string> 
+		{ {"host", NameTransformers.Sanitize(Environment.MachineName.ToLower())} }
 });
  ```
 
@@ -114,7 +115,7 @@ Median     | `_median`      | 50th percentile.
 Percentile | `_%%`          | Allows you to specify an arbitrary percentile (i.e. `0.95` for the 95th percentile). The default suffix is the integer representation of the percentage (i.e. `_95`).
 Max        | `_max`         | The highest recorded value.
 Min        | `_min`         | The lowest recorded value.
-Last       | `` (no suffix) | The last recorded value before the reporting/snapshot interval.
+Last       | (no suffix)    | The last recorded value before the reporting/snapshot interval.
 
 All aggregators are reset at each reporting/snapshot interval. If no data points have been recorded since the last reporting interval, then nothing will be sent to Bosun since there is effectively no data.
 
