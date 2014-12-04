@@ -145,3 +145,7 @@ testRouteTiming.Record(requestDuration);
 ```
 
 If median or percentile aggregators are used, then all values passed to the `Record()` method are stored until the next reporting interval, and must be sorted at that time in order to calculate the aggregate values. If you're concerned about this performance overhead, run some benchmarks on sorting a `List<double>` where the count is the number of data points you expect in-between metric reporting intervals. When there are multiple gauge metrics, the sorting is performed in parallel. 
+
+### Event Gauges (planned)
+
+The third type of gauge (not implemented yet) is an event gauge. These are ideal for low-volume event-based data where it's practical to send all of the data points to Bosun. If you have a measurable event which occurs once every 10-20 seconds, then, instead of aggregating, you may want to use an event gauge. Every time you call `.Record()` on an event gauge, the metric will be serialized and queued for sending to Bosun.
