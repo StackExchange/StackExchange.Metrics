@@ -88,11 +88,11 @@ var two = collector.GetMetric("hits", new RouteCounter("Test/Route", true));
 
 This, like the rest of the library, is thread safe. You could use this method to always instantiate and use metrics on-demand. Although, if you're concerned with performance, it is computationally cheaper to store the metrics in variables or a hash rather than calling `GetMetric()` every time you need it.
 
-The `RouteCounter` type, and any other type, can be used with as many metric names as you'd like. You don't have to create a class for every metric you use if they share common tag lists. In fact, encouraging common tag lists is a great idea which will help lead to consistency in your metrics conventions.
+This `RouteCounter` type we just created, and any other BosunMetric type, can be used with as many metric names as you'd like. __You don't have to create a class for every metric you use__ if they share common tag lists. In fact, using common tag lists is a great idea which will help encourage consistency in your metrics conventions.
 
 ### Snapshot Gauges
 
-BosunReporter.NET supports two types of gauges (a third is planned). The first is called a snapshot gauge. These are great for metrics where you want to record snapshots of a value, like CPU or memory usage. Let's pretend we have a method called `GetMemoryUsage` which returns a double and write a snapshot gauge which calls that every time metrics are reported to the Bosun API.
+BosunReporter.NET supports two types of gauges (a third is planned). The first is called a snapshot gauge. These are great for metrics where you want to record snapshots of a value, like CPU or memory usage. Pretend we have a method called `GetMemoryUsage` which returns a double. Now, let's write a snapshot gauge which calls that automatically at every metrics reporting/snapshot interval.
 
 ```csharp
 collector.GetMetric("memory_usage", new BosunSnapshotGauge(() => GetMemoryUsage()));
@@ -104,7 +104,7 @@ That's it. There's no reason to even assign the gauge to a variable.
 
 ### Aggregate Gauges
 
-The second type of gauge is an aggregate gauge. These are useful for event-based gauges where the number of data points makes it undesirable or impractical to send them to Bosun at 100% resolution. For example, imagine you want to capture performance timings from five individual parts of your web request pipeline, and then report those numbers to Bosun. You might not want the number of metrics you send to Bosun to be 5x the number of your web requests, so the solution is to send aggregates.
+The second type of gauge is an aggregate gauge. These are useful for event-based gauges where the volume of data points makes it undesirable or impractical to send them all to Bosun at 100% resolution. For example, imagine you want to capture performance timings from five individual parts of your web request pipeline, and then report those numbers to Bosun. You might not want the number of metrics you send to Bosun to be 5x the number of your web requests, so the solution is to send aggregates.
 
 Aggregate gauges come with six aggregators to choose from. You must use at least one for each gauge, but you can use as many as you'd like. BosunReporter.NET automatically expands the gauge into multiple metrics when sending to Bosun by appending suffixes to the metric name based on the aggregators in use.
 
