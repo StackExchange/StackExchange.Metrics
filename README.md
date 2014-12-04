@@ -4,14 +4,14 @@ A thread-safe C# .NET client for reporting metrics to [Bosun (Time Series Alerti
 
 ## Usage
 
-* [MetricsCollector](metricscollector)
-* [Counters](counters)
-* [Tags](tags)
-* [Snapshot Gauges](snapshot-gauges)
-* [Aggregate Gauges](aggregate-gauges)
-* [Event Gauges](event-gauges)
+* [MetricsCollector](#metricscollector)
+* [Counters](#counters)
+* [Tags](#tags)
+* [Snapshot Gauges](#snapshot-gauges)
+* [Aggregate Gauges](#aggregate-gauges)
+* [Event Gauges](#event-gauges)
 
-### Creating a MetricsCollector
+### MetricsCollector
 
 First, create a `MetricsCollector` object. This is the top-level container which will hold all of your metrics and handle sending them to the Bosun API. Therefore, you'll probably only want to instantiate one, and make it a global singleton.
  
