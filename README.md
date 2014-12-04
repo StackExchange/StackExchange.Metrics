@@ -4,6 +4,13 @@ A thread-safe C# .NET client for reporting metrics to [Bosun (Time Series Alerti
 
 ## Usage
 
+* [MetricsCollector](metricscollector)
+* [Counters](counters)
+* [Tags](tags)
+* [Snapshot Gauges](snapshot-gauges)
+* [Aggregate Gauges](aggregate-gauges)
+* [Event Gauges](event-gauges)
+
 ### Creating a MetricsCollector
 
 First, create a `MetricsCollector` object. This is the top-level container which will hold all of your metrics and handle sending them to the Bosun API. Therefore, you'll probably only want to instantiate one, and make it a global singleton.
@@ -21,7 +28,7 @@ var collector = new MetricsCollector(new BosunOptions()
 
 All of the available options are documented in the [BosunOptions class](https://github.com/bretcope/BosunReporter.NET/blob/master/BosunReporter/BosunOptions.cs).
 
-### Creating a Basic Counter
+### Counters
 
 There are two types of metrics: gauges and counters. Let's start by creating a counter called `my_counter` with only the default tags.
 
@@ -43,7 +50,7 @@ counter.Increment(23);
 
 This metric, like all other metrics, will be automatically sent to Bosun every 30 seconds, or on the interval defined by [BosunOptions.ReportingInterval](https://github.com/bretcope/BosunReporter.NET/blob/master/BosunReporter/BosunOptions.cs#L45).
 
-### Add Some Tags
+### Tags
 
 Every metric should map to a single set of tag names. That is to say, you shouldn't use metric "my_metric" with the tags "host" and "route" in some cases, and the tags "machine" and "status" in other cases. Conceptually, the metric name could be thought of as similar to a variable name, and the list of tag names as its type. You can assign different instances of a type (different tag values) to a variable, but you can't assign an instance of a different type (different tag names).
 
@@ -104,7 +111,7 @@ That's it. There's no reason to even assign the gauge to a variable.
 
 ### Aggregate Gauges
 
-The second type of gauge is an aggregate gauge. These are useful for event-based gauges where the volume of data points makes it undesirable or impractical to send them all to Bosun at 100% resolution. For example, imagine you want to capture performance timings from five individual parts of your web request pipeline, and then report those numbers to Bosun. You might not want the number of metrics you send to Bosun to be 5x the number of your web requests, so the solution is to send aggregates.
+The second type of gauge is an aggregate gauge. These are useful for event-based gauges where the volume of data points makes it undesirable or impractical to send them all to Bosun. For example, imagine you want to capture performance timings from five individual parts of your web request pipeline, and then report those numbers to Bosun. You might not want the number of metrics you send to Bosun to be 5x the number of your web requests, so the solution is to send aggregates.
 
 Aggregate gauges come with six aggregators to choose from. You must use at least one for each gauge, but you can use as many as you'd like. BosunReporter.NET automatically expands the gauge into multiple metrics when sending to Bosun by appending suffixes to the metric name based on the aggregators in use.
 
@@ -146,6 +153,6 @@ testRouteTiming.Record(requestDuration);
 
 If median or percentile aggregators are used, then all values passed to the `Record()` method are stored until the next reporting interval, and must be sorted at that time in order to calculate the aggregate values. If you're concerned about this performance overhead, run some benchmarks on sorting a `List<double>` where the count is the number of data points you expect in-between metric reporting intervals. When there are multiple gauge metrics, the sorting is performed in parallel. 
 
-### Event Gauges (planned)
+### Event Gauges
 
 The third type of gauge (not implemented yet) is an event gauge. These are ideal for low-volume event-based data where it's practical to send all of the data points to Bosun. If you have a measurable event which occurs once every 10-20 seconds, then, instead of aggregating, you may want to use an event gauge. Every time you call `.Record()` on an event gauge, the metric will be serialized and queued for sending to Bosun.
