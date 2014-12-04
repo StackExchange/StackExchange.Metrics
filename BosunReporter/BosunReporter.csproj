@@ -48,9 +48,9 @@
   <ItemGroup>
     <Compile Include="BosunAggregateGauge.cs" />
     <Compile Include="BosunMetaData.cs" />
-    <Compile Include="BosunReporter.cs" />
+    <Compile Include="MetricsCollector.cs" />
     <Compile Include="BosunMetric.cs" />
-    <Compile Include="BosunReporterOptions.cs" />
+    <Compile Include="BosunOptions.cs" />
     <Compile Include="BosunSnapshotGauge.cs" />
     <Compile Include="BosunTag.cs" />
     <Compile Include="BosunTagAttribute.cs" />

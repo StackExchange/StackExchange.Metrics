@@ -19,7 +19,7 @@ namespace Scratch
                 return new Uri("http://192.168.59.104:8070/");
             };
 
-            var options = new BosunReporterOptions()
+            var options = new BosunOptions()
             {
                 MetricsNamePrefix = "bret.",
                 GetBosunUrl = getUrl,
@@ -28,7 +28,7 @@ namespace Scratch
                 PropertyToTagName = NameTransformers.CamelToLowerSnakeCase,
                 DefaultTags = new Dictionary<string, string> { {"host", NameTransformers.Sanitize(Environment.MachineName.ToLower())} }
             };
-            var reporter = new BosunReporter.BosunReporter(options);
+            var reporter = new MetricsCollector(options);
 
             reporter.BindMetric("my_counter", typeof(TestCounter));
             var counter = reporter.GetMetric<TestCounter>("my_counter");
