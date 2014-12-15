@@ -9,6 +9,8 @@ namespace Scratch
 {
     class Program
     {
+        private static Timer _samplerTimer;
+
         static void Main(string[] args)
         {
             Debug.Listeners.Add(new TextWriterTraceListener(Console.Out));
@@ -16,7 +18,7 @@ namespace Scratch
 
             Func<Uri> getUrl = () =>
             {
-                return new Uri("http://192.168.59.104:8070/");
+                return new Uri("http://192.168.59.103:8070/");
             };
 
             var options = new BosunOptions()
@@ -24,7 +26,7 @@ namespace Scratch
                 MetricsNamePrefix = "bret.",
                 GetBosunUrl = getUrl,
                 ThrowOnPostFail = true,
-                ReportingInterval = 5,
+                ReportingInterval = 30,
                 PropertyToTagName = NameTransformers.CamelToLowerSnakeCase,
                 DefaultTags = new Dictionary<string, string> { {"host", NameTransformers.Sanitize(Environment.MachineName.ToLower())} }
             };
@@ -49,6 +51,11 @@ namespace Scratch
 
             var si = 0;
             var snapshot = reporter.GetMetric("my_snapshot", new BosunSnapshotGauge(() => ++si % 5));
+
+            var sampler = reporter.GetMetric("sampler", new BosunSamplingGauge());
+            var eventGauge = reporter.GetMetric("event", new BosunEventGauge());
+            var sai = 0;
+            _samplerTimer = new Timer(o => { sampler.Record(++sai%35); eventGauge.Record(sai%35); }, null, 1000, 1000);
 
             Thread.Sleep(TimeSpan.FromSeconds(16));
             Console.WriteLine("removing...");
