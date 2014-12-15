@@ -34,12 +34,12 @@ All of the available options are documented in the [BosunOptions class](https://
 
 Bosun supports two high-level metric types.
 
-1. __[Counters](#counters)__ These are for _counting_ things. The most common use case is to increment a counter by 1 each time an event occurs. Bosun/OpenTSDB normalizes this data and is able to show you a rate (events per second) in the graphing interface.
+1. __[Counters](#counters)__ These are for _counting_ things. The most common use case is to increment a counter each time an event occurs. Bosun/OpenTSDB normalizes this data and is able to show you a rate (events per second) in the graphing interface.
 2. __Gauges__ describe a measurement at a point in time. A good example would be measuring how much RAM is being consumed by a process. BosunReporter.NET provides several different types of gauges in order to support different programmatic use cases, but Bosun itself does not differentiate between these types. 
-    * [Snapshot](#snapshot-gauges) You provide a callback which will be called at every reporting interval. The value that the callback returns is reported.
-    * [Event](#event-gauges) Every data point is sent to Bosun. Good for low-volume events.
-    * [Aggregate](#aggregate-gauges) Pre-aggregates data points (min, max, avg, median, etc) before sending them to Bosun. These are good for recording high-volume events.
-    * [Sampling](#sampling-gauges) Record as often as you want, but only the last value recorded before the reporting interval is sent to Bosun (it _samples_ the current value).
+    * [Snapshot](#snapshot-gauges) - You provide a callback which will be called at every reporting interval. The value that the callback returns is reported.
+    * [Event](#event-gauges) - Every data point is sent to Bosun. Good for low-volume events.
+    * [Aggregate](#aggregate-gauges) - Aggregates data points (min, max, avg, median, etc) before sending them to Bosun. Good for recording high-volume events.
+    * [Sampling](#sampling-gauges) - Record as often as you want, but only the last value recorded before the reporting interval is sent to Bosun (it _samples_ the current value).
 
 ### Counters
 
@@ -180,9 +180,9 @@ If median or percentile aggregators are used, then all values passed to the `Rec
 A sampling gauge simply reports the last recorded value at every reporting interval. They are similar to an aggregate gauge which only uses the "Last" aggregator. However, there are two differences:
  
 1. In a sampling gauge, if no data has been recorded in the current snapshot/reporting interval, then the value from the previous interval is used. Whereas, an aggregate gauge won't report anything if no data was recorded during the interval.
-2. The sampling gauge does not use locks to achieve thread safety, so it should perform slightly better than the "Last" aggregator.
+2. The sampling gauge does not use locks to achieve thread safety, so it should perform slightly better than the "Last" aggregator, especially in highly concurrent environments.
 
-If the last recorded value is `Double.NaN` then nothing will be reported to Bosun.
+If the last recorded value is `Double.NaN`, then nothing will be reported to Bosun.
 
 ```csharp
 var sampler = collector.GetMetric("my_sampler", new BosunSamplingGauge());
