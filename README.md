@@ -5,11 +5,13 @@ A thread-safe C# .NET client for reporting metrics to [Bosun (Time Series Alerti
 ## Usage
 
 * [MetricsCollector](#metricscollector)
+* [Metric Types](#metric-types)
 * [Counters](#counters)
 * [Tags](#tags)
 * [Snapshot Gauges](#snapshot-gauges)
-* [Aggregate Gauges](#aggregate-gauges)
 * [Event Gauges](#event-gauges)
+* [Aggregate Gauges](#aggregate-gauges)
+* [Sampling Gauges](#sampling-gauges)
 
 ### MetricsCollector
 
@@ -28,9 +30,20 @@ var collector = new MetricsCollector(new BosunOptions()
 
 All of the available options are documented in the [BosunOptions class](https://github.com/bretcope/BosunReporter.NET/blob/master/BosunReporter/BosunOptions.cs).
 
+### Metric Types
+
+Bosun supports two high-level metric types.
+
+1. __[Counters](#counters)__ These are for _counting_ things. The most common use case is to increment a counter by 1 each time an event occurs. Bosun/OpenTSDB normalizes this data and is able to show you a rate (events per second) in the graphing interface.
+2. __Gauges__ describe a measurement at a point in time. A good example would be measuring how much RAM is being consumed by a process. BosunReporter.NET provides several different types of gauges in order to support different programmatic use cases, but Bosun itself does not differentiate between these types. 
+    * [Snapshot](#snapshot-gauges) You provide a callback which will be called at every reporting interval. The value that the callback returns is reported.
+    * [Event](#event-gauges) Every data point is sent to Bosun. Good for low-volume events.
+    * [Aggregate](#aggregate-gauges) Pre-aggregates data points (min, max, avg, median, etc) before sending them to Bosun. These are good for recording high-volume events.
+    * [Sampling](#sampling-gauges) Record as often as you want, but only the last value recorded before the reporting interval is sent to Bosun (it _samples_ the current value).
+
 ### Counters
 
-There are two types of metrics: gauges and counters. Let's start by creating a counter called `my_counter` with only the default tags.
+Let's start by creating a counter called `my_counter` with only the default tags.
 
 ```csharp
 var counter = collector.GetMetric<BosunCounter>("my_counter");
@@ -99,7 +112,7 @@ This `RouteCounter` type we just created, and any other BosunMetric type, can be
 
 ### Snapshot Gauges
 
-BosunReporter.NET supports two types of gauges (a third is planned). The first is called a snapshot gauge. These are great for metrics where you want to record snapshots of a value, like CPU or memory usage. Pretend we have a method called `GetMemoryUsage` which returns a double. Now, let's write a snapshot gauge which calls that automatically at every metrics reporting/snapshot interval.
+These are great for metrics where you want to record snapshots of a value, like CPU or memory usage. Pretend we have a method called `GetMemoryUsage` which returns a double. Now, let's write a snapshot gauge which calls that automatically at every metrics reporting/snapshot interval.
 
 ```csharp
 collector.GetMetric("memory_usage", new BosunSnapshotGauge(() => GetMemoryUsage()));
@@ -109,9 +122,18 @@ That's it. There's no reason to even assign the gauge to a variable.
 
 > __Why the lambda instead of just passing `GetMemoryUsage` to the constructor?__ In this contrived example, I said `GetMemoryUsage` returns a double. The BosunSnapshotGauge constructor actually accepts a `Func<double?>`. It calls this function right before metrics are about to be flushed. If it returns a double value, the gauge reports that value. If it returns null, then the gauge does not report anything. This way, you have the flexibility of only reporting on something when there is sensible data to report.
 
+### Event Gauges
+
+These are ideal for low-volume event-based data where it's practical to send all of the data points to Bosun. If you have a measurable event which occurs once every few seconds, then, instead of aggregating, you may want to use an event gauge. Every time you call `.Record()` on an event gauge, the metric will be serialized and queued. The queued metrics will be sent to Bosun on the normal reporting interval, like all other metrics.
+
+```csharp
+var myEvent = collector.GetMetric("my_event", new BosunEventGauge());
+someObject.OnSomeEvent += (sender, e) => myEvent.Record(someObject.Value);
+```
+
 ### Aggregate Gauges
 
-The second type of gauge is an aggregate gauge. These are useful for event-based gauges where the volume of data points makes it undesirable or impractical to send them all to Bosun. For example, imagine you want to capture performance timings from five individual parts of your web request pipeline, and then report those numbers to Bosun. You might not want the number of metrics you send to Bosun to be 5x the number of your web requests, so the solution is to send aggregates.
+These are useful for event-based gauges where the volume of data points makes it undesirable or impractical to send them all to Bosun. For example, imagine you want to capture performance timings from five individual parts of your web request pipeline, and then report those numbers to Bosun. You might not want the number of metrics you send to Bosun to be 5x the number of your web requests, so the solution is to send aggregates.
 
 Aggregate gauges come with six aggregators to choose from. You must use at least one for each gauge, but you can use as many as you'd like. BosunReporter.NET automatically expands the gauge into multiple metrics when sending to Bosun by appending suffixes to the metric name based on the aggregators in use.
 
@@ -147,12 +169,22 @@ public class RouteTimingGauge : BosunAggregateGauge
 Then, instantiate the gauge for our route, and record timings to it.
  
 ```csharp
-var testRouteTiming = GetMetric("route_tr", new RouteTimingGauge("Test/Route"));
+var testRouteTiming = collector.GetMetric("route_tr", new RouteTimingGauge("Test/Route"));
 testRouteTiming.Record(requestDuration);
 ```
 
-If median or percentile aggregators are used, then all values passed to the `Record()` method are stored until the next reporting interval, and must be sorted at that time in order to calculate the aggregate values. If you're concerned about this performance overhead, run some benchmarks on sorting a `List<double>` where the count is the number of data points you expect in-between metric reporting intervals. When there are multiple gauge metrics, the sorting is performed in parallel. 
+If median or percentile aggregators are used, then all values passed to the `Record()` method are stored until the next reporting interval, and must be sorted at that time in order to calculate the aggregate values. If you're concerned about this performance overhead, run some benchmarks on sorting a `List<double>` where the count is the number of data points you expect in-between metric reporting intervals. When there are multiple gauge metrics, the sorting is performed in parallel.
 
-### Event Gauges
+### Sampling Gauges
 
-The third type of gauge (not implemented yet) is an event gauge. These are ideal for low-volume event-based data where it's practical to send all of the data points to Bosun. If you have a measurable event which occurs once every 10-20 seconds, then, instead of aggregating, you may want to use an event gauge. Every time you call `.Record()` on an event gauge, the metric will be serialized and queued for sending to Bosun.
+A sampling gauge simply reports the last recorded value at every reporting interval. They are similar to an aggregate gauge which only uses the "Last" aggregator. However, there are two differences:
+ 
+1. In a sampling gauge, if no data has been recorded in the current snapshot/reporting interval, then the value from the previous interval is used. Whereas, an aggregate gauge won't report anything if no data was recorded during the interval.
+2. The sampling gauge does not use locks to achieve thread safety, so it should perform slightly better than the "Last" aggregator.
+
+If the last recorded value is `Double.NaN` then nothing will be reported to Bosun.
+
+```csharp
+var sampler = collector.GetMetric("my_sampler", new BosunSamplingGauge());
+sampler.Record(1.2);
+```
