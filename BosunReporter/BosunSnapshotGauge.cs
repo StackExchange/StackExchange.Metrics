@@ -30,7 +30,7 @@ namespace BosunReporter
             if (!val.HasValue)
                 yield break;
 
-            yield return ToJson("", val.Value.ToString("0.###############"), unixTimestamp);
+            yield return ToJson("", val.Value.ToString(MetricsCollector.DOUBLE_FORMAT), unixTimestamp);
         }
 
         protected virtual double? GetValue()

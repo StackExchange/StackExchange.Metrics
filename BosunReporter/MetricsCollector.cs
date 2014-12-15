@@ -16,6 +16,7 @@ namespace BosunReporter
     public class MetricsCollector
     {
         private static readonly DateTime UnixEpoch = new DateTime(1970, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc);
+        internal const string DOUBLE_FORMAT = "0.###############";
 
         private readonly object _metricsLock = new object();
         // all of the first-class names which have been claimed (excluding suffixes in aggregate gauges)
@@ -396,9 +397,14 @@ namespace BosunReporter
             }
         }
 
+        internal static string GetUnixTimestamp()
+        {
+            return ((long)(DateTime.UtcNow - UnixEpoch).TotalSeconds).ToString("D");
+        }
+
         private IEnumerable<string> GetSerializedMetrics()
         {
-            var unixTimestamp = ((long)(DateTime.UtcNow - UnixEpoch).TotalSeconds).ToString("D");
+            var unixTimestamp = GetUnixTimestamp();
             lock (_metricsLock)
             {
                 return Metrics.AsParallel().Select(m => m.Serialize(unixTimestamp)).SelectMany(s => s).ToList();
