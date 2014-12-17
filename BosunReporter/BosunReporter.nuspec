@@ -2,14 +2,14 @@
 <package >
   <metadata>
     <id>$id$</id>
-    <version>1.0.1-alpha</version>
+    <version>1.1.0-alpha</version>
     <title>BosunReporter.NET</title>
     <authors>Bret Copeland</authors>
     <owners>Bret Copeland</owners>
     <projectUrl>https://github.com/bretcope/BosunReporter.NET</projectUrl>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
     <description>$description$</description>
-    <releaseNotes>Initial Release</releaseNotes>
+    <releaseNotes>Breaking changes (renamed BosunReporter to MetricsCollector). Added more metric types.</releaseNotes>
     <copyright>Copyright 2014</copyright>
     <tags>Bosun Time Series Alerting</tags>
   </metadata>
