@@ -2,14 +2,14 @@
 <package >
   <metadata>
     <id>$id$</id>
-    <version>1.1.1-alpha</version>
+    <version>1.1.2-alpha</version>
     <title>BosunReporter.NET</title>
     <authors>Bret Copeland</authors>
     <owners>Bret Copeland</owners>
     <projectUrl>https://github.com/bretcope/BosunReporter.NET</projectUrl>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
     <description>$description$</description>
-    <releaseNotes>Add MetricGroup</releaseNotes>
+    <releaseNotes>Fix dictionary race condition.</releaseNotes>
     <copyright>Copyright 2014</copyright>
     <tags>Bosun Time Series Alerting</tags>
   </metadata>
