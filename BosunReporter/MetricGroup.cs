@@ -6,6 +6,7 @@ namespace BosunReporter
 {
     public sealed class MetricGroup<T> where T : BosunMetric
     {
+        private readonly object _dictionaryLock = new object();
         private readonly MetricsCollector _collector;
         private readonly string _name;
         private readonly Dictionary<string, T> _metrics = new Dictionary<string,T>();
@@ -28,11 +29,16 @@ namespace BosunReporter
                 if (_metrics.TryGetValue(primaryTagValue, out metric))
                     return metric;
 
-                // not going to worry about concurrency here because GetMetric is already thread safe, and indempotent.
-                metric = _collector.GetMetric(_name, _metricFactory(primaryTagValue));
-                _metrics[primaryTagValue] = metric;
-                
-                return metric;
+                lock (_dictionaryLock)
+                {
+                    if (_metrics.TryGetValue(primaryTagValue, out metric))
+                        return metric;
+
+                    metric = _collector.GetMetric(_name, _metricFactory(primaryTagValue));
+                    _metrics[primaryTagValue] = metric;
+                    
+                    return metric;
+                }
             }
         }
 
