@@ -26,40 +26,48 @@ namespace Scratch
                 MetricsNamePrefix = "bret.",
                 GetBosunUrl = getUrl,
                 ThrowOnPostFail = true,
-                ReportingInterval = 30,
+                ReportingInterval = 5,
                 PropertyToTagName = NameTransformers.CamelToLowerSnakeCase,
                 DefaultTags = new Dictionary<string, string> { {"host", NameTransformers.Sanitize(Environment.MachineName.ToLower())} }
             };
-            var reporter = new MetricsCollector(options);
+            var collector = new MetricsCollector(options);
 
-            reporter.BindMetric("my_counter", typeof(TestCounter));
-            var counter = reporter.GetMetric<TestCounter>("my_counter");
+            collector.BindMetric("my_counter", typeof(TestCounter));
+            var counter = collector.GetMetric<TestCounter>("my_counter");
             counter.Increment();
             counter.Increment();
 
-            var gauge = reporter.GetMetric("gauge", new TestAggregateGauge("1"));
-            if (gauge != reporter.GetMetric("gauge", new TestAggregateGauge("1")))
+            var gauge = collector.GetMetric("gauge", new TestAggregateGauge("1"));
+            if (gauge != collector.GetMetric("gauge", new TestAggregateGauge("1")))
                 throw new Exception("WAT?");
 
-            //reporter.GetMetric<TestAggregateGauge>("my_gauge_95"); // <- should throw an exception
-
-            var gauge2 = reporter.GetMetric<BosunAggregateGauge>("gauge2");
+            var gauge2 = collector.GetMetric<BosunAggregateGauge>("gauge2");
             for (var i = 0; i < 6; i++)
             {
                 new Thread(Run).Start(new Tuple<BosunAggregateGauge, BosunAggregateGauge, int>(gauge, gauge2, i));
             }
 
             var si = 0;
-            var snapshot = reporter.GetMetric("my_snapshot", new BosunSnapshotGauge(() => ++si % 5));
+            var snapshot = collector.GetMetric("my_snapshot", new BosunSnapshotGauge(() => ++si % 5));
 
-            var sampler = reporter.GetMetric("sampler", new BosunSamplingGauge());
-            var eventGauge = reporter.GetMetric("event", new BosunEventGauge());
+            var group = collector.CreateMetricGroup<TestGroupGauge>("test_group");
+            var sampler = collector.GetMetric("sampler", new BosunSamplingGauge());
+            var eventGauge = collector.GetMetric("event", new BosunEventGauge());
             var sai = 0;
-            _samplerTimer = new Timer(o => { sampler.Record(++sai%35); eventGauge.Record(sai%35); }, null, 1000, 1000);
+            var random = new Random();
+            _samplerTimer = new Timer(o => 
+                {
+                    sampler.Record(++sai%35);
+                    eventGauge.Record(sai%35);
+                    group["low"].Record(random.Next(0, 10));
+                    group["medium"].Record(random.Next(10, 20));
+                    group["high"].Record(random.Next(20, 30));
+
+                }, null, 1000, 1000);
 
             Thread.Sleep(TimeSpan.FromSeconds(16));
             Console.WriteLine("removing...");
-            Console.WriteLine(reporter.RemoveMetric(counter));
+            Console.WriteLine(collector.RemoveMetric(counter));
         }
 
         static void Run(object obj)
@@ -129,6 +137,17 @@ namespace Scratch
         protected override double? GetValue()
         {
             return GetValueLambda();
+        }
+    }
+
+    public class TestGroupGauge : BosunEventGauge
+    {
+        [BosunTag]
+        public readonly string Range;
+
+        public TestGroupGauge(string range)
+        {
+            Range = range;
         }
     }
 }

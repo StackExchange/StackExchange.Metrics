@@ -50,6 +50,7 @@
     <Compile Include="BosunEventGauge.cs" />
     <Compile Include="BosunMetaData.cs" />
     <Compile Include="BosunSamplingGauge.cs" />
+    <Compile Include="MetricGroup.cs" />
     <Compile Include="MetricsCollector.cs" />
     <Compile Include="BosunMetric.cs" />
     <Compile Include="BosunOptions.cs" />
