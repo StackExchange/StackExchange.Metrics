@@ -1,0 +1,91 @@
+﻿<#@ template debug="false" hostspecific="false" language="C#" #>
+<#@ assembly name="System.Core" #>
+<#@ import namespace="System.Linq" #>
+<#@ import namespace="System.Text" #>
+<#@ import namespace="System.Collections.Generic" #>
+<#@ output extension=".cs" #>
+using System;
+using System.Collections.Generic;
+using System.Reflection;
+
+namespace BosunReporter
+{
+<#
+	for (int dimensions = 1; dimensions < 6; dimensions++)
+	{
+		var typeNamesArray = new string[dimensions];
+		var thisArgsArray = new string[dimensions];
+		var tagListArray = new string[dimensions];
+		var typeOfArray = new string[dimensions];
+		for (var i = 1; i <= dimensions; i++)
+		{
+			typeNamesArray[i - 1] = "T" + i;
+			thisArgsArray[i - 1] = "T" + i + " tag" + i;
+			tagListArray[i - 1] = "tag" + i;
+			typeOfArray[i - 1] = "typeof(T" + i + ")";
+		}
+
+		var typeList = String.Join(", ", typeNamesArray);
+		var thisArgs = String.Join(", ", thisArgsArray);
+		var tagList = String.Join(", ", tagListArray);
+		var typeOfList = String.Join(", ", typeOfArray);
+		var dictionaryKey = dimensions > 1 ? "Tuple<" + typeList + ">" : "T1";
+		var dictionaryType = "Dictionary<" + dictionaryKey + ", TMetric>";
+		var factoryType = "Func<" + typeList + ", TMetric>";
+
+#>
+	internal class MetricGroupTemp<<# Write(typeList); #>, TMetric> where TMetric : BosunMetric
+	{
+		private readonly MetricsCollector _collector;
+		private readonly string _name;
+		private readonly <# Write(dictionaryType); #> _metrics = new Dictionary<<# Write(dictionaryKey); #>, TMetric>();
+		private readonly <# Write(factoryType); #> _metricFactory;
+		
+		internal MetricGroupTemp(MetricsCollector collector, string name, <# Write(factoryType); #> metricFactory = null)
+		{
+			_collector = collector;
+			_name = name;
+			_metricFactory = metricFactory ?? GetDefaultFactory();
+		}
+
+		public TMetric this[<# Write(thisArgs); #>]
+		{
+			get
+			{
+				TMetric metric;
+<# if (dimensions == 1) { #>
+				if (_metrics.TryGetValue(<# Write(tagList); #>, out metric))
+<# } else { #>
+				var key = new <# Write(dictionaryKey); #>(<# Write(tagList); #>);
+				if (_metrics.TryGetValue(key, out metric))
+<# } #>
+					return metric;
+
+				// not going to worry about concurrency here because GetMetric is already thread safe, and indempotent.
+				metric = _collector.GetMetric(_name, _metricFactory(<# Write(tagList); #>));
+				_metrics[<# Write(dimensions == 1 ? tagList : "key"); #>] = metric;
+
+				return metric;
+			}
+		}
+
+		public <# Write(factoryType); #> GetDefaultFactory()
+		{
+			var constructor = typeof(TMetric).GetConstructor(BindingFlags.Instance | BindingFlags.Public, null, new []{ <# Write(typeOfList); #> }, null);
+            if (constructor == null)
+            {
+				throw new Exception(
+					String.Format(
+						"Cannot create a MetricGroup for Type \"{0}\". It does not have a constructor which matches the signature of types provided to the metric group. " +
+						"Either add a constructor with that signature, or use the metricFactory argument to define a custom factory.",
+						typeof(TMetric).FullName));
+            }
+
+			return (<# Write(tagList); #>) => (TMetric)constructor.Invoke(new object[] { <# Write(tagList); #> });
+		}
+	}
+
+<#
+	} // end template for loop
+#>
+}
