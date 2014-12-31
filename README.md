@@ -12,6 +12,7 @@ A thread-safe C# .NET client for reporting metrics to [Bosun (Time Series Alerti
 * [Event Gauges](#event-gauges)
 * [Aggregate Gauges](#aggregate-gauges)
 * [Sampling Gauges](#sampling-gauges)
+* [Metric Groups](#metric-groups)
 
 ### MetricsCollector
 
@@ -188,3 +189,41 @@ If the last recorded value is `Double.NaN`, then nothing will be reported to Bos
 var sampler = collector.GetMetric("my_sampler", new BosunSamplingGauge());
 sampler.Record(1.2);
 ```
+
+### Metric Groups
+
+> Because one of the goals of BosunReporter.NET is to encourage using tags to differentiate subsets of the same data (instead of separate metric names), I've created something called a metric group. Keep in mind that this is a first-draft design, and the interface may change entirely.
+
+A metric group is a collection of metrics with the same name, differentiated by tag values. In particular, `MetricGroup` is special cased to handle splitting along a single tag.
+
+For example, let's say we have a counter which counts every request. We might want to tag this counter to indicate how many requests were successful versus how many encountered an error. Start by creating a class for our counter, as usual.
+
+```csharp
+public RequestCounter : BosunCounter
+{
+	[BosunTag]
+	public readonly string Result;
+	public RequestCounter(string result) { Result = result; }
+}
+```
+
+Now, instead of manually creating a metric for each of the result values we want ("success", "error", etc), we can simply create a group which will enable us to create those metrics implicitly.
+
+```
+var requestCounter = collector.CreateMetricGroup<RequestCounter>("requests");
+
+...
+
+if (error == null)
+	requestCounter["success"].Increment();
+else
+	requestCounter["error"].Increment();
+```
+
+The metric group is able to create a metrics factory (used to implicitly create the metrics) because `RequestCounter` has a constructor which accepts a single string argument. However, we can override this default factory by passing a second argument to `CreateMetricGroup`. The explicit equivalent to the default factory behavior would be:
+
+```csharp
+collector.CreateMetricGroup("requests", str => new RequestCounter(str));
+```
+
+Again, the current group implementation is special-cased for splitting along a single tag. Multi-tag group support will be coming soon.
