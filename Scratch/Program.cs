@@ -50,7 +50,11 @@ namespace Scratch
             var si = 0;
             var snapshot = collector.GetMetric("my_snapshot", new BosunSnapshotGauge(() => ++si % 5));
 
-            var group = collector.CreateMetricGroup<TestGroupGauge>("test_group");
+//            var group = collector.CreateMetricGroup<TestGroupGauge>("test_group");
+            var group = new MetricGroupTemp<string, TestGroupGauge>(collector, "test_group");
+            group.Add("low");
+            group.Add("medium");
+            group.Add("high");
             var sampler = collector.GetMetric("sampler", new BosunSamplingGauge());
             var eventGauge = collector.GetMetric("event", new BosunEventGauge());
             var sai = 0;

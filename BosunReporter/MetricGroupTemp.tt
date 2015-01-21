@@ -29,49 +29,85 @@ namespace BosunReporter
 		var thisArgs = String.Join(", ", thisArgsArray);
 		var tagList = String.Join(", ", tagListArray);
 		var typeOfList = String.Join(", ", typeOfArray);
-		var dictionaryKey = dimensions > 1 ? "Tuple<" + typeList + ">" : "T1";
-		var dictionaryType = "Dictionary<" + dictionaryKey + ", TMetric>";
+		var dictionaryKeyType = dimensions > 1 ? "Tuple<" + typeList + ">" : "T1";
+		var dictionaryType = "Dictionary<" + dictionaryKeyType + ", TMetric>";
 		var factoryType = "Func<" + typeList + ", TMetric>";
+		var dictionaryKeyValue = dimensions == 1 ? tagList : "key";
+		var tryGetStatement = dimensions == 1 ? "if (_metrics.TryGetValue("+ tagList +", out metric))" : "if (_metrics.TryGetValue(key, out metric))";
 
 #>
-	internal class MetricGroupTemp<<# Write(typeList); #>, TMetric> where TMetric : BosunMetric
+	public class MetricGroupTemp<<#= typeList #>, TMetric> where TMetric : BosunMetric
 	{
+		private readonly object _dictionaryLock = new object();
 		private readonly MetricsCollector _collector;
 		private readonly string _name;
-		private readonly <# Write(dictionaryType); #> _metrics = new Dictionary<<# Write(dictionaryKey); #>, TMetric>();
-		private readonly <# Write(factoryType); #> _metricFactory;
+		private readonly <#= dictionaryType #> _metrics = new Dictionary<<#= dictionaryKeyType #>, TMetric>();
+		private readonly <#= factoryType #> _metricFactory;
 		
-		internal MetricGroupTemp(MetricsCollector collector, string name, <# Write(factoryType); #> metricFactory = null)
+		public MetricGroupTemp(MetricsCollector collector, string name, <#= factoryType #> metricFactory = null)
 		{
 			_collector = collector;
 			_name = name;
 			_metricFactory = metricFactory ?? GetDefaultFactory();
 		}
 
-		public TMetric this[<# Write(thisArgs); #>]
+		public TMetric this[<#= thisArgs #>]
 		{
 			get
 			{
-				TMetric metric;
-<# if (dimensions == 1) { #>
-				if (_metrics.TryGetValue(<# Write(tagList); #>, out metric))
-<# } else { #>
-				var key = new <# Write(dictionaryKey); #>(<# Write(tagList); #>);
-				if (_metrics.TryGetValue(key, out metric))
+<# if (dimensions > 1) { #>
+				var key = new <#= dictionaryKeyType #>(<#= tagList #>);
 <# } #>
-					return metric;
+				return _metrics[<#= dictionaryKeyValue #>];
+			}
+		}
+		
+		/// <summary>
+		/// Adds a metric to the group, if it doesn't already exist.
+		/// </summary>
+		/// <returns>The metric.</returns>
+		public TMetric Add(<#= thisArgs #>)
+		{
+			bool isNew;
+			return Add(<#= tagList #>, out isNew);
+		}
+		
+		/// <summary>
+		/// Adds a metric to the group, if it doesn't already exist.
+		/// </summary>
+		/// <returns>The metric.</returns>
+		public TMetric Add(<#= thisArgs #>, out bool isNew)
+		{
+			isNew = false;
+<# if (dimensions > 1) { #>
+			var key = new <#= dictionaryKeyType #>(<#= tagList #>);
+<# } #>
+			if (_metrics.ContainsKey(<#= dictionaryKeyValue #>))
+				return _metrics[<#= dictionaryKeyValue #>];
 
-				// not going to worry about concurrency here because GetMetric is already thread safe, and indempotent.
-				metric = _collector.GetMetric(_name, _metricFactory(<# Write(tagList); #>));
-				_metrics[<# Write(dimensions == 1 ? tagList : "key"); #>] = metric;
-
+			lock (_dictionaryLock)
+			{
+				if (_metrics.ContainsKey(<#= dictionaryKeyValue #>))
+					return _metrics[<#= dictionaryKeyValue #>];
+				
+				isNew = true;
+				TMetric metric = _collector.GetMetric(_name, _metricFactory(<#= tagList #>));
+				_metrics[<#= dictionaryKeyValue #>] = metric;
 				return metric;
 			}
 		}
 
-		public <# Write(factoryType); #> GetDefaultFactory()
+		public bool Contains(<#= thisArgs #>)
 		{
-			var constructor = typeof(TMetric).GetConstructor(BindingFlags.Instance | BindingFlags.Public, null, new []{ <# Write(typeOfList); #> }, null);
+<# if (dimensions > 1) { #>
+			var key = new <#= dictionaryKeyType #>(<#= tagList #>);
+<# } #>
+			return _metrics.ContainsKey(<#= dictionaryKeyValue #>);
+		}
+
+		public <#= factoryType #> GetDefaultFactory()
+		{
+			var constructor = typeof(TMetric).GetConstructor(BindingFlags.Instance | BindingFlags.Public, null, new []{ <#= typeOfList #> }, null);
             if (constructor == null)
             {
 				throw new Exception(
@@ -81,7 +117,7 @@ namespace BosunReporter
 						typeof(TMetric).FullName));
             }
 
-			return (<# Write(tagList); #>) => (TMetric)constructor.Invoke(new object[] { <# Write(tagList); #> });
+			return (<#= tagList #>) => (TMetric)constructor.Invoke(new object[] { <#= tagList #> });
 		}
 	}
 

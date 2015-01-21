@@ -51,6 +51,11 @@
     <Compile Include="BosunMetaData.cs" />
     <Compile Include="BosunSamplingGauge.cs" />
     <Compile Include="MetricGroup.cs" />
+    <Compile Include="MetricGroupTemp.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+      <DependentUpon>MetricGroupTemp.tt</DependentUpon>
+    </Compile>
     <Compile Include="MetricsCollector.cs" />
     <Compile Include="BosunMetric.cs" />
     <Compile Include="BosunOptions.cs" />
@@ -66,7 +71,14 @@
     <Compile Include="Validation.cs" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="MetricGroupTemp.tt">
+      <Generator>TextTemplatingFileGenerator</Generator>
+      <LastGenOutput>MetricGroupTemp.cs</LastGenOutput>
+    </None>
     <None Include="packages.config" />
+  </ItemGroup>
+  <ItemGroup>
+    <Service Include="{508349B6-6B84-4DF5-91F0-309BEEBAD82D}" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
