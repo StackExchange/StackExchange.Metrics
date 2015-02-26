@@ -32,6 +32,12 @@ namespace Scratch
             };
             var collector = new MetricsCollector(options);
 
+            collector.OnBackgroundException += exception =>
+            {
+                Console.WriteLine("Hey, there was an exception.");
+                Console.WriteLine(exception);
+            };
+
             collector.BindMetric("my_counter", typeof(TestCounter));
             var counter = collector.GetMetric<TestCounter>("my_counter");
             counter.Increment();

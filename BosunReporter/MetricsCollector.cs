@@ -50,6 +50,8 @@ namespace BosunReporter
         public readonly Func<string, string> PropertyToTagName;
         public readonly ReadOnlyDictionary<string, string> DefaultTags;
 
+        public event Action<Exception> OnBackgroundException;
+
         public IEnumerable<BosunMetric> Metrics
         {
             get { return _rootNameAndTagsToMetric.Values.AsEnumerable(); }
@@ -266,12 +268,17 @@ namespace BosunReporter
                     FlushBatch();
                 }
             }
-            catch (BosunPostException)
+            catch (BosunPostException ex)
             {
                 // there was a problem flushing - back off for the next five seconds (Bosun may simply be restarting)
                 _skipFlushes = 4;
                 if (ThrowOnPostFail)
-                    throw;
+                {
+                    if (OnBackgroundException != null && OnBackgroundException.GetInvocationList().Length != 0)
+                        OnBackgroundException(ex);
+                    else
+                        throw;
+                }
             }
             finally
             {
@@ -376,7 +383,14 @@ namespace BosunReporter
                 }
 
                 if (ThrowOnQueueFull && _pendingMetrics.Count == MaxQueueLength)
-                    throw new BosunQueueFullException();
+                {
+                    var ex = new BosunQueueFullException();
+
+                    if (OnBackgroundException != null && OnBackgroundException.GetInvocationList().Length != 0)
+                        OnBackgroundException(ex);
+                    else
+                        throw ex;
+                }
             }
         }
 
