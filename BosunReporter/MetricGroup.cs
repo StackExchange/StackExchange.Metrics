@@ -1,62 +1,438 @@
-﻿using System;
+﻿
+
+
+
+
+
+using System;
 using System.Collections.Generic;
 using System.Reflection;
 
 namespace BosunReporter
 {
-    public sealed class MetricGroup<T> where T : BosunMetric
-    {
-        private readonly object _dictionaryLock = new object();
-        private readonly MetricsCollector _collector;
-        private readonly string _name;
-        private readonly Dictionary<string, T> _metrics = new Dictionary<string,T>();
-        private readonly Func<string, T> _metricFactory;
 
-        public string Name { get { return _name; } }
+	public class MetricGroup<T1, TMetric> where TMetric : BosunMetric
+	{
+		private readonly object _dictionaryLock = new object();
+		private readonly MetricsCollector _collector;
+		private readonly string _name;
+		private readonly Dictionary<T1, TMetric> _metrics = new Dictionary<T1, TMetric>();
+		private readonly Func<T1, TMetric> _metricFactory;
+		
+		public MetricGroup(MetricsCollector collector, string name, Func<T1, TMetric> metricFactory = null)
+		{
+			_collector = collector;
+			_name = name;
+			_metricFactory = metricFactory ?? GetDefaultFactory();
+		}
 
-        internal MetricGroup(MetricsCollector collector, string name, Func<string, T> metricFactory = null)
-        {
-            _collector = collector;
-            _name = name;
-            _metricFactory = metricFactory ?? GetDefaultFactory();
-        }
+		public TMetric this[T1 tag1]
+		{
+			get
+			{
 
-        public T this[string primaryTagValue]
-        {
-            get
-            {
-                T metric;
-                if (_metrics.TryGetValue(primaryTagValue, out metric))
-                    return metric;
+				return _metrics[tag1];
+			}
+		}
+		
+		/// <summary>
+		/// Adds a metric to the group, if it doesn't already exist.
+		/// </summary>
+		/// <returns>The metric.</returns>
+		public TMetric Add(T1 tag1)
+		{
+			bool isNew;
+			return Add(tag1, out isNew);
+		}
+		
+		/// <summary>
+		/// Adds a metric to the group, if it doesn't already exist.
+		/// </summary>
+		/// <returns>The metric.</returns>
+		public TMetric Add(T1 tag1, out bool isNew)
+		{
+			isNew = false;
 
-                lock (_dictionaryLock)
-                {
-                    if (_metrics.TryGetValue(primaryTagValue, out metric))
-                        return metric;
+			if (_metrics.ContainsKey(tag1))
+				return _metrics[tag1];
 
-                    metric = _collector.GetMetric(_name, _metricFactory(primaryTagValue));
-                    _metrics[primaryTagValue] = metric;
-                    
-                    return metric;
-                }
-            }
-        }
+			lock (_dictionaryLock)
+			{
+				if (_metrics.ContainsKey(tag1))
+					return _metrics[tag1];
+				
+				isNew = true;
+				TMetric metric = _collector.GetMetric(_name, _metricFactory(tag1));
+				_metrics[tag1] = metric;
+				return metric;
+			}
+		}
 
-        private Func<string, T> GetDefaultFactory()
-        {
-            // get the constructor which takes a single string argument
-            var constructor = typeof(T).GetConstructor(BindingFlags.Instance | BindingFlags.Public, null, new []{ typeof(string) }, null);
+		public bool Contains(T1 tag1)
+		{
+
+			return _metrics.ContainsKey(tag1);
+		}
+
+		public Func<T1, TMetric> GetDefaultFactory()
+		{
+			var constructor = typeof(TMetric).GetConstructor(BindingFlags.Instance | BindingFlags.Public, null, new []{ typeof(T1) }, null);
             if (constructor == null)
             {
-
-                throw new Exception(
-                    String.Format(
-                        "Cannot create a MetricGroup for Type \"{0}\". It does not have a constructor which takes a single string argument. " +
-                        "Either add a constructor with that signature, or use the metricFactory argument to define a custom factory.",
-                        typeof(T).FullName));
+				throw new Exception(
+					String.Format(
+						"Cannot create a MetricGroup for Type \"{0}\". It does not have a constructor which matches the signature of types provided to the metric group. " +
+						"Either add a constructor with that signature, or use the metricFactory argument to define a custom factory.",
+						typeof(TMetric).FullName));
             }
 
-            return s => (T)constructor.Invoke(new[] { (object)s });
-        }
-    }
+			return (tag1) => (TMetric)constructor.Invoke(new object[] { tag1 });
+		}
+	}
+
+
+	public class MetricGroup<T1, T2, TMetric> where TMetric : BosunMetric
+	{
+		private readonly object _dictionaryLock = new object();
+		private readonly MetricsCollector _collector;
+		private readonly string _name;
+		private readonly Dictionary<Tuple<T1, T2>, TMetric> _metrics = new Dictionary<Tuple<T1, T2>, TMetric>();
+		private readonly Func<T1, T2, TMetric> _metricFactory;
+		
+		public MetricGroup(MetricsCollector collector, string name, Func<T1, T2, TMetric> metricFactory = null)
+		{
+			_collector = collector;
+			_name = name;
+			_metricFactory = metricFactory ?? GetDefaultFactory();
+		}
+
+		public TMetric this[T1 tag1, T2 tag2]
+		{
+			get
+			{
+
+				var key = new Tuple<T1, T2>(tag1, tag2);
+
+				return _metrics[key];
+			}
+		}
+		
+		/// <summary>
+		/// Adds a metric to the group, if it doesn't already exist.
+		/// </summary>
+		/// <returns>The metric.</returns>
+		public TMetric Add(T1 tag1, T2 tag2)
+		{
+			bool isNew;
+			return Add(tag1, tag2, out isNew);
+		}
+		
+		/// <summary>
+		/// Adds a metric to the group, if it doesn't already exist.
+		/// </summary>
+		/// <returns>The metric.</returns>
+		public TMetric Add(T1 tag1, T2 tag2, out bool isNew)
+		{
+			isNew = false;
+
+			var key = new Tuple<T1, T2>(tag1, tag2);
+
+			if (_metrics.ContainsKey(key))
+				return _metrics[key];
+
+			lock (_dictionaryLock)
+			{
+				if (_metrics.ContainsKey(key))
+					return _metrics[key];
+				
+				isNew = true;
+				TMetric metric = _collector.GetMetric(_name, _metricFactory(tag1, tag2));
+				_metrics[key] = metric;
+				return metric;
+			}
+		}
+
+		public bool Contains(T1 tag1, T2 tag2)
+		{
+
+			var key = new Tuple<T1, T2>(tag1, tag2);
+
+			return _metrics.ContainsKey(key);
+		}
+
+		public Func<T1, T2, TMetric> GetDefaultFactory()
+		{
+			var constructor = typeof(TMetric).GetConstructor(BindingFlags.Instance | BindingFlags.Public, null, new []{ typeof(T1), typeof(T2) }, null);
+            if (constructor == null)
+            {
+				throw new Exception(
+					String.Format(
+						"Cannot create a MetricGroup for Type \"{0}\". It does not have a constructor which matches the signature of types provided to the metric group. " +
+						"Either add a constructor with that signature, or use the metricFactory argument to define a custom factory.",
+						typeof(TMetric).FullName));
+            }
+
+			return (tag1, tag2) => (TMetric)constructor.Invoke(new object[] { tag1, tag2 });
+		}
+	}
+
+
+	public class MetricGroup<T1, T2, T3, TMetric> where TMetric : BosunMetric
+	{
+		private readonly object _dictionaryLock = new object();
+		private readonly MetricsCollector _collector;
+		private readonly string _name;
+		private readonly Dictionary<Tuple<T1, T2, T3>, TMetric> _metrics = new Dictionary<Tuple<T1, T2, T3>, TMetric>();
+		private readonly Func<T1, T2, T3, TMetric> _metricFactory;
+		
+		public MetricGroup(MetricsCollector collector, string name, Func<T1, T2, T3, TMetric> metricFactory = null)
+		{
+			_collector = collector;
+			_name = name;
+			_metricFactory = metricFactory ?? GetDefaultFactory();
+		}
+
+		public TMetric this[T1 tag1, T2 tag2, T3 tag3]
+		{
+			get
+			{
+
+				var key = new Tuple<T1, T2, T3>(tag1, tag2, tag3);
+
+				return _metrics[key];
+			}
+		}
+		
+		/// <summary>
+		/// Adds a metric to the group, if it doesn't already exist.
+		/// </summary>
+		/// <returns>The metric.</returns>
+		public TMetric Add(T1 tag1, T2 tag2, T3 tag3)
+		{
+			bool isNew;
+			return Add(tag1, tag2, tag3, out isNew);
+		}
+		
+		/// <summary>
+		/// Adds a metric to the group, if it doesn't already exist.
+		/// </summary>
+		/// <returns>The metric.</returns>
+		public TMetric Add(T1 tag1, T2 tag2, T3 tag3, out bool isNew)
+		{
+			isNew = false;
+
+			var key = new Tuple<T1, T2, T3>(tag1, tag2, tag3);
+
+			if (_metrics.ContainsKey(key))
+				return _metrics[key];
+
+			lock (_dictionaryLock)
+			{
+				if (_metrics.ContainsKey(key))
+					return _metrics[key];
+				
+				isNew = true;
+				TMetric metric = _collector.GetMetric(_name, _metricFactory(tag1, tag2, tag3));
+				_metrics[key] = metric;
+				return metric;
+			}
+		}
+
+		public bool Contains(T1 tag1, T2 tag2, T3 tag3)
+		{
+
+			var key = new Tuple<T1, T2, T3>(tag1, tag2, tag3);
+
+			return _metrics.ContainsKey(key);
+		}
+
+		public Func<T1, T2, T3, TMetric> GetDefaultFactory()
+		{
+			var constructor = typeof(TMetric).GetConstructor(BindingFlags.Instance | BindingFlags.Public, null, new []{ typeof(T1), typeof(T2), typeof(T3) }, null);
+            if (constructor == null)
+            {
+				throw new Exception(
+					String.Format(
+						"Cannot create a MetricGroup for Type \"{0}\". It does not have a constructor which matches the signature of types provided to the metric group. " +
+						"Either add a constructor with that signature, or use the metricFactory argument to define a custom factory.",
+						typeof(TMetric).FullName));
+            }
+
+			return (tag1, tag2, tag3) => (TMetric)constructor.Invoke(new object[] { tag1, tag2, tag3 });
+		}
+	}
+
+
+	public class MetricGroup<T1, T2, T3, T4, TMetric> where TMetric : BosunMetric
+	{
+		private readonly object _dictionaryLock = new object();
+		private readonly MetricsCollector _collector;
+		private readonly string _name;
+		private readonly Dictionary<Tuple<T1, T2, T3, T4>, TMetric> _metrics = new Dictionary<Tuple<T1, T2, T3, T4>, TMetric>();
+		private readonly Func<T1, T2, T3, T4, TMetric> _metricFactory;
+		
+		public MetricGroup(MetricsCollector collector, string name, Func<T1, T2, T3, T4, TMetric> metricFactory = null)
+		{
+			_collector = collector;
+			_name = name;
+			_metricFactory = metricFactory ?? GetDefaultFactory();
+		}
+
+		public TMetric this[T1 tag1, T2 tag2, T3 tag3, T4 tag4]
+		{
+			get
+			{
+
+				var key = new Tuple<T1, T2, T3, T4>(tag1, tag2, tag3, tag4);
+
+				return _metrics[key];
+			}
+		}
+		
+		/// <summary>
+		/// Adds a metric to the group, if it doesn't already exist.
+		/// </summary>
+		/// <returns>The metric.</returns>
+		public TMetric Add(T1 tag1, T2 tag2, T3 tag3, T4 tag4)
+		{
+			bool isNew;
+			return Add(tag1, tag2, tag3, tag4, out isNew);
+		}
+		
+		/// <summary>
+		/// Adds a metric to the group, if it doesn't already exist.
+		/// </summary>
+		/// <returns>The metric.</returns>
+		public TMetric Add(T1 tag1, T2 tag2, T3 tag3, T4 tag4, out bool isNew)
+		{
+			isNew = false;
+
+			var key = new Tuple<T1, T2, T3, T4>(tag1, tag2, tag3, tag4);
+
+			if (_metrics.ContainsKey(key))
+				return _metrics[key];
+
+			lock (_dictionaryLock)
+			{
+				if (_metrics.ContainsKey(key))
+					return _metrics[key];
+				
+				isNew = true;
+				TMetric metric = _collector.GetMetric(_name, _metricFactory(tag1, tag2, tag3, tag4));
+				_metrics[key] = metric;
+				return metric;
+			}
+		}
+
+		public bool Contains(T1 tag1, T2 tag2, T3 tag3, T4 tag4)
+		{
+
+			var key = new Tuple<T1, T2, T3, T4>(tag1, tag2, tag3, tag4);
+
+			return _metrics.ContainsKey(key);
+		}
+
+		public Func<T1, T2, T3, T4, TMetric> GetDefaultFactory()
+		{
+			var constructor = typeof(TMetric).GetConstructor(BindingFlags.Instance | BindingFlags.Public, null, new []{ typeof(T1), typeof(T2), typeof(T3), typeof(T4) }, null);
+            if (constructor == null)
+            {
+				throw new Exception(
+					String.Format(
+						"Cannot create a MetricGroup for Type \"{0}\". It does not have a constructor which matches the signature of types provided to the metric group. " +
+						"Either add a constructor with that signature, or use the metricFactory argument to define a custom factory.",
+						typeof(TMetric).FullName));
+            }
+
+			return (tag1, tag2, tag3, tag4) => (TMetric)constructor.Invoke(new object[] { tag1, tag2, tag3, tag4 });
+		}
+	}
+
+
+	public class MetricGroup<T1, T2, T3, T4, T5, TMetric> where TMetric : BosunMetric
+	{
+		private readonly object _dictionaryLock = new object();
+		private readonly MetricsCollector _collector;
+		private readonly string _name;
+		private readonly Dictionary<Tuple<T1, T2, T3, T4, T5>, TMetric> _metrics = new Dictionary<Tuple<T1, T2, T3, T4, T5>, TMetric>();
+		private readonly Func<T1, T2, T3, T4, T5, TMetric> _metricFactory;
+		
+		public MetricGroup(MetricsCollector collector, string name, Func<T1, T2, T3, T4, T5, TMetric> metricFactory = null)
+		{
+			_collector = collector;
+			_name = name;
+			_metricFactory = metricFactory ?? GetDefaultFactory();
+		}
+
+		public TMetric this[T1 tag1, T2 tag2, T3 tag3, T4 tag4, T5 tag5]
+		{
+			get
+			{
+
+				var key = new Tuple<T1, T2, T3, T4, T5>(tag1, tag2, tag3, tag4, tag5);
+
+				return _metrics[key];
+			}
+		}
+		
+		/// <summary>
+		/// Adds a metric to the group, if it doesn't already exist.
+		/// </summary>
+		/// <returns>The metric.</returns>
+		public TMetric Add(T1 tag1, T2 tag2, T3 tag3, T4 tag4, T5 tag5)
+		{
+			bool isNew;
+			return Add(tag1, tag2, tag3, tag4, tag5, out isNew);
+		}
+		
+		/// <summary>
+		/// Adds a metric to the group, if it doesn't already exist.
+		/// </summary>
+		/// <returns>The metric.</returns>
+		public TMetric Add(T1 tag1, T2 tag2, T3 tag3, T4 tag4, T5 tag5, out bool isNew)
+		{
+			isNew = false;
+
+			var key = new Tuple<T1, T2, T3, T4, T5>(tag1, tag2, tag3, tag4, tag5);
+
+			if (_metrics.ContainsKey(key))
+				return _metrics[key];
+
+			lock (_dictionaryLock)
+			{
+				if (_metrics.ContainsKey(key))
+					return _metrics[key];
+				
+				isNew = true;
+				TMetric metric = _collector.GetMetric(_name, _metricFactory(tag1, tag2, tag3, tag4, tag5));
+				_metrics[key] = metric;
+				return metric;
+			}
+		}
+
+		public bool Contains(T1 tag1, T2 tag2, T3 tag3, T4 tag4, T5 tag5)
+		{
+
+			var key = new Tuple<T1, T2, T3, T4, T5>(tag1, tag2, tag3, tag4, tag5);
+
+			return _metrics.ContainsKey(key);
+		}
+
+		public Func<T1, T2, T3, T4, T5, TMetric> GetDefaultFactory()
+		{
+			var constructor = typeof(TMetric).GetConstructor(BindingFlags.Instance | BindingFlags.Public, null, new []{ typeof(T1), typeof(T2), typeof(T3), typeof(T4), typeof(T5) }, null);
+            if (constructor == null)
+            {
+				throw new Exception(
+					String.Format(
+						"Cannot create a MetricGroup for Type \"{0}\". It does not have a constructor which matches the signature of types provided to the metric group. " +
+						"Either add a constructor with that signature, or use the metricFactory argument to define a custom factory.",
+						typeof(TMetric).FullName));
+            }
+
+			return (tag1, tag2, tag3, tag4, tag5) => (TMetric)constructor.Invoke(new object[] { tag1, tag2, tag3, tag4, tag5 });
+		}
+	}
+
+
 }

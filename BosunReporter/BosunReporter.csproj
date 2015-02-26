@@ -50,11 +50,10 @@
     <Compile Include="BosunEventGauge.cs" />
     <Compile Include="BosunMetaData.cs" />
     <Compile Include="BosunSamplingGauge.cs" />
-    <Compile Include="MetricGroup.cs" />
-    <Compile Include="MetricGroupTemp.cs">
+    <Compile Include="MetricGroup.cs">
       <AutoGen>True</AutoGen>
       <DesignTime>True</DesignTime>
-      <DependentUpon>MetricGroupTemp.tt</DependentUpon>
+      <DependentUpon>MetricGroup.tt</DependentUpon>
     </Compile>
     <Compile Include="MetricsCollector.cs" />
     <Compile Include="BosunMetric.cs" />
@@ -71,9 +70,9 @@
     <Compile Include="Validation.cs" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="MetricGroupTemp.tt">
+    <None Include="MetricGroup.tt">
       <Generator>TextTemplatingFileGenerator</Generator>
-      <LastGenOutput>MetricGroupTemp.cs</LastGenOutput>
+      <LastGenOutput>MetricGroup.cs</LastGenOutput>
     </None>
     <None Include="packages.config" />
   </ItemGroup>

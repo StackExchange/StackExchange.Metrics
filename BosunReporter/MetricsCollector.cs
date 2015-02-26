@@ -103,11 +103,6 @@ namespace BosunReporter
             return new ReadOnlyDictionary<string, string>(defaultTags);
         }
 
-        public MetricGroup<T> CreateMetricGroup<T> (string name, Func<string, T> metricFactory = null) where T : BosunMetric
-        {
-            return new MetricGroup<T>(this, name, metricFactory);
-        }
-
         public void BindMetric(string name, Type type)
         {
             BindMetricWithoutPrefix(MetricsNamePrefix + name, type);

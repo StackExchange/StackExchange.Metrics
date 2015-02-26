@@ -36,7 +36,7 @@ namespace BosunReporter
 		var tryGetStatement = dimensions == 1 ? "if (_metrics.TryGetValue("+ tagList +", out metric))" : "if (_metrics.TryGetValue(key, out metric))";
 
 #>
-	public class MetricGroupTemp<<#= typeList #>, TMetric> where TMetric : BosunMetric
+	public class MetricGroup<<#= typeList #>, TMetric> where TMetric : BosunMetric
 	{
 		private readonly object _dictionaryLock = new object();
 		private readonly MetricsCollector _collector;
@@ -44,7 +44,7 @@ namespace BosunReporter
 		private readonly <#= dictionaryType #> _metrics = new Dictionary<<#= dictionaryKeyType #>, TMetric>();
 		private readonly <#= factoryType #> _metricFactory;
 		
-		public MetricGroupTemp(MetricsCollector collector, string name, <#= factoryType #> metricFactory = null)
+		public MetricGroup(MetricsCollector collector, string name, <#= factoryType #> metricFactory = null)
 		{
 			_collector = collector;
 			_name = name;
