@@ -2,14 +2,14 @@
 <package >
   <metadata>
     <id>$id$</id>
-    <version>1.2.0-unstable</version>
+    <version>1.2.1-unstable</version>
     <title>BosunReporter.NET</title>
     <authors>Bret Copeland</authors>
     <owners>Bret Copeland</owners>
     <projectUrl>https://github.com/bretcope/BosunReporter.NET</projectUrl>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
     <description>$description$</description>
-    <releaseNotes>Added background exception handling and removed old MetricGroup implementation.</releaseNotes>
+    <releaseNotes>Update Jil</releaseNotes>
     <copyright>Copyright 2015</copyright>
     <tags>Bosun Time Series Alerting</tags>
   </metadata>
