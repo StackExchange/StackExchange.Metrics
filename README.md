@@ -207,11 +207,12 @@ public RequestCounter : BosunCounter
 
 Now, instead of manually creating a metric for each of the result values we want ("success", "error", etc), we can simply create a group which will enable us to create those metrics implicitly.
 
-```
+```csharp
 var requestCounter = new MetricGroup<string, RequestCounter>(collector, "requests");
 
 // MetricGroup.Add() creates a metric if it does not already exist, and returns that metric
-// You should always call Add() as close to application-startup as possible to avoid Unknown Bosun alerts.
+// You should always call Add() as close to application-startup as possible to avoid 
+// Unknown Bosun alerts.
 requestCounter.Add("success");
 requestCounter.Add("error");
 
@@ -255,14 +256,18 @@ var group = new MetricGroup<string, int, SomeEnum, ThreeTagCounter>(collector, "
 
 group.Add("hello", 2, SomeEnum.MyValue).Increment();
 
-// indexer syntax also works, as long as Add() has been previously called for the argument values
+// indexer syntax also works, as long as Add() has been previously called
+// with the same argument values
 group["hello", 2, SomeEnum.MyValue].Increment();
 ```
 
 But suppose we wanted a group for that same counter where the `One` tag is _always_ "hello", and we only split on the other two tags. We could do this by defining our own factory method.
 
 ```csharp
-var helloGroup = new MetricGroup<int, SomeEnum, ThreeTagCounter>(collector, "my_group", (two, three) => new ThreeTagCounter("hello", two, three));
+var helloGroup = new MetricGroup<int, SomeEnum, ThreeTagCounter>(
+			collector,
+			"my_group",
+			(two, three) => new ThreeTagCounter("hello", two, three));
 
 helloGroup.Add(2, SomeEnum.MyValue).Increment();
 helloGroup.Add(7, SomeEnum.AnotherValue).Increment();
