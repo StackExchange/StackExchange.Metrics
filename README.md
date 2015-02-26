@@ -194,9 +194,7 @@ sampler.Record(1.2);
 
 > Because one of the goals of BosunReporter.NET is to encourage using tags to differentiate subsets of the same data (instead of separate metric names), I've created something called a metric group. Keep in mind that this is a first-draft design, and the interface may change entirely.
 
-A metric group is a collection of metrics with the same name, differentiated by tag values. In particular, `MetricGroup` is special cased to handle splitting along a single tag.
-
-For example, let's say we have a counter which counts every request. We might want to tag this counter to indicate how many requests were successful versus how many encountered an error. Start by creating a class for our counter, as usual.
+A metric group is a collection of metrics with the same name, differentiated by tag values. For example, let's say we have a counter which counts every request. We might want to tag this counter to indicate how many requests were successful versus how many encountered an error. Start by creating a class for our counter, as usual.
 
 ```csharp
 public RequestCounter : BosunCounter
@@ -210,10 +208,16 @@ public RequestCounter : BosunCounter
 Now, instead of manually creating a metric for each of the result values we want ("success", "error", etc), we can simply create a group which will enable us to create those metrics implicitly.
 
 ```
-var requestCounter = collector.CreateMetricGroup<RequestCounter>("requests");
+var requestCounter = new MetricGroup<string, RequestCounter>(collector, "requests");
+
+// MetricGroup.Add() creates a metric if it does not already exist, and returns that metric
+// You should always call Add() as close to application-startup as possible to avoid Unknown Bosun alerts.
+requestCounter.Add("success");
+requestCounter.Add("error");
 
 ...
 
+// as long as Add() has been previously called for each tag value, you can use indexer syntax.
 if (error == null)
 	requestCounter["success"].Increment();
 else
@@ -223,7 +227,45 @@ else
 The metric group is able to create a metrics factory (used to implicitly create the metrics) because `RequestCounter` has a constructor which accepts a single string argument. However, we can override this default factory by passing a second argument to `CreateMetricGroup`. The explicit equivalent to the default factory behavior would be:
 
 ```csharp
-collector.CreateMetricGroup("requests", str => new RequestCounter(str));
+new MetricGroup<string, RequestCounter>(collector, "requests", str => new RequestCounter(str));
 ```
 
-Again, the current group implementation is special-cased for splitting along a single tag. Multi-tag group support will be coming soon.
+You can also create metric groups which split along more than one tag (MetricGroup currently supports up to 5, though splitting on more than 2 or 3 may be a code-smell). Simply add additional type arguments to the MetricGroup generic type constructor. Let's use a three-tag counter as an example:
+
+```csharp
+public ThreeTagCounter : BosunCounter
+{
+	[BosunTag] public readonly string One;
+	[BosunTag] public readonly string Two;
+	[BosunTag] public readonly string Three;
+	
+	public ThreeTagCounter(string one, int two, SomeEnum three)
+	{
+		One = one;
+		Two = two.ToString();
+		Three = three.ToString();
+	}
+}
+```
+
+Now create a metric group for the counter:
+
+```csharp
+var group = new MetricGroup<string, int, SomeEnum, ThreeTagCounter>(collector, "my_group")
+
+group.Add("hello", 2, SomeEnum.MyValue).Increment();
+
+// indexer syntax also works, as long as Add() has been previously called for the argument values
+group["hello", 2, SomeEnum.MyValue].Increment();
+```
+
+But suppose we wanted a group for that same counter where the `One` tag is _always_ "hello", and we only split on the other two tags. We could do this by defining our own factory method.
+
+```csharp
+var helloGroup = new MetricGroup<int, SomeEnum, ThreeTagCounter>(collector, "my_group", (two, three) => new ThreeTagCounter("hello", two, three));
+
+helloGroup.Add(2, SomeEnum.MyValue).Increment();
+helloGroup.Add(7, SomeEnum.AnotherValue).Increment();
+```
+
+> Value types or strings are always best for the metric group arguments. Objects are okay as long as they play well as dictionary keys or values inside a Tuple which is used as a dictionary key. This generally means any object used as a metric group argument should implement IEquatable<T> and have a good GetHashCode implementation.
