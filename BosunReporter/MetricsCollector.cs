@@ -16,7 +16,7 @@ namespace BosunReporter
     public class MetricsCollector
     {
         private static readonly DateTime UnixEpoch = new DateTime(1970, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc);
-        internal const string DOUBLE_FORMAT = "0.###############";
+        public const string DOUBLE_FORMAT = "0.###############";
 
         private readonly object _metricsLock = new object();
         // all of the first-class names which have been claimed (excluding suffixes in aggregate gauges)
