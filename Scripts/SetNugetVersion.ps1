@@ -3,7 +3,7 @@
 $version = "$env:nuget_version"
 if ("$env.APPVEYOR_REPO_TAG" -ne "true") # non-tagged (pre-release build)
 {
-  $version += "-build$env:APPVEYOR_BUILD_NUMBER"
+  $version += "-unstable$env:APPVEYOR_BUILD_NUMBER"
 }
 
 # grab .nuspec file contents
