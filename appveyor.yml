@@ -7,7 +7,6 @@
 environment:
   NUGET_VERSION: 1.2.5
   NUGET_FILE: BosunReporter\BosunReporter.nuspec
-  PROJECT_FILE: BosunReporter\BosunReporter.csproj
   ASSEMBLY_FILE: BosunReporter\Properties\AssemblyInfo.cs
 
 version: $(nuget_version).{build}
@@ -34,7 +33,7 @@ platform: Any CPU
 configuration: Release
 
 build:
-  project: $(PROJECT_FILE)
+  project: BosunReporter\BosunReporter.csproj
   publish_nuget: true
   publish_nuget_symbols: true
   verbosity: normal
