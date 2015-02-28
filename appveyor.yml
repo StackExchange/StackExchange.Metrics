@@ -36,8 +36,8 @@ build:
   publish_nuget_symbols: true
   verbosity: normal
 
-before:
-  - Scripts\SetNugetVersion.ps1
+before_build:
+  - ps: Scripts\SetNugetVersion.ps1
 
 #---------------------------------#
 #       tests configuration       #
