@@ -59,21 +59,21 @@ deploy:
 
   - provider: GitHub
     release: $(APPVEYOR_REPO_TAG_NAME)
-	auth_token:
-	  secure: gbdN6iXbtLTk1MiBecxRJvdoc6fR6x4AEFAQNuZ+UMR9NvQnXW12PXfd16gtGVGp
-	artifact: /.*\.nupkg/
-	draft: true
-	prerelease: true
-	on:
-	  branch: master
-	  appveyor_repo_tag: true
+    auth_token:
+      secure: gbdN6iXbtLTk1MiBecxRJvdoc6fR6x4AEFAQNuZ+UMR9NvQnXW12PXfd16gtGVGp
+    artifact: /.*\.nupkg/
+    draft: true
+    prerelease: true
+    on:
+      branch: master
+      appveyor_repo_tag: true
 
   - provider: NuGet
     api_key:
-	  secure: NiH62CvEa6ztPGnR9glvKexCL5sJStB62JcJ/8CcVJJAj7rkCzZvfN87E5xPpNd0
-	artifact: /.*\.nupkg/
-	skip_symbols: false
-	on:
-	  branch: master
-	  appveyor_repo_tag: true
+      secure: NiH62CvEa6ztPGnR9glvKexCL5sJStB62JcJ/8CcVJJAj7rkCzZvfN87E5xPpNd0
+    artifact: /.*\.nupkg/
+    skip_symbols: false
+    on:
+      branch: master
+      appveyor_repo_tag: true
 
