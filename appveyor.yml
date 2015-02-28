@@ -1,0 +1,49 @@
+# See http://www.appveyor.com/docs/appveyor-yml for reference
+
+#---------------------------------#
+#      general configuration      #
+#---------------------------------#
+
+version: 1.2.{build}
+
+#---------------------------------#
+#    environment configuration    #
+#---------------------------------#
+
+assembly_info:
+  patch: true
+  file: BosunReporter\Properties\AssemblyInfo.cs
+  assembly_version: $(appveyor_build_version)
+  assembly_file_version: $(appveyor_build_version)
+  assembly_informational_version: $(appveyor_build_version)
+
+#---------------------------------#
+#       build configuration       #
+#---------------------------------#
+
+platform: Any CPU
+
+configuration: Release
+
+build:
+  project: BosunReporter\BosunReporter.csproj
+  publish_nuget: true
+  verbosity: normal
+
+#---------------------------------#
+#       tests configuration       #
+#---------------------------------#
+
+
+
+#---------------------------------#
+#      artifacts configuration    #
+#---------------------------------#
+
+
+
+#---------------------------------#
+#     deployment configuration    #
+#---------------------------------#
+
+

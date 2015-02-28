@@ -2,14 +2,14 @@
 <package >
   <metadata>
     <id>$id$</id>
-    <version>1.2.1-unstable</version>
+    <version>$version$-unstable</version>
     <title>BosunReporter.NET</title>
     <authors>Bret Copeland</authors>
     <owners>Bret Copeland</owners>
     <projectUrl>https://github.com/bretcope/BosunReporter.NET</projectUrl>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
     <description>$description$</description>
-    <releaseNotes>Update Jil</releaseNotes>
+    <releaseNotes></releaseNotes>
     <copyright>Copyright 2015</copyright>
     <tags>Bosun Time Series Alerting</tags>
   </metadata>
