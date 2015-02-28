@@ -58,12 +58,12 @@ before_build:
 deploy:
 
   - provider: GitHub
-    release: $(APPVEYOR_REPO_TAG_NAME)
+    release: $(nuget_version)
     auth_token:
       secure: gbdN6iXbtLTk1MiBecxRJvdoc6fR6x4AEFAQNuZ+UMR9NvQnXW12PXfd16gtGVGp
     artifact: /.*\.nupkg/
-    draft: true
-    prerelease: true
+    draft: false
+    prerelease: false
     on:
       branch: master
       appveyor_repo_tag: true
