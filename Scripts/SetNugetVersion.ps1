@@ -1,7 +1,7 @@
 
 # figure out the correct nuget package version (depends on whether this is a release or not)
 $version = "$env:nuget_version"
-if ("$env.APPVEYOR_REPO_TAG" -ne "true") # non-tagged (pre-release build)
+if ("$env:APPVEYOR_REPO_TAG" -ne "true") # non-tagged (pre-release build)
 {
   $version += "-unstable$env:APPVEYOR_BUILD_NUMBER"
 }
