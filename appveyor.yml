@@ -5,7 +5,7 @@
 #---------------------------------#
 
 environment:
-  nuget_version: 1.2.2
+  nuget_version: 1.2.3
 
 version: $(nuget_version).{build}
 
