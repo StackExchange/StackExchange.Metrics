@@ -22,7 +22,7 @@ assembly_info:
   file: $(ASSEMBLY_FILE)
   assembly_version: $(appveyor_build_version)
   assembly_file_version: $(appveyor_build_version)
-  assembly_informational_version: $(NUGET_RELEASE_VERSION)
+  assembly_informational_version: $(NUGET_VERSION)
 
 install:
   - set PATH=C:\Program Files (x86)\MSBuild\14.0\Bin;%PATH%
