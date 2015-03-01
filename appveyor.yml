@@ -5,11 +5,11 @@
 #---------------------------------#
 
 environment:
-  NUGET_VERSION: 1.2.6
+  NUGET_RELEASE_VERSION: 1.2.6
   NUGET_FILE: BosunReporter\BosunReporter.nuspec
   ASSEMBLY_FILE: BosunReporter\Properties\AssemblyInfo.cs
 
-version: $(nuget_version).{build}
+version: $(NUGET_RELEASE_VERSION).{build}
 
 #---------------------------------#
 #    environment configuration    #
@@ -24,6 +24,10 @@ assembly_info:
   assembly_file_version: $(appveyor_build_version)
   assembly_informational_version: $(appveyor_build_version)
 
+install:
+  - set PATH=C:\Program Files (x86)\MSBuild\14.0\Bin;%PATH%
+  - ps: Scripts\SetNugetVersion.ps1
+
 #---------------------------------#
 #       build configuration       #
 #---------------------------------#
@@ -37,9 +41,6 @@ build:
   publish_nuget: true
   publish_nuget_symbols: true
   verbosity: normal
-
-before_build:
-  - ps: Scripts\SetNugetVersion.ps1
 
 #---------------------------------#
 #       tests configuration       #

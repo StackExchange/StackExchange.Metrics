@@ -1,30 +1,25 @@
 
 # figure out the correct nuget package version (depends on whether this is a release or not)
-$version = "$env:nuget_version"
+$version = "$env:NUGET_RELEASE_VERSION"
 if ("$env:APPVEYOR_REPO_TAG" -ne "true") # non-tagged (pre-release build)
 {
-  $version += "-unstable$env:APPVEYOR_BUILD_NUMBER"
+	$version += "-unstable$env:APPVEYOR_BUILD_NUMBER"
 }
 
 # grab .nuspec file contents
-$file = "$PSScriptRoot\..\BosunReporter\BosunReporter.nuspec"
+$file = "$PSScriptRoot\..\$env:NUGET_FILE"
 $contents = (Get-Content $file) | Out-String
 
-# replace NUGET_VERSION with the the actual version
-$count = 0
-$replacer = [System.Text.RegularExpressions.MatchEvaluator]{
-  $script:count++
-  "$version"
-}
-$contents = [Regex]::Replace($contents, "NUGET_VERSION", $replacer)
-
-# make sure NUGET_VERSION existed exactly once
-if ($count -ne 1)
+# make sure there is exactly one occurance of <version>$version$</version> in the file
+$pattern = '<version>\$version\$</version>'
+$matches = [Regex]::Matches("$contents", "$pattern")
+if ($matches.Count -ne 1)
 {
-  Write-Error "NUGET_VERSION was found $count times in the nuspec file. If should have been found exactly once."
-  Exit 1
+	$count = $matches.Count
+	Write-Error "<version>`$version`$</version> was found $count times in the nuspec file. If should have been found exactly once."
+	Exit 1
 }
 
-
-Write-Host "Nuget version set as $version"
-$contents | Set-Content $file
+# set the NUGET_VERSION env variable
+[Environment]::SetEnvironmentVariable("NUGET_VERSION", "$version", "Process")
+Write-Host "NUGET_VERSION set as $version"

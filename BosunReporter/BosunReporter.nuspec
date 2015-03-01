@@ -2,7 +2,7 @@
 <package >
   <metadata>
     <id>$id$</id>
-    <version>NUGET_VERSION</version>
+    <version>$version$</version>
     <title>BosunReporter.NET</title>
     <authors>Bret Copeland</authors>
     <owners>Bret Copeland</owners>
