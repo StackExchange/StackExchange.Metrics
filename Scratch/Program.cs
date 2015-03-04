@@ -72,6 +72,12 @@ namespace Scratch
                     group["medium"].Record(random.Next(10, 20));
                     group["high"].Record(random.Next(20, 30));
 
+                    if (sai == 23)
+                    {
+                        collector.Shutdown();
+                        Environment.Exit(0);
+                    }
+
                 }, null, 1000, 1000);
 
             Thread.Sleep(TimeSpan.FromSeconds(16));

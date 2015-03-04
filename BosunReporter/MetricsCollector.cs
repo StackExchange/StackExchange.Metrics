@@ -17,7 +17,7 @@ namespace BosunReporter
     {
         private static readonly DateTime UnixEpoch = new DateTime(1970, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc);
         public const string DOUBLE_FORMAT = "0.###############";
-
+        
         private readonly object _metricsLock = new object();
         // all of the first-class names which have been claimed (excluding suffixes in aggregate gauges)
         private readonly Dictionary<string, Type> _rootNameToType = new Dictionary<string, Type>();
@@ -26,15 +26,15 @@ namespace BosunReporter
         // All of the name which have been claimed, including the metrics which may have multiple suffixes, mapped to their root metric name.
         // This is to prevent suffix collisions with other metrics.
         private readonly Dictionary<string, string> _nameAndSuffixToRootName = new Dictionary<string, string>();
-
+        
         private List<string> _pendingMetrics;
         private readonly object _pendingLock = new object();
         private readonly object _flushingLock = new object();
         private int _isFlushing = 0; // int instead of a bool so in can be used with Interlocked.CompareExchange
         private int _skipFlushes = 0;
-        private Timer _flushTimer;
-        private Timer _reportingTimer;
-        private Timer _metaDataTimer;
+        private readonly Timer _flushTimer;
+        private readonly Timer _reportingTimer;
+        private readonly Timer _metaDataTimer;
 
         internal readonly Dictionary<Type, List<BosunTag>> TagsByTypeCache = new Dictionary<Type, List<BosunTag>>();
 
@@ -49,6 +49,11 @@ namespace BosunReporter
         public readonly int ReportingInterval;
         public readonly Func<string, string> PropertyToTagName;
         public readonly ReadOnlyDictionary<string, string> DefaultTags;
+
+        public bool ShutdownCalled { get; private set; }
+
+        public int PendingMetricsCount => _pendingMetrics?.Count ?? 0;
+        public bool HasPendingMetrics => PendingMetricsCount > 0;
 
         public event Action<Exception> OnBackgroundException;
 
@@ -74,15 +79,15 @@ namespace BosunReporter
             DefaultTags = ValidateDefaultTags(options.DefaultTags);
 
             // start continuous queue-flushing
-            _flushTimer = new Timer(Flush, null, 1000, 1000);
+            _flushTimer = new Timer(Flush, true, 1000, 1000);
 
             // start reporting timer
             var interval = TimeSpan.FromSeconds(ReportingInterval);
-            _reportingTimer = new Timer(Snapshot, null, interval, interval);
+            _reportingTimer = new Timer(Snapshot, true, interval, interval);
 
             // metadata timer - wait 30 seconds to start (so there is some time for metrics to be delcared)
             if (options.MetaDataReportingInterval > 0)
-                _metaDataTimer = new Timer(PostMetaData, null, TimeSpan.FromSeconds(30), TimeSpan.FromSeconds(options.MetaDataReportingInterval));
+                _metaDataTimer = new Timer(PostMetaData, true, TimeSpan.FromSeconds(30), TimeSpan.FromSeconds(options.MetaDataReportingInterval));
         }
 
         private ReadOnlyDictionary<string, string> ValidateDefaultTags(Dictionary<string, string> tags)
@@ -224,8 +229,23 @@ namespace BosunReporter
             }
         }
 
-        private void Snapshot(object _)
+        /// <summary>
+        /// This method should only be called on application shutdown.
+        /// When called, it runs one final metric snapshot and makes a single attempt to flush all metrics in the queue.
+        /// </summary>
+        public void Shutdown()
         {
+            Debug.WriteLine("BosunReporter: Shutting down MetricsCollector.");
+            ShutdownCalled = true;
+            Snapshot(false);
+            Flush(false);
+        }
+
+        private void Snapshot(object isCalledFromTimer)
+        {
+            if ((bool)isCalledFromTimer && ShutdownCalled) // don't perform timer actions if we're shutting down
+                return;
+
             Debug.WriteLine("BosunReporter: Running metrics snapshot.");
             if (GetBosunUrl != null)
                 BosunUrl = GetBosunUrl();
@@ -241,43 +261,49 @@ namespace BosunReporter
 #endif
         }
 
-        private void Flush(object _)
+        private void Flush(object isCalledFromTimer)
         {
-            // prevent being called simultaneously
-            if (Interlocked.CompareExchange(ref _isFlushing, 1, 0) != 0)
+            if ((bool)isCalledFromTimer && ShutdownCalled) // don't perform timer actions if we're shutting down
+                return;
+
+            // prevent calls to Flush from stacking up - skip this check if we're in draining mode
+            if (Interlocked.CompareExchange(ref _isFlushing, 1, 0) != 0 && !ShutdownCalled)
             {
                 Debug.WriteLine("BosunReporter: Flush already in progress (skipping).");
                 return;
             }
 
-            try
+            lock (_flushingLock)
             {
-                if (_skipFlushes > 0)
+                try
                 {
-                    _skipFlushes--;
-                    return;
-                }
+                    if (!ShutdownCalled && _skipFlushes > 0)
+                    {
+                        _skipFlushes--;
+                        return;
+                    }
 
-                while (_pendingMetrics != null && _pendingMetrics.Count > 0)
-                {
-                    FlushBatch();
+                    while (_pendingMetrics != null && _pendingMetrics.Count > 0)
+                    {
+                        FlushBatch();
+                    }
                 }
-            }
-            catch (BosunPostException ex)
-            {
-                // there was a problem flushing - back off for the next five seconds (Bosun may simply be restarting)
-                _skipFlushes = 4;
-                if (ThrowOnPostFail)
+                catch (BosunPostException ex)
                 {
-                    if (OnBackgroundException != null && OnBackgroundException.GetInvocationList().Length != 0)
-                        OnBackgroundException(ex);
-                    else
-                        throw;
+                    // there was a problem flushing - back off for the next five seconds (Bosun may simply be restarting)
+                    _skipFlushes = 4;
+                    if (ThrowOnPostFail)
+                    {
+                        if (OnBackgroundException != null && OnBackgroundException.GetInvocationList().Length != 0)
+                            OnBackgroundException(ex);
+                        else
+                            throw;
+                    }
                 }
-            }
-            finally
-            {
-                Interlocked.Exchange(ref _isFlushing, 0);
+                finally
+                {
+                    Interlocked.Exchange(ref _isFlushing, 0);
+                }
             }
         }
 
@@ -427,6 +453,9 @@ namespace BosunReporter
 
         private void PostMetaData(object _)
         {
+            if (ShutdownCalled) // don't report any more meta data if we're shutting down
+                return;
+
             if (BosunUrl == null)
             {
                 Debug.WriteLine("BosunReporter: BosunUrl is null. Not sending metadata.");
