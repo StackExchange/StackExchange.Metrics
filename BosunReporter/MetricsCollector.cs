@@ -230,13 +230,16 @@ namespace BosunReporter
         }
 
         /// <summary>
-        /// This method should only be called on application shutdown.
+        /// This method should only be called on application shutdown, and should not be called more than once.
         /// When called, it runs one final metric snapshot and makes a single attempt to flush all metrics in the queue.
         /// </summary>
         public void Shutdown()
         {
             Debug.WriteLine("BosunReporter: Shutting down MetricsCollector.");
             ShutdownCalled = true;
+            _reportingTimer.Dispose();
+            _flushTimer.Dispose();
+            _metaDataTimer.Dispose();
             Snapshot(false);
             Flush(false);
         }
