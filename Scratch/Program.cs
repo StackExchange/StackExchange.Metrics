@@ -47,6 +47,9 @@ namespace Scratch
             if (gauge != collector.GetMetric("gauge", new TestAggregateGauge("1")))
                 throw new Exception("WAT?");
 
+            gauge.Description = "This is some gauge.";
+            gauge.Unit = "bytes";
+
             var gauge2 = collector.GetMetric<BosunAggregateGauge>("gauge2");
             for (var i = 0; i < 6; i++)
             {
@@ -72,7 +75,7 @@ namespace Scratch
                     group["medium"].Record(random.Next(10, 20));
                     group["high"].Record(random.Next(20, 30));
 
-                    if (sai == 23)
+                    if (sai == 40)
                     {
                         collector.Shutdown();
                         Environment.Exit(0);

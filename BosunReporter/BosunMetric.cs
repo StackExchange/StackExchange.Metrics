@@ -51,6 +51,9 @@ namespace BosunReporter
             }
         }
 
+        public virtual string Description { get; set; }
+        public virtual string Unit { get; set; }
+
         protected BosunMetric()
         {
         }
