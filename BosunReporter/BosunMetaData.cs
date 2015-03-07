@@ -12,9 +12,6 @@ namespace BosunReporter
 
         public static IEnumerable<BosunMetaData> DefaultMetaData(BosunMetric metric)
         {
-            var hasDescription = !String.IsNullOrEmpty(metric.Description);
-            var hasUnit = !String.IsNullOrEmpty(metric.Unit);
-
             foreach (var suffix in metric.Suffixes)
             {
                 var name = metric.Name + suffix;
@@ -26,23 +23,25 @@ namespace BosunReporter
                     Value = metric.MetricType
                 };
 
-                if (hasDescription)
+                var desc = metric.GetDescription(suffix);
+                if (!String.IsNullOrEmpty(desc))
                 {
                     yield return new BosunMetaData
                     {
                         Metric = name,
                         Name = "desc",
-                        Value = metric.Description
+                        Value = desc
                     };
                 }
 
-                if (hasUnit)
+                var unit = metric.GetUnit(suffix);
+                if (!String.IsNullOrEmpty(unit))
                 {
                     yield return new BosunMetaData
                     {
                         Metric = name,
                         Name = "unit",
-                        Value = metric.Unit
+                        Value = unit
                     };
                 }
             }

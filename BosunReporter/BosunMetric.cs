@@ -58,6 +58,16 @@ namespace BosunReporter
         {
         }
 
+        public virtual string GetDescription(string suffix)
+        {
+            return Description;
+        }
+
+        public virtual string GetUnit(string suffix)
+        {
+            return Unit;
+        }
+
         internal IEnumerable<string> Serialize(string unixTimestamp)
         {
             if (_name == null)
