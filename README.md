@@ -50,7 +50,7 @@ Bosun supports two high-level metric types.
 Let's start by creating a counter called `my_counter` with only the default tags.
 
 ```csharp
-var counter = collector.GetMetric<Counter>("my_counter");
+var counter = collector.GetMetric<Counter>("my_counter", "units", "description");
 ```
 
 Then increment it by one...
@@ -69,17 +69,15 @@ This metric, like all other metrics, will be automatically sent to Bosun every 3
 
 ### Tags
 
-Every metric should map to a single set of tag names. That is to say, you shouldn't use metric "my_metric" with the tags "host" and "route" in some cases, and the tags "machine" and "status" in other cases. Conceptually, the metric name could be thought of as similar to a variable name, and the list of tag names as its type. You can assign different instances of a type (different tag values) to a variable, but you can't assign an instance of a different type (different tag names).
+Every metric should map to a single set of tag names. That is to say, you shouldn't use metric "my_metric" with the tags "host" and "route" in some cases, and the tags "machine" and "status" in other cases. Conceptually, the metric name could be thought of as similar to a variable name, and the list of tag names as its type. You can assign different instances of a type (different tag values) to a variable, but you can't assign an instance of a different type (different tag names) to that variable.
 
 It turns out, a good way to enforce this behavior is simply to create classes for the list of tags you need. Let's say we want a route hit counter which, in addition to the default tags, has `route` and `result` tags.
 
 ```csharp
 public class RouteCounter : Counter
 {
-	[BosunTag]
-	public readonly string Route;
-	[BosunTag]
-	public readonly string Result;
+	[BosunTag] public readonly string Route;
+	[BosunTag] public readonly string Result;
 	
 	public RouteCounter(string route, bool ok)
 	{
@@ -92,22 +90,30 @@ public class RouteCounter : Counter
 And then let's instantiate one.
 
 ```csharp
-var testRouteOkCounter = collector.GetMetric("hits", new RouteCounter("Test/Route", true));
+var testRouteOkCounter = collector.GetMetric(
+                                             "hits",
+                                             "units",
+                                             "description",
+                                             new RouteCounter("Test/Route", true));
 ```
 
-The metric name `hits` has now been bound to the `RouteCounter` type. If we try to use that metric name with any other type, the library will throw an exception. However, we can use that metric with as many different instances of `RouteCounter` as we'd like. For example:
+The metric name `hits` has now been bound to the `RouteCounter` type. If we try to use that metric name with any other type, the library will throw an exception. However, we can use that metric name with as many different instances of `RouteCounter` as we'd like. For example:
 
 ```csharp
-var testRouteErrorCounter = collector.GetMetric("hits", new RouteCounter("Test/Route", false));
+var testRouteErrorCounter = collector.GetMetric(
+                                                "hits",
+                                                "units",
+                                                "description",
+                                                new RouteCounter("Test/Route", false));
 ```
 
 It it worth noting that the `GetMetric()` method is idempotent, so you'll never end up with duplicate metrics.
 
 ```csharp
-var one = collector.GetMetric("hits", new RouteCounter("Test/Route", true));
-var two = collector.GetMetric("hits", new RouteCounter("Test/Route", true));
+var one = collector.GetMetric("hits", units, desc, new RouteCounter("Test/Route", true));
+var two = collector.GetMetric("hits", units, desc, new RouteCounter("Test/Route", true));
 
-// one == two - they are the same object
+Console.WriteLine(one == two); // outputs True
 ```
 
 This, like the rest of the library, is thread safe. You could use this method to always instantiate and use metrics on-demand. Although, if you're concerned with performance, it is computationally cheaper to store the metrics in variables or a hash rather than calling `GetMetric()` every time you need it.
@@ -116,10 +122,10 @@ This `RouteCounter` type we just created, and any other BosunMetric type, can be
 
 ### Snapshot Gauges
 
-These are great for metrics where you want to record snapshots of a value, like CPU or memory usage. Pretend we have a method called `GetMemoryUsage` which returns a double. Now, let's write a snapshot gauge which calls that automatically at every metrics reporting/snapshot interval.
+These are great for metrics where you want to record snapshots of a value, like CPU or memory usage. Pretend we have a method called `GetMemoryUsage` which returns a double. Now, let's write a snapshot gauge which calls that automatically at every metrics reporting interval.
 
 ```csharp
-collector.GetMetric("memory_usage", new SnapshotGauge(() => GetMemoryUsage()));
+collector.GetMetric("memory_usage", units, desc, new SnapshotGauge(() => GetMemoryUsage()));
 ```
 
 That's it. There's no reason to even assign the gauge to a variable.
@@ -131,7 +137,7 @@ That's it. There's no reason to even assign the gauge to a variable.
 These are ideal for low-volume event-based data where it's practical to send all of the data points to Bosun. If you have a measurable event which occurs once every few seconds, then, instead of aggregating, you may want to use an event gauge. Every time you call `.Record()` on an event gauge, the metric will be serialized and queued. The queued metrics will be sent to Bosun on the normal reporting interval, like all other metrics.
 
 ```csharp
-var myEvent = collector.GetMetric("my_event", new EventGauge());
+var myEvent = collector.GetMetric<EventGauge>("my_event", units, desc);
 someObject.OnSomeEvent += (sender, e) => myEvent.Record(someObject.Value);
 ```
 
@@ -160,8 +166,7 @@ Let's create a simple route-timing metric which has a `route` tag, and reports o
 [GaugeAggregator(AggregateMode.Percentile, 0.95)]
 public class RouteTimingGauge : AggregateGauge
 {
-	[BosunTag]
-	public readonly string Route;
+	[BosunTag] public readonly string Route;
 
 	public TestAggregateGauge(string route)
 	{
@@ -173,11 +178,16 @@ public class RouteTimingGauge : AggregateGauge
 Then, instantiate the gauge for our route, and record timings to it.
  
 ```csharp
-var testRouteTiming = collector.GetMetric("route_tr", new RouteTimingGauge("Test/Route"));
+var testRouteTiming = collector.GetMetric(
+                                          "route_tr",
+                                          units,
+                                          desc,
+                                          new RouteTimingGauge("Test/Route"));
+
 testRouteTiming.Record(requestDuration);
 ```
 
-If median or percentile aggregators are used, then all values passed to the `Record()` method are stored until the next reporting interval, and must be sorted at that time in order to calculate the aggregate values. If you're concerned about this performance overhead, run some benchmarks on sorting a `List<double>` where the count is the number of data points you expect in-between metric reporting intervals. When there are multiple gauge metrics, the sorting is performed in parallel.
+If median or percentile aggregators are used, then _all_ values passed to the `Record()` method are stored until the next reporting interval, and must be sorted at that time in order to calculate the aggregate values. If you're concerned about this performance overhead, run some benchmarks on sorting a `List<double>` where the count is the number of data points you expect in-between metric reporting intervals. When there are multiple gauge metrics, the sorting is performed in parallel.
 
 ### Sampling Gauges
 
@@ -189,15 +199,13 @@ A sampling gauge simply reports the last recorded value at every reporting inter
 If the last recorded value is `Double.NaN`, then nothing will be reported to Bosun.
 
 ```csharp
-var sampler = collector.GetMetric("my_sampler", new SamplingGauge());
+var sampler = collector.GetMetric<SamplingGauge>("my_sampler", units, desc);
 sampler.Record(1.2);
 ```
 
 ### Metric Groups
 
-> Because one of the goals of BosunReporter.NET is to encourage using tags to differentiate subsets of the same data (instead of separate metric names), I've created something called a metric group. Keep in mind that this is a first-draft design, and the interface may change entirely.
-
-A metric group is a collection of metrics with the same name, differentiated by tag values. For example, let's say we have a counter which counts every request. We might want to tag this counter to indicate how many requests were successful versus how many encountered an error. Start by creating a class for our counter, as usual.
+Because one of the goals of BosunReporter.NET is to encourage using tags to differentiate subsets of the same data (instead of separate metric names), metric groups are built into the library. A metric group is a collection of metrics with the same name, but with different tag values. For example, let's say we have a counter which counts every request. We might want to tag this counter to indicate how many requests were successful versus how many encountered an error. Start by creating a class for our counter, as usual.
 
 ```csharp
 public RequestCounter : Counter
@@ -211,30 +219,32 @@ public RequestCounter : Counter
 Now, instead of manually creating a metric for each of the result values we want ("success", "error", etc), we can simply create a group which will enable us to create those metrics implicitly.
 
 ```csharp
-var requestCounter = new MetricGroup<string, RequestCounter>(collector, "requests");
+var requestCounter = collector.GetMetricGroup<string, RequestCounter>(
+                                "requests",                            // name
+                                "requests",                            // unit
+                                "A count of the number of requests",   // description
+                                result => new RequestCounter(result)); // factory
 
-// MetricGroup.Add() creates a metric if it does not already exist, and returns that metric
-// You should always call Add() as close to application-startup as possible to avoid 
-// Unknown Bosun alerts.
+// MetricGroup.Add() creates a metric if it does not already exist, and returns that metric.
+// Best-practice is to call Add() as close to application-startup as possible to avoid 
+// "Unknown" Bosun alerts.
 requestCounter.Add("success");
 requestCounter.Add("error");
 
 ...
 
-// as long as Add() has been previously called for each tag value, you can use indexer syntax.
+// as long as Add() has been previously called for each tag value, you can use indexer syntax
 if (error == null)
 	requestCounter["success"].Increment();
 else
 	requestCounter["error"].Increment();
 ```
 
-The metric group is able to create a metrics factory (used to implicitly create the metrics) because `RequestCounter` has a constructor which accepts a single string argument. However, we can override this default factory by passing a second argument to `CreateMetricGroup`. The explicit equivalent to the default factory behavior would be:
+Note that we used the generic type arguments `<string, RequestCounter>` in the example above. This determines the signature of the factory, which is `Func<string, RequestCounter>` in this example because it takes a single string argument, and returns a `RequestCounter`. It also determines the method signature of `Add()`.
 
-```csharp
-new MetricGroup<string, RequestCounter>(collector, "requests", str => new RequestCounter(str));
-```
+> Because `RequestCounter` has a constructor which matches the type signature provided (accepts a single string, and returns an instance of RequestCounter), we could have omitted the factory argument. The metric group will use that constructor to generate a default factory.
 
-You can also create metric groups which split along more than one tag (MetricGroup currently supports up to 5, though splitting on more than 2 or 3 may be a code-smell). Simply add additional type arguments to the MetricGroup generic type constructor. Let's use a three-tag counter as an example:
+You can also create metric groups which is differentiated by more than one tag (MetricGroup currently supports up to 5, though splitting on more than 2 or 3 may be a code-smell). Simply add additional type arguments to the MetricGroup generic type constructor. Let's use a three-tag counter as an example:
 
 ```csharp
 public ThreeTagCounter : Counter
@@ -255,7 +265,10 @@ public ThreeTagCounter : Counter
 Now create a metric group for the counter:
 
 ```csharp
-var group = new MetricGroup<string, int, SomeEnum, ThreeTagCounter>(collector, "my_group")
+var group = collector.GetMetricGroup<string, int, SomeEnum, ThreeTagCounter>(
+                                                                    "my_group",
+                                                                    "units",
+                                                                    "description")
 
 group.Add("hello", 2, SomeEnum.MyValue).Increment();
 
@@ -267,10 +280,11 @@ group["hello", 2, SomeEnum.MyValue].Increment();
 But suppose we wanted a group for that same counter where the `One` tag is _always_ "hello", and we only split on the other two tags. We could do this by defining our own factory method.
 
 ```csharp
-var helloGroup = new MetricGroup<int, SomeEnum, ThreeTagCounter>(
-			collector,
-			"my_group",
-			(two, three) => new ThreeTagCounter("hello", two, three));
+var helloGroup = collector.GetMetricGroup<int, SomeEnum, ThreeTagCounter>(
+                                 "my_group",
+                                 "units",
+                                 "description",
+                                 (two, three) => new ThreeTagCounter("hello", two, three));
 
 helloGroup.Add(2, SomeEnum.MyValue).Increment();
 helloGroup.Add(7, SomeEnum.AnotherValue).Increment();
