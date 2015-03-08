@@ -480,16 +480,14 @@ namespace BosunReporter
         private IEnumerable<MetaData> GatherMetaData()
         {
             var metaList = new List<MetaData>();
-            var nameSet = new HashSet<string>();
 
             lock (_metricsLock)
             {
                 foreach (var metric in Metrics)
                 {
-                    if (metric == null || nameSet.Contains(metric.Name))
+                    if (metric == null)
                         continue;
 
-                    nameSet.Add(metric.Name);
                     metaList.AddRange(metric.GetMetaData());
                 }
             }
