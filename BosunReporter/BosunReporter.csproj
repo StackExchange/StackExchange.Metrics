@@ -62,6 +62,7 @@
     <Compile Include="MetricsCollector.cs" />
     <Compile Include="Infrastructure\BosunMetric.cs" />
     <Compile Include="BosunOptions.cs" />
+    <Compile Include="Metrics\SnapshotCounter.cs" />
     <Compile Include="Metrics\SnapshotGauge.cs" />
     <Compile Include="Infrastructure\BosunTag.cs" />
     <Compile Include="Metrics\Counter.cs" />
