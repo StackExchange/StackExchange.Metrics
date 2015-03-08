@@ -82,10 +82,6 @@ namespace Scratch
                     }
 
                 }, null, 1000, 1000);
-
-            Thread.Sleep(TimeSpan.FromSeconds(16));
-            Console.WriteLine("removing...");
-            Console.WriteLine(collector.RemoveMetric(counter));
         }
 
         static void Run(object obj)

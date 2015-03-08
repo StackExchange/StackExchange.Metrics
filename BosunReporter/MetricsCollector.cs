@@ -23,7 +23,7 @@ namespace BosunReporter
         private readonly Dictionary<string, Type> _rootNameToType = new Dictionary<string, Type>();
         // this dictionary is to avoid duplicate metrics
         private readonly Dictionary<string, BosunMetric> _rootNameAndTagsToMetric = new Dictionary<string, BosunMetric>();
-        // All of the name which have been claimed, including the metrics which may have multiple suffixes, mapped to their root metric name.
+        // All of the names which have been claimed, including the metrics which may have multiple suffixes, mapped to their root metric name.
         // This is to prevent suffix collisions with other metrics.
         private readonly Dictionary<string, string> _nameAndSuffixToRootName = new Dictionary<string, string>();
         
@@ -204,25 +204,6 @@ namespace BosunReporter
                 _rootNameAndTagsToMetric[key] = metric;
                 metric.IsAttached = true;
                 return metric;
-            }
-        }
-
-        public bool RemoveMetric(BosunMetric metric)
-        {
-            lock (_metricsLock)
-            {
-                BosunMetric existing;
-                if (_rootNameAndTagsToMetric.TryGetValue(metric.MetricKey, out existing))
-                {
-                    if (metric == existing)
-                    {
-                        _rootNameAndTagsToMetric.Remove(metric.MetricKey);
-                        metric.IsAttached = false;
-                        return true;
-                    }
-                }
-
-                return false;
             }
         }
 
