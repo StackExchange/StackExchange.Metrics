@@ -2,10 +2,11 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
+using BosunReporter.Infrastructure;
 
-namespace BosunReporter
+namespace BosunReporter.Metrics
 {
-    public class BosunEventGauge : BosunMetric, IDoubleGauge
+    public class EventGauge : BosunMetric, IDoubleGauge
     {
         private ConcurrentBag<string> _serializedMetrics = new ConcurrentBag<string>();
 

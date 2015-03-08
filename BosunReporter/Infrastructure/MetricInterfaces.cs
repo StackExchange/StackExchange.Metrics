@@ -1,4 +1,4 @@
-﻿namespace BosunReporter
+﻿namespace BosunReporter.Infrastructure
 {
     public interface IDoubleGauge
     {

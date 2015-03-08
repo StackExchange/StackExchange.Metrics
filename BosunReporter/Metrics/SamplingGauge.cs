@@ -1,10 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Threading;
+using BosunReporter.Infrastructure;
 
-namespace BosunReporter
+namespace BosunReporter.Metrics
 {
-    public class BosunSamplingGauge : BosunMetric, IDoubleGauge
+    public class SamplingGauge : BosunMetric, IDoubleGauge
     {
         private double _value = Double.NaN;
 

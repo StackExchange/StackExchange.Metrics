@@ -1,9 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
 using System.Threading;
 using BosunReporter;
+using BosunReporter.Metrics;
 
 namespace Scratch
 {
@@ -50,21 +50,21 @@ namespace Scratch
             gauge.Description = "This is some gauge.";
             gauge.Unit = "bytes";
 
-            var gauge2 = collector.GetMetric<BosunAggregateGauge>("gauge2");
+            var gauge2 = collector.GetMetric<AggregateGauge>("gauge2");
             for (var i = 0; i < 6; i++)
             {
-                new Thread(Run).Start(new Tuple<BosunAggregateGauge, BosunAggregateGauge, int>(gauge, gauge2, i));
+                new Thread(Run).Start(new Tuple<AggregateGauge, AggregateGauge, int>(gauge, gauge2, i));
             }
 
             var si = 0;
-            var snapshot = collector.GetMetric("my_snapshot", new BosunSnapshotGauge(() => ++si % 5));
+            var snapshot = collector.GetMetric("my_snapshot", new SnapshotGauge(() => ++si % 5));
 
             var group = new MetricGroup<string, TestGroupGauge>(collector, "test_group");
             group.Add("low");
             group.Add("medium");
             group.Add("high");
-            var sampler = collector.GetMetric("sampler", new BosunSamplingGauge());
-            var eventGauge = collector.GetMetric("event", new BosunEventGauge());
+            var sampler = collector.GetMetric("sampler", new SamplingGauge());
+            var eventGauge = collector.GetMetric("event", new EventGauge());
             var sai = 0;
             var random = new Random();
             _samplerTimer = new Timer(o => 
@@ -90,7 +90,7 @@ namespace Scratch
 
         static void Run(object obj)
         {
-            var tup = (Tuple<BosunAggregateGauge, BosunAggregateGauge, int>)obj;
+            var tup = (Tuple<AggregateGauge, AggregateGauge, int>)obj;
             var gauge1 = tup.Item1;
             var gauge2 = tup.Item2;
 
@@ -117,7 +117,7 @@ namespace Scratch
     [GaugeAggregator(AggregateMode.Median)]
     [GaugeAggregator(AggregateMode.Percentile, 0.95)]
     [GaugeAggregator(AggregateMode.Percentile, 0.25)]
-    public class TestAggregateGauge : BosunAggregateGauge
+    public class TestAggregateGauge : AggregateGauge
     {
 //        [BosunTag] public readonly string Host;
         [BosunTag] public readonly string SomeTagName;
@@ -129,7 +129,7 @@ namespace Scratch
         }
     }
 
-    public class TestCounter : BosunCounter
+    public class TestCounter : LongCounter
     {
 //        [BosunTag] public readonly string Host;
 
@@ -140,7 +140,7 @@ namespace Scratch
     }
 
     [IgnoreDefaultBosunTags]
-    public class TestSnapshotGauge : BosunSnapshotGauge
+    public class TestSnapshotGauge : SnapshotGauge
     {
         [BosunTag] public readonly string Thing;
 
@@ -158,7 +158,7 @@ namespace Scratch
         }
     }
 
-    public class TestGroupGauge : BosunEventGauge
+    public class TestGroupGauge : EventGauge
     {
         [BosunTag]
         public readonly string Range;

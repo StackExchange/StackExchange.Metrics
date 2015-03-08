@@ -48,29 +48,27 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="BosunAggregateGauge.cs" />
-    <Compile Include="BosunEventGauge.cs" />
-    <Compile Include="BosunMetaData.cs" />
-    <Compile Include="BosunSamplingGauge.cs" />
+    <Compile Include="Attributes.cs" />
+    <Compile Include="Metrics\AggregateGauge.cs" />
+    <Compile Include="Metrics\EventGauge.cs" />
+    <Compile Include="Infrastructure\MetaData.cs" />
+    <Compile Include="Metrics\SamplingGauge.cs" />
     <Compile Include="MetricGroup.cs">
       <AutoGen>True</AutoGen>
       <DesignTime>True</DesignTime>
       <DependentUpon>MetricGroup.tt</DependentUpon>
     </Compile>
-    <Compile Include="MetricInterfaces.cs" />
+    <Compile Include="Infrastructure\MetricInterfaces.cs" />
     <Compile Include="MetricsCollector.cs" />
-    <Compile Include="BosunMetric.cs" />
+    <Compile Include="Infrastructure\BosunMetric.cs" />
     <Compile Include="BosunOptions.cs" />
-    <Compile Include="BosunSnapshotGauge.cs" />
-    <Compile Include="BosunTag.cs" />
-    <Compile Include="BosunTagAttribute.cs" />
-    <Compile Include="BosunCounter.cs" />
+    <Compile Include="Metrics\SnapshotGauge.cs" />
+    <Compile Include="Infrastructure\BosunTag.cs" />
+    <Compile Include="Metrics\LongCounter.cs" />
     <Compile Include="Exceptions.cs" />
-    <Compile Include="GaugeAggregatorAttribute.cs" />
-    <Compile Include="IgnoreDefaultBosunTagsAttribute.cs" />
     <Compile Include="NameTransformers.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="Validation.cs" />
+    <Compile Include="Infrastructure\Validation.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="MetricGroup.tt">

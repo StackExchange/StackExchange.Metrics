@@ -9,6 +9,7 @@ using System.Net;
 using System.Reflection;
 using System.Text;
 using System.Threading;
+using BosunReporter.Infrastructure;
 using Jil;
 
 namespace BosunReporter
@@ -476,9 +477,9 @@ namespace BosunReporter
             }
         }
 
-        private IEnumerable<BosunMetaData> GatherMetaData()
+        private IEnumerable<MetaData> GatherMetaData()
         {
-            var metaList = new List<BosunMetaData>();
+            var metaList = new List<MetaData>();
             var nameSet = new HashSet<string>();
 
             lock (_metricsLock)
