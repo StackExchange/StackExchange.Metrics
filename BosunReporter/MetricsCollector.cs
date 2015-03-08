@@ -465,10 +465,9 @@ namespace BosunReporter
             try
             {
                 Debug.WriteLine("BosunReporter: Gathering metadata.");
-                var metaData = GatherMetaData();
+                var metaJson = GatherMetaData();
                 Debug.WriteLine("BosunReporter: Sending metadata.");
-                PostToBosun("/api/metadata/put", false,
-                    sw => JSON.Serialize(metaData, sw, new Options(excludeNulls: true)));
+                PostToBosun("/api/metadata/put", false, sw => sw.Write(metaJson));
             }
             catch (BosunPostException)
             {
@@ -477,9 +476,10 @@ namespace BosunReporter
             }
         }
 
-        private IEnumerable<MetaData> GatherMetaData()
+        private string GatherMetaData()
         {
             var metaList = new List<MetaData>();
+            var json = new StringBuilder();
 
             lock (_metricsLock)
             {
@@ -488,11 +488,24 @@ namespace BosunReporter
                     if (metric == null)
                         continue;
 
-                    metaList.AddRange(metric.GetMetaData());
+                    foreach (var meta in metric.GetMetaData())
+                    {
+                        json.Append(",{\"Metric\":\"" + meta.Metric +
+                            "\",\"Name\":\"" + meta.Name +
+                            "\",\"Value\":" + JSON.Serialize(meta.Value) +
+                            (meta.Tags == null ? "" : ",\"Tags\":" + meta.Tags) +
+                            "}\n");
+                    }
                 }
             }
 
-            return metaList;
+            if (json.Length == 0)
+                return "[]";
+
+            json[0] = '['; // replace the first comma with an open bracket
+            json.Append(']');
+
+            return json.ToString();
         }
     }
 }

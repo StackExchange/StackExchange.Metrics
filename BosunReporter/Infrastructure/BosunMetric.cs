@@ -17,13 +17,13 @@ namespace BosunReporter.Infrastructure
 
         public virtual IReadOnlyCollection<string> Suffixes => NO_SUFFIXES;
 
-        private string _serializedTags;
-        protected internal string SerializedTags => _serializedTags ?? (_serializedTags = SerializeTags());
+        private string _tagsJson;
+        protected internal string TagsJson => _tagsJson ?? (_tagsJson = GetTagsJson());
 
         private string _name;
         private readonly object _nameLock = new object();
 
-        internal string MetricKey => _name + SerializedTags;
+        internal string MetricKey => _name + TagsJson;
 
         public string Name
         {
@@ -66,15 +66,15 @@ namespace BosunReporter.Infrastructure
             {
                 var fullName = Name + suffix;
 
-                yield return new MetaData(fullName, "rate", MetricType);
+                yield return new MetaData(fullName, "rate", null, MetricType);
 
                 var desc = GetDescription(suffix);
                 if (!String.IsNullOrEmpty(desc))
-                    yield return new MetaData(fullName, "desc", desc);
+                    yield return new MetaData(fullName, "desc", TagsJson, desc);
 
                 var unit = GetUnit(suffix);
                 if (!String.IsNullOrEmpty(unit))
-                    yield return new MetaData(fullName, "unit", unit);
+                    yield return new MetaData(fullName, "unit", null, unit);
             }
         }
 
@@ -96,7 +96,7 @@ namespace BosunReporter.Infrastructure
                 try
                 {
                     ex.Data["Metric"] = Name;
-                    ex.Data["Tags"] = SerializedTags;
+                    ex.Data["Tags"] = TagsJson;
                 }
                 finally
                 {
@@ -125,14 +125,13 @@ namespace BosunReporter.Infrastructure
 
         private string ToJson(string suffix, string value, string unixTimestamp)
         {
-            return "{\"metric\":\""+ _name + suffix +"\",\"value\":"+ value +",\"tags\":"+ SerializedTags +",\"timestamp\":"+ unixTimestamp +"}";
+            return "{\"metric\":\""+ _name + suffix +"\",\"value\":"+ value +",\"tags\":"+ TagsJson +",\"timestamp\":"+ unixTimestamp +"}";
         }
 
-        private string SerializeTags()
+        private string GetTagsJson()
         {
             var sb = new StringBuilder();
-            var tags = GetTagsList();
-            foreach (var tag in tags)
+            foreach (var tag in GetTagsList())
             {
                 var value = tag.IsFromDefault ? Collector.DefaultTags[tag.Name] : (string)tag.FieldInfo.GetValue(this);
                 if (value == null)
@@ -168,6 +167,7 @@ namespace BosunReporter.Infrastructure
             return sb.ToString();
         }
 
+        // todo: store a static cache of the tag list so we don't have to do reflection for every metric instantiated
         private List<BosunTag> GetTagsList()
         {
             var type = GetType();
