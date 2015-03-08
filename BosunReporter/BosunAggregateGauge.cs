@@ -96,7 +96,7 @@ namespace BosunReporter
 
             foreach (var a in _aggregatorStrategy.Aggregators)
             {
-                yield return ToJson(a.Suffix, snapshot[a.Percentile].ToString(MetricsCollector.DOUBLE_FORMAT), unixTimestamp);
+                yield return ToJson(a.Suffix, snapshot[a.Percentile], unixTimestamp);
             }
         }
 

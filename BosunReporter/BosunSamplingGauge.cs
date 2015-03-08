@@ -18,7 +18,7 @@ namespace BosunReporter
             if (Double.IsNaN(value))
                 yield break;
 
-            yield return ToJson("", value.ToString(MetricsCollector.DOUBLE_FORMAT), unixTimestamp);
+            yield return ToJson("", value, unixTimestamp);
         }
 
         /// <summary>

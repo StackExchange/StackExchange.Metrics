@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Text;
 
 namespace BosunReporter
@@ -87,7 +88,25 @@ namespace BosunReporter
 
         protected abstract IEnumerable<string> GetSerializedMetrics(string unixTimestamp);
 
-        protected string ToJson(string suffix, string value, string unixTimestamp)
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        protected string ToJson(string suffix, int value, string unixTimestamp)
+        {
+            return ToJson(suffix, value.ToString("D"), unixTimestamp);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        protected string ToJson(string suffix, long value, string unixTimestamp)
+        {
+            return ToJson(suffix, value.ToString("D"), unixTimestamp);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        protected string ToJson(string suffix, double value, string unixTimestamp)
+        {
+            return ToJson(suffix, value.ToString("0.###############"), unixTimestamp);
+        }
+
+        private string ToJson(string suffix, string value, string unixTimestamp)
         {
             return "{\"metric\":\""+ _name + suffix +"\",\"value\":"+ value +",\"tags\":"+ SerializedTags +",\"timestamp\":"+ unixTimestamp +"}";
         }

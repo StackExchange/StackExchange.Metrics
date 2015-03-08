@@ -23,7 +23,7 @@ namespace BosunReporter
 
         public void Record(double value)
         {
-            _serializedMetrics.Add(ToJson("", value.ToString(MetricsCollector.DOUBLE_FORMAT), MetricsCollector.GetUnixTimestamp()));
+            _serializedMetrics.Add(ToJson("", value, MetricsCollector.GetUnixTimestamp()));
         }
     }
 }
