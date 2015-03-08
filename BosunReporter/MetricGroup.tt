@@ -37,18 +37,40 @@ namespace BosunReporter
 		var tryGetStatement = dimensions == 1 ? "if (_metrics.TryGetValue("+ tagList +", out metric))" : "if (_metrics.TryGetValue(key, out metric))";
 
 #>
+	public partial class MetricsCollector
+	{
+		public MetricGroup<<#= typeList #>, TMetric> GetMetricGroup<<#= typeList #>, TMetric>(string name, string unit, string description, Func<<#= typeList #>, TMetric> metricFactory = null)
+			where TMetric : BosunMetric
+		{
+			return new MetricGroup<<#= typeList #>, TMetric>(this, name, false, unit, description, metricFactory);
+		}
+
+		public MetricGroup<<#= typeList #>, TMetric> GetMetricGroupWithoutPrefix<<#= typeList #>, TMetric>(string name, string unit, string description, Func<<#= typeList #>, TMetric> metricFactory = null)
+			where TMetric : BosunMetric
+		{
+			return new MetricGroup<<#= typeList #>, TMetric>(this, name, true, unit, description, metricFactory);
+		}
+	}
+
 	public class MetricGroup<<#= typeList #>, TMetric> where TMetric : BosunMetric
 	{
 		private readonly object _dictionaryLock = new object();
 		private readonly MetricsCollector _collector;
-		private readonly string _name;
 		private readonly <#= dictionaryType #> _metrics = new Dictionary<<#= dictionaryKeyType #>, TMetric>();
 		private readonly <#= factoryType #> _metricFactory;
 		
-		public MetricGroup(MetricsCollector collector, string name, <#= factoryType #> metricFactory = null)
+		public string Name { get; }
+		public bool WithoutPrefix { get; }
+		public string Unit { get; }
+		public string Description { get; }
+		
+		internal MetricGroup(MetricsCollector collector, string name, bool withoutPrefix, string unit, string description, <#= factoryType #> metricFactory = null)
 		{
 			_collector = collector;
-			_name = name;
+			Name = name;
+			WithoutPrefix = withoutPrefix;
+			Unit = unit;
+			Description = description;
 			_metricFactory = metricFactory ?? GetDefaultFactory();
 		}
 
@@ -92,7 +114,12 @@ namespace BosunReporter
 					return _metrics[<#= dictionaryKeyValue #>];
 				
 				isNew = true;
-				TMetric metric = _collector.GetMetric(_name, _metricFactory(<#= tagList #>));
+				TMetric metric;
+				if (WithoutPrefix)
+					metric = _collector.GetMetric(Name, Unit, Description, _metricFactory(<#= tagList #>));
+				else
+					metric = _collector.GetMetricWithoutPrefix(Name, Unit, Description, _metricFactory(<#= tagList #>));
+
 				_metrics[<#= dictionaryKeyValue #>] = metric;
 				return metric;
 			}

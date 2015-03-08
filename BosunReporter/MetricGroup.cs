@@ -12,18 +12,40 @@ using BosunReporter.Infrastructure;
 namespace BosunReporter
 {
 
+	public partial class MetricsCollector
+	{
+		public MetricGroup<T1, TMetric> GetMetricGroup<T1, TMetric>(string name, string unit, string description, Func<T1, TMetric> metricFactory = null)
+			where TMetric : BosunMetric
+		{
+			return new MetricGroup<T1, TMetric>(this, name, false, unit, description, metricFactory);
+		}
+
+		public MetricGroup<T1, TMetric> GetMetricGroupWithoutPrefix<T1, TMetric>(string name, string unit, string description, Func<T1, TMetric> metricFactory = null)
+			where TMetric : BosunMetric
+		{
+			return new MetricGroup<T1, TMetric>(this, name, true, unit, description, metricFactory);
+		}
+	}
+
 	public class MetricGroup<T1, TMetric> where TMetric : BosunMetric
 	{
 		private readonly object _dictionaryLock = new object();
 		private readonly MetricsCollector _collector;
-		private readonly string _name;
 		private readonly Dictionary<T1, TMetric> _metrics = new Dictionary<T1, TMetric>();
 		private readonly Func<T1, TMetric> _metricFactory;
 		
-		public MetricGroup(MetricsCollector collector, string name, Func<T1, TMetric> metricFactory = null)
+		public string Name { get; }
+		public bool WithoutPrefix { get; }
+		public string Unit { get; }
+		public string Description { get; }
+		
+		internal MetricGroup(MetricsCollector collector, string name, bool withoutPrefix, string unit, string description, Func<T1, TMetric> metricFactory = null)
 		{
 			_collector = collector;
-			_name = name;
+			Name = name;
+			WithoutPrefix = withoutPrefix;
+			Unit = unit;
+			Description = description;
 			_metricFactory = metricFactory ?? GetDefaultFactory();
 		}
 
@@ -63,7 +85,12 @@ namespace BosunReporter
 					return _metrics[tag1];
 				
 				isNew = true;
-				TMetric metric = _collector.GetMetric(_name, _metricFactory(tag1));
+				TMetric metric;
+				if (WithoutPrefix)
+					metric = _collector.GetMetric(Name, Unit, Description, _metricFactory(tag1));
+				else
+					metric = _collector.GetMetricWithoutPrefix(Name, Unit, Description, _metricFactory(tag1));
+
 				_metrics[tag1] = metric;
 				return metric;
 			}
@@ -92,18 +119,40 @@ namespace BosunReporter
 	}
 
 
+	public partial class MetricsCollector
+	{
+		public MetricGroup<T1, T2, TMetric> GetMetricGroup<T1, T2, TMetric>(string name, string unit, string description, Func<T1, T2, TMetric> metricFactory = null)
+			where TMetric : BosunMetric
+		{
+			return new MetricGroup<T1, T2, TMetric>(this, name, false, unit, description, metricFactory);
+		}
+
+		public MetricGroup<T1, T2, TMetric> GetMetricGroupWithoutPrefix<T1, T2, TMetric>(string name, string unit, string description, Func<T1, T2, TMetric> metricFactory = null)
+			where TMetric : BosunMetric
+		{
+			return new MetricGroup<T1, T2, TMetric>(this, name, true, unit, description, metricFactory);
+		}
+	}
+
 	public class MetricGroup<T1, T2, TMetric> where TMetric : BosunMetric
 	{
 		private readonly object _dictionaryLock = new object();
 		private readonly MetricsCollector _collector;
-		private readonly string _name;
 		private readonly Dictionary<Tuple<T1, T2>, TMetric> _metrics = new Dictionary<Tuple<T1, T2>, TMetric>();
 		private readonly Func<T1, T2, TMetric> _metricFactory;
 		
-		public MetricGroup(MetricsCollector collector, string name, Func<T1, T2, TMetric> metricFactory = null)
+		public string Name { get; }
+		public bool WithoutPrefix { get; }
+		public string Unit { get; }
+		public string Description { get; }
+		
+		internal MetricGroup(MetricsCollector collector, string name, bool withoutPrefix, string unit, string description, Func<T1, T2, TMetric> metricFactory = null)
 		{
 			_collector = collector;
-			_name = name;
+			Name = name;
+			WithoutPrefix = withoutPrefix;
+			Unit = unit;
+			Description = description;
 			_metricFactory = metricFactory ?? GetDefaultFactory();
 		}
 
@@ -147,7 +196,12 @@ namespace BosunReporter
 					return _metrics[key];
 				
 				isNew = true;
-				TMetric metric = _collector.GetMetric(_name, _metricFactory(tag1, tag2));
+				TMetric metric;
+				if (WithoutPrefix)
+					metric = _collector.GetMetric(Name, Unit, Description, _metricFactory(tag1, tag2));
+				else
+					metric = _collector.GetMetricWithoutPrefix(Name, Unit, Description, _metricFactory(tag1, tag2));
+
 				_metrics[key] = metric;
 				return metric;
 			}
@@ -178,18 +232,40 @@ namespace BosunReporter
 	}
 
 
+	public partial class MetricsCollector
+	{
+		public MetricGroup<T1, T2, T3, TMetric> GetMetricGroup<T1, T2, T3, TMetric>(string name, string unit, string description, Func<T1, T2, T3, TMetric> metricFactory = null)
+			where TMetric : BosunMetric
+		{
+			return new MetricGroup<T1, T2, T3, TMetric>(this, name, false, unit, description, metricFactory);
+		}
+
+		public MetricGroup<T1, T2, T3, TMetric> GetMetricGroupWithoutPrefix<T1, T2, T3, TMetric>(string name, string unit, string description, Func<T1, T2, T3, TMetric> metricFactory = null)
+			where TMetric : BosunMetric
+		{
+			return new MetricGroup<T1, T2, T3, TMetric>(this, name, true, unit, description, metricFactory);
+		}
+	}
+
 	public class MetricGroup<T1, T2, T3, TMetric> where TMetric : BosunMetric
 	{
 		private readonly object _dictionaryLock = new object();
 		private readonly MetricsCollector _collector;
-		private readonly string _name;
 		private readonly Dictionary<Tuple<T1, T2, T3>, TMetric> _metrics = new Dictionary<Tuple<T1, T2, T3>, TMetric>();
 		private readonly Func<T1, T2, T3, TMetric> _metricFactory;
 		
-		public MetricGroup(MetricsCollector collector, string name, Func<T1, T2, T3, TMetric> metricFactory = null)
+		public string Name { get; }
+		public bool WithoutPrefix { get; }
+		public string Unit { get; }
+		public string Description { get; }
+		
+		internal MetricGroup(MetricsCollector collector, string name, bool withoutPrefix, string unit, string description, Func<T1, T2, T3, TMetric> metricFactory = null)
 		{
 			_collector = collector;
-			_name = name;
+			Name = name;
+			WithoutPrefix = withoutPrefix;
+			Unit = unit;
+			Description = description;
 			_metricFactory = metricFactory ?? GetDefaultFactory();
 		}
 
@@ -233,7 +309,12 @@ namespace BosunReporter
 					return _metrics[key];
 				
 				isNew = true;
-				TMetric metric = _collector.GetMetric(_name, _metricFactory(tag1, tag2, tag3));
+				TMetric metric;
+				if (WithoutPrefix)
+					metric = _collector.GetMetric(Name, Unit, Description, _metricFactory(tag1, tag2, tag3));
+				else
+					metric = _collector.GetMetricWithoutPrefix(Name, Unit, Description, _metricFactory(tag1, tag2, tag3));
+
 				_metrics[key] = metric;
 				return metric;
 			}
@@ -264,18 +345,40 @@ namespace BosunReporter
 	}
 
 
+	public partial class MetricsCollector
+	{
+		public MetricGroup<T1, T2, T3, T4, TMetric> GetMetricGroup<T1, T2, T3, T4, TMetric>(string name, string unit, string description, Func<T1, T2, T3, T4, TMetric> metricFactory = null)
+			where TMetric : BosunMetric
+		{
+			return new MetricGroup<T1, T2, T3, T4, TMetric>(this, name, false, unit, description, metricFactory);
+		}
+
+		public MetricGroup<T1, T2, T3, T4, TMetric> GetMetricGroupWithoutPrefix<T1, T2, T3, T4, TMetric>(string name, string unit, string description, Func<T1, T2, T3, T4, TMetric> metricFactory = null)
+			where TMetric : BosunMetric
+		{
+			return new MetricGroup<T1, T2, T3, T4, TMetric>(this, name, true, unit, description, metricFactory);
+		}
+	}
+
 	public class MetricGroup<T1, T2, T3, T4, TMetric> where TMetric : BosunMetric
 	{
 		private readonly object _dictionaryLock = new object();
 		private readonly MetricsCollector _collector;
-		private readonly string _name;
 		private readonly Dictionary<Tuple<T1, T2, T3, T4>, TMetric> _metrics = new Dictionary<Tuple<T1, T2, T3, T4>, TMetric>();
 		private readonly Func<T1, T2, T3, T4, TMetric> _metricFactory;
 		
-		public MetricGroup(MetricsCollector collector, string name, Func<T1, T2, T3, T4, TMetric> metricFactory = null)
+		public string Name { get; }
+		public bool WithoutPrefix { get; }
+		public string Unit { get; }
+		public string Description { get; }
+		
+		internal MetricGroup(MetricsCollector collector, string name, bool withoutPrefix, string unit, string description, Func<T1, T2, T3, T4, TMetric> metricFactory = null)
 		{
 			_collector = collector;
-			_name = name;
+			Name = name;
+			WithoutPrefix = withoutPrefix;
+			Unit = unit;
+			Description = description;
 			_metricFactory = metricFactory ?? GetDefaultFactory();
 		}
 
@@ -319,7 +422,12 @@ namespace BosunReporter
 					return _metrics[key];
 				
 				isNew = true;
-				TMetric metric = _collector.GetMetric(_name, _metricFactory(tag1, tag2, tag3, tag4));
+				TMetric metric;
+				if (WithoutPrefix)
+					metric = _collector.GetMetric(Name, Unit, Description, _metricFactory(tag1, tag2, tag3, tag4));
+				else
+					metric = _collector.GetMetricWithoutPrefix(Name, Unit, Description, _metricFactory(tag1, tag2, tag3, tag4));
+
 				_metrics[key] = metric;
 				return metric;
 			}
@@ -350,18 +458,40 @@ namespace BosunReporter
 	}
 
 
+	public partial class MetricsCollector
+	{
+		public MetricGroup<T1, T2, T3, T4, T5, TMetric> GetMetricGroup<T1, T2, T3, T4, T5, TMetric>(string name, string unit, string description, Func<T1, T2, T3, T4, T5, TMetric> metricFactory = null)
+			where TMetric : BosunMetric
+		{
+			return new MetricGroup<T1, T2, T3, T4, T5, TMetric>(this, name, false, unit, description, metricFactory);
+		}
+
+		public MetricGroup<T1, T2, T3, T4, T5, TMetric> GetMetricGroupWithoutPrefix<T1, T2, T3, T4, T5, TMetric>(string name, string unit, string description, Func<T1, T2, T3, T4, T5, TMetric> metricFactory = null)
+			where TMetric : BosunMetric
+		{
+			return new MetricGroup<T1, T2, T3, T4, T5, TMetric>(this, name, true, unit, description, metricFactory);
+		}
+	}
+
 	public class MetricGroup<T1, T2, T3, T4, T5, TMetric> where TMetric : BosunMetric
 	{
 		private readonly object _dictionaryLock = new object();
 		private readonly MetricsCollector _collector;
-		private readonly string _name;
 		private readonly Dictionary<Tuple<T1, T2, T3, T4, T5>, TMetric> _metrics = new Dictionary<Tuple<T1, T2, T3, T4, T5>, TMetric>();
 		private readonly Func<T1, T2, T3, T4, T5, TMetric> _metricFactory;
 		
-		public MetricGroup(MetricsCollector collector, string name, Func<T1, T2, T3, T4, T5, TMetric> metricFactory = null)
+		public string Name { get; }
+		public bool WithoutPrefix { get; }
+		public string Unit { get; }
+		public string Description { get; }
+		
+		internal MetricGroup(MetricsCollector collector, string name, bool withoutPrefix, string unit, string description, Func<T1, T2, T3, T4, T5, TMetric> metricFactory = null)
 		{
 			_collector = collector;
-			_name = name;
+			Name = name;
+			WithoutPrefix = withoutPrefix;
+			Unit = unit;
+			Description = description;
 			_metricFactory = metricFactory ?? GetDefaultFactory();
 		}
 
@@ -405,7 +535,12 @@ namespace BosunReporter
 					return _metrics[key];
 				
 				isNew = true;
-				TMetric metric = _collector.GetMetric(_name, _metricFactory(tag1, tag2, tag3, tag4, tag5));
+				TMetric metric;
+				if (WithoutPrefix)
+					metric = _collector.GetMetric(Name, Unit, Description, _metricFactory(tag1, tag2, tag3, tag4, tag5));
+				else
+					metric = _collector.GetMetricWithoutPrefix(Name, Unit, Description, _metricFactory(tag1, tag2, tag3, tag4, tag5));
+
 				_metrics[key] = metric;
 				return metric;
 			}

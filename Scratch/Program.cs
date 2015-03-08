@@ -38,33 +38,30 @@ namespace Scratch
                 Console.WriteLine(exception);
             };
 
-            collector.BindMetric("my_counter", typeof(TestCounter));
-            var counter = collector.GetMetric<TestCounter>("my_counter");
+            collector.BindMetric("my_counter", "increments", typeof(TestCounter));
+            var counter = collector.GetMetric<TestCounter>("my_counter", "increments", "This is meaningless.");
             counter.Increment();
             counter.Increment();
 
-            var gauge = collector.GetMetric("gauge", new TestAggregateGauge("1"));
-            if (gauge != collector.GetMetric("gauge", new TestAggregateGauge("1")))
+            var gauge = collector.GetMetric("gauge", "watts", "Some description of a gauge.", new TestAggregateGauge("1"));
+            if (gauge != collector.GetMetric("gauge", null, null, new TestAggregateGauge("1")))
                 throw new Exception("WAT?");
 
-            gauge.Description = "This is some gauge.";
-            gauge.Unit = "bytes";
-
-            var gauge2 = collector.GetMetric<AggregateGauge>("gauge2");
+            var gauge2 = collector.GetMetric<AggregateGauge>("gauge2", "newtons", "Number of newtons currently applied.");
             for (var i = 0; i < 6; i++)
             {
                 new Thread(Run).Start(new Tuple<AggregateGauge, AggregateGauge, int>(gauge, gauge2, i));
             }
 
             var si = 0;
-            var snapshot = collector.GetMetric("my_snapshot", new SnapshotGauge(() => ++si % 5));
+            var snapshot = collector.GetMetric("my_snapshot", "snappys", "Snap snap snap.", new SnapshotGauge(() => ++si % 5));
 
-            var group = new MetricGroup<string, TestGroupGauge>(collector, "test_group");
+            var group = collector.GetMetricGroup<string, TestGroupGauge>("test_group", "tests", "These gauges are for testing.");
             group.Add("low");
             group.Add("medium");
             group.Add("high");
-            var sampler = collector.GetMetric("sampler", new SamplingGauge());
-            var eventGauge = collector.GetMetric("event", new EventGauge());
+            var sampler = collector.GetMetric("sampler", "french fries", "Collect them all.", new SamplingGauge());
+            var eventGauge = collector.GetMetric("event", "count", "How many last time.", new EventGauge());
             var sai = 0;
             var random = new Random();
             _samplerTimer = new Timer(o => 

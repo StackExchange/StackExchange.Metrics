@@ -14,7 +14,7 @@ using Jil;
 
 namespace BosunReporter
 {
-    public class MetricsCollector
+    public partial class MetricsCollector
     {
         private static readonly DateTime UnixEpoch = new DateTime(1970, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc);
         
@@ -105,12 +105,13 @@ namespace BosunReporter
             return new ReadOnlyDictionary<string, string>(defaultTags);
         }
 
-        public void BindMetric(string name, Type type)
+        // todo: actually do something with unit here (need to support binding to a unit the same way as binding to a type)
+        public void BindMetric(string name, string unit, Type type)
         {
-            BindMetricWithoutPrefix(MetricsNamePrefix + name, type);
+            BindMetricWithoutPrefix(MetricsNamePrefix + name, unit, type);
         }
 
-        public void BindMetricWithoutPrefix(string name, Type type)
+        public void BindMetricWithoutPrefix(string name, string unit, Type type)
         {
             lock (_metricsLock)
             {
@@ -130,12 +131,12 @@ namespace BosunReporter
             }
         }
 
-        public T GetMetric<T>(string name, T metric = null) where T : BosunMetric
+        public T GetMetric<T>(string name, string unit, string description, T metric = null) where T : BosunMetric
         {
-            return GetMetricWithoutPrefix(MetricsNamePrefix + name, metric);
+            return GetMetricWithoutPrefix(MetricsNamePrefix + name, unit, description, metric);
         }
 
-        public T GetMetricWithoutPrefix<T>(string name, T metric = null) where T : BosunMetric
+        public T GetMetricWithoutPrefix<T>(string name, string unit, string description, T metric = null) where T : BosunMetric
         {
             var metricType = typeof (T);
             if (metric == null)
@@ -149,6 +150,9 @@ namespace BosunReporter
             metric.Collector = this;
 
             metric.Name = name;
+            metric.Description = description;
+            metric.Unit = unit;
+
             lock (_metricsLock)
             {
                 if (_rootNameToType.ContainsKey(name))
