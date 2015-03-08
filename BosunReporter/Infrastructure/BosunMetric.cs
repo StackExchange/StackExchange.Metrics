@@ -12,7 +12,7 @@ namespace BosunReporter.Infrastructure
         private static readonly IReadOnlyCollection<string> NO_SUFFIXES = new List<string> {""}.AsReadOnly();
 
         public abstract string MetricType { get; }
-        public MetricsCollector BosunReporter { get; internal set; }
+        public MetricsCollector Collector { get; internal set; }
         public bool IsAttached { get; internal set; }
 
         public virtual IReadOnlyCollection<string> Suffixes => NO_SUFFIXES;
@@ -117,7 +117,7 @@ namespace BosunReporter.Infrastructure
             var tags = GetTagsList();
             foreach (var tag in tags)
             {
-                var value = tag.IsFromDefault ? BosunReporter.DefaultTags[tag.Name] : (string)tag.FieldInfo.GetValue(this);
+                var value = tag.IsFromDefault ? Collector.DefaultTags[tag.Name] : (string)tag.FieldInfo.GetValue(this);
                 if (value == null)
                 {
                     if (tag.IsOptional)
@@ -154,8 +154,8 @@ namespace BosunReporter.Infrastructure
         private List<BosunTag> GetTagsList()
         {
             var type = GetType();
-            if (BosunReporter.TagsByTypeCache.ContainsKey(type))
-                return BosunReporter.TagsByTypeCache[type];
+            if (Collector.TagsByTypeCache.ContainsKey(type))
+                return Collector.TagsByTypeCache[type];
 
             // build list of tag members of the current type
             var fields = type.GetFields();
@@ -164,13 +164,13 @@ namespace BosunReporter.Infrastructure
             {
                 var metricTag = f.GetCustomAttribute<BosunTagAttribute>();
                 if (metricTag != null)
-                    tags.Add(new BosunTag(f, metricTag, BosunReporter.PropertyToTagName));
+                    tags.Add(new BosunTag(f, metricTag, Collector.PropertyToTagName));
             }
 
             // get default tags
             if (type.GetCustomAttribute<IgnoreDefaultBosunTagsAttribute>(true) == null)
             {
-                foreach (var name in BosunReporter.DefaultTags.Keys)
+                foreach (var name in Collector.DefaultTags.Keys)
                 {
                     if (tags.Any(t => t.Name == name))
                         continue;
@@ -183,7 +183,7 @@ namespace BosunReporter.Infrastructure
                 throw new TypeInitializationException(type.FullName, new Exception("Type does not contain any Bosun tags. Metrics must have at least one tag to be serializable."));
 
             tags.Sort((a, b) => String.CompareOrdinal(a.Name, b.Name));
-            BosunReporter.TagsByTypeCache[type] = tags;
+            Collector.TagsByTypeCache[type] = tags;
             return tags;
         }
     }

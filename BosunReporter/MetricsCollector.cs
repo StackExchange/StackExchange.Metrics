@@ -146,7 +146,7 @@ namespace BosunReporter
                     throw new ArgumentNullException("metric", metricType.FullName + " has no public default constructor. Therefore the metric parameter cannot be null.");
                 metric = (T)constructor.Invoke(new object[0]);
             }
-            metric.BosunReporter = this;
+            metric.Collector = this;
 
             metric.Name = name;
             lock (_metricsLock)
