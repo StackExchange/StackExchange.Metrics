@@ -4,7 +4,7 @@ using System.Threading;
 
 namespace BosunReporter
 {
-    public class BosunCounter : BosunMetric
+    public class BosunCounter : BosunMetric, ILongCounter
     {
         public long Value = 0;
 

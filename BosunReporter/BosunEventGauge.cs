@@ -5,7 +5,7 @@ using System.Threading;
 
 namespace BosunReporter
 {
-    public class BosunEventGauge : BosunMetric
+    public class BosunEventGauge : BosunMetric, IDoubleGauge
     {
         private ConcurrentBag<string> _serializedMetrics = new ConcurrentBag<string>();
 

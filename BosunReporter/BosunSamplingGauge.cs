@@ -4,7 +4,7 @@ using System.Threading;
 
 namespace BosunReporter
 {
-    public class BosunSamplingGauge : BosunMetric
+    public class BosunSamplingGauge : BosunMetric, IDoubleGauge
     {
         private double _value = Double.NaN;
 
@@ -31,10 +31,9 @@ namespace BosunReporter
         /// Records the current value of the gauge. Use Double.NaN to disable this gauge.
         /// </summary>
         /// <param name="value"></param>
-        /// <returns>The previous value.</returns>
-        public double Record(double value)
+        public void Record(double value)
         {
-            return Interlocked.Exchange(ref _value, value);
+            Interlocked.Exchange(ref _value, value);
         }
     }
 }

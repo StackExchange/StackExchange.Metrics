@@ -57,6 +57,7 @@
       <DesignTime>True</DesignTime>
       <DependentUpon>MetricGroup.tt</DependentUpon>
     </Compile>
+    <Compile Include="MetricInterfaces.cs" />
     <Compile Include="MetricsCollector.cs" />
     <Compile Include="BosunMetric.cs" />
     <Compile Include="BosunOptions.cs" />

@@ -7,7 +7,7 @@ using System.Reflection;
 namespace BosunReporter
 {
     [GaugeAggregator(AggregateMode.Last)]
-    public class BosunAggregateGauge : BosunMetric
+    public class BosunAggregateGauge : BosunMetric, IDoubleGauge
     {
         private static readonly Dictionary<Type, GaugeAggregatorStrategy> _aggregatorsByTypeCache = new Dictionary<Type, GaugeAggregatorStrategy>();
 
