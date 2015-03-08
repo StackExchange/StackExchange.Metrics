@@ -8,10 +8,7 @@ namespace BosunReporter
     {
         public long Value = 0;
 
-        public override string MetricType
-        {
-            get { return "counter"; }
-        }
+        public override string MetricType => "counter";
 
         protected override IEnumerable<string> GetSerializedMetrics(string unixTimestamp)
         {

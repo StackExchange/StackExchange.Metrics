@@ -7,10 +7,7 @@ namespace BosunReporter
     {
         public readonly Func<double?> GetValueFunc;
 
-        public override string MetricType
-        {
-            get { return "gauge"; }
-        }
+        public override string MetricType => "gauge";
 
         public BosunSnapshotGauge(Func<double?> getValueFunc)
         {

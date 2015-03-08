@@ -14,24 +14,15 @@ namespace BosunReporter
         public MetricsCollector BosunReporter { get; internal set; }
         public bool IsAttached { get; internal set; }
 
-        public virtual IReadOnlyCollection<string> Suffixes
-        {
-            get { return NO_SUFFIXES; }
-        }
+        public virtual IReadOnlyCollection<string> Suffixes => NO_SUFFIXES;
 
         private string _serializedTags;
-        protected internal string SerializedTags
-        {
-            get { return _serializedTags ?? (_serializedTags = SerializeTags()); }
-        }
+        protected internal string SerializedTags => _serializedTags ?? (_serializedTags = SerializeTags());
 
         private string _name;
         private readonly object _nameLock = new object();
 
-        internal string MetricKey
-        {
-            get { return _name + SerializedTags; }
-        }
+        internal string MetricKey => _name + SerializedTags;
 
         public string Name
         {

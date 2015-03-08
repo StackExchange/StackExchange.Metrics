@@ -57,10 +57,7 @@ namespace BosunReporter
 
         public event Action<Exception> OnBackgroundException;
 
-        public IEnumerable<BosunMetric> Metrics
-        {
-            get { return _rootNameAndTagsToMetric.Values.AsEnumerable(); }
-        }
+        public IEnumerable<BosunMetric> Metrics => _rootNameAndTagsToMetric.Values.AsEnumerable();
 
         public MetricsCollector(BosunOptions options)
         {

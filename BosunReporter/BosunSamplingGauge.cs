@@ -8,15 +8,9 @@ namespace BosunReporter
     {
         private double _value = Double.NaN;
 
-        public double CurrentValue
-        {
-            get { return _value; }
-        }
+        public double CurrentValue => _value;
 
-        public override string MetricType
-        {
-            get { return "gauge"; }
-        }
+        public override string MetricType => "gauge";
 
         protected override IEnumerable<string> GetSerializedMetrics(string unixTimestamp)
         {

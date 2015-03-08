@@ -9,10 +9,7 @@ namespace BosunReporter
     {
         private ConcurrentBag<string> _serializedMetrics = new ConcurrentBag<string>();
 
-        public override string MetricType
-        {
-            get { return "gauge"; }
-        }
+        public override string MetricType => "gauge";
 
         protected override IEnumerable<string> GetSerializedMetrics(string unixTimestamp)
         {
