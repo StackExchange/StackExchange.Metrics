@@ -64,7 +64,7 @@
     <Compile Include="BosunOptions.cs" />
     <Compile Include="Metrics\SnapshotGauge.cs" />
     <Compile Include="Infrastructure\BosunTag.cs" />
-    <Compile Include="Metrics\LongCounter.cs" />
+    <Compile Include="Metrics\Counter.cs" />
     <Compile Include="Exceptions.cs" />
     <Compile Include="NameTransformers.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

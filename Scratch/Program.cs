@@ -129,7 +129,7 @@ namespace Scratch
         }
     }
 
-    public class TestCounter : LongCounter
+    public class TestCounter : Counter
     {
 //        [BosunTag] public readonly string Host;
 

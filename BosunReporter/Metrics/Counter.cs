@@ -5,7 +5,7 @@ using BosunReporter.Infrastructure;
 
 namespace BosunReporter.Metrics
 {
-    public class LongCounter : BosunMetric, ILongCounter
+    public class Counter : BosunMetric, ILongCounter
     {
         public long Value = 0;
 
@@ -16,7 +16,7 @@ namespace BosunReporter.Metrics
             yield return ToJson("", Value, unixTimestamp);
         }
 
-        public LongCounter()
+        public Counter()
         {
         }
 
