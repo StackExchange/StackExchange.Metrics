@@ -28,6 +28,7 @@ namespace BosunReporter.Metrics
         /// <param name="value"></param>
         public void Record(double value)
         {
+            AssertAttached();
             Interlocked.Exchange(ref _value, value);
         }
     }

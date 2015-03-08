@@ -24,6 +24,7 @@ namespace BosunReporter.Metrics
 
         public void Record(double value)
         {
+            AssertAttached();
             _serializedMetrics.Add(ToJson("", value, MetricsCollector.GetUnixTimestamp()));
         }
     }

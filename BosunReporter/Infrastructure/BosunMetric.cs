@@ -88,6 +88,23 @@ namespace BosunReporter.Infrastructure
 
         protected abstract IEnumerable<string> GetSerializedMetrics(string unixTimestamp);
 
+        protected void AssertAttached()
+        {
+            if (!IsAttached)
+            {
+                var ex = new InvalidOperationException("Attempting to record on a metric which is not attached to a MetricsCollector object.");
+                try
+                {
+                    ex.Data["Metric"] = Name;
+                    ex.Data["Tags"] = SerializedTags;
+                }
+                finally
+                {
+                    throw ex;
+                }
+            }
+        }
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         protected string ToJson(string suffix, int value, string unixTimestamp)
         {

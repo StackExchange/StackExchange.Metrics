@@ -22,20 +22,7 @@ namespace BosunReporter.Metrics
 
         public void Increment(long amount = 1)
         {
-            if (!IsAttached)
-            {
-                var ex = new InvalidOperationException("Attempting to record on a gauge which is not attached to a BosunReporter object.");
-                try
-                {
-                    ex.Data["Metric"] = Name;
-                    ex.Data["Tags"] = SerializedTags;
-                }
-                finally
-                {
-                    throw ex;
-                }
-            }
-
+            AssertAttached();
             Interlocked.Add(ref Value, amount);
         }
     }
