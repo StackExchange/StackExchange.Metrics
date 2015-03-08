@@ -12,7 +12,7 @@ namespace BosunReporter
 
         protected override IEnumerable<string> GetSerializedMetrics(string unixTimestamp)
         {
-            yield return ToJson("", Value.ToString("D"), unixTimestamp);
+            yield return ToJson("", Value, unixTimestamp);
         }
 
         public BosunCounter()
