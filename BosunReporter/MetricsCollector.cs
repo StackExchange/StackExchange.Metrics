@@ -493,7 +493,7 @@ namespace BosunReporter
                         continue;
 
                     nameSet.Add(metric.Name);
-                    metaList.AddRange(BosunMetaData.DefaultMetaData(metric));
+                    metaList.AddRange(metric.GetMetaData());
                 }
             }
 

@@ -68,6 +68,24 @@ namespace BosunReporter
             return Unit;
         }
 
+        public virtual IEnumerable<BosunMetaData> GetMetaData()
+        {
+            foreach (var suffix in Suffixes)
+            {
+                var fullName = Name + suffix;
+
+                yield return new BosunMetaData(fullName, "rate", MetricType);
+
+                var desc = GetDescription(suffix);
+                if (!String.IsNullOrEmpty(desc))
+                    yield return new BosunMetaData(fullName, "desc", desc);
+
+                var unit = GetUnit(suffix);
+                if (!String.IsNullOrEmpty(unit))
+                    yield return new BosunMetaData(fullName, "unit", unit);
+            }
+        }
+
         internal IEnumerable<string> Serialize(string unixTimestamp)
         {
             if (_name == null)

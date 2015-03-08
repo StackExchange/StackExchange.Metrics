@@ -4,47 +4,17 @@ using System.Linq;
 
 namespace BosunReporter
 {
-    internal class BosunMetaData
+    public class BosunMetaData
     {
-        public string Metric;
-        public string Name;
-        public string Value;
+        public string Metric { get; }
+        public string Name { get; }
+        public string Value { get; }
 
-        public static IEnumerable<BosunMetaData> DefaultMetaData(BosunMetric metric)
+        public BosunMetaData(string metric, string name, string value)
         {
-            foreach (var suffix in metric.Suffixes)
-            {
-                var name = metric.Name + suffix;
-
-                yield return new BosunMetaData
-                {
-                    Metric = name,
-                    Name = "rate",
-                    Value = metric.MetricType
-                };
-
-                var desc = metric.GetDescription(suffix);
-                if (!String.IsNullOrEmpty(desc))
-                {
-                    yield return new BosunMetaData
-                    {
-                        Metric = name,
-                        Name = "desc",
-                        Value = desc
-                    };
-                }
-
-                var unit = metric.GetUnit(suffix);
-                if (!String.IsNullOrEmpty(unit))
-                {
-                    yield return new BosunMetaData
-                    {
-                        Metric = name,
-                        Name = "unit",
-                        Value = unit
-                    };
-                }
-            }
+            Metric = metric;
+            Name = name;
+            Value = value;
         }
     }
 }
