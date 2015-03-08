@@ -50,7 +50,7 @@ Bosun supports two high-level metric types.
 Let's start by creating a counter called `my_counter` with only the default tags.
 
 ```csharp
-var counter = collector.GetMetric<BosunCounter>("my_counter");
+var counter = collector.GetMetric<Counter>("my_counter");
 ```
 
 Then increment it by one...
@@ -74,7 +74,7 @@ Every metric should map to a single set of tag names. That is to say, you should
 It turns out, a good way to enforce this behavior is simply to create classes for the list of tags you need. Let's say we want a route hit counter which, in addition to the default tags, has `route` and `result` tags.
 
 ```csharp
-public class RouteCounter : BosunCounter
+public class RouteCounter : Counter
 {
 	[BosunTag]
 	public readonly string Route;
@@ -119,19 +119,19 @@ This `RouteCounter` type we just created, and any other BosunMetric type, can be
 These are great for metrics where you want to record snapshots of a value, like CPU or memory usage. Pretend we have a method called `GetMemoryUsage` which returns a double. Now, let's write a snapshot gauge which calls that automatically at every metrics reporting/snapshot interval.
 
 ```csharp
-collector.GetMetric("memory_usage", new BosunSnapshotGauge(() => GetMemoryUsage()));
+collector.GetMetric("memory_usage", new SnapshotGauge(() => GetMemoryUsage()));
 ```
 
 That's it. There's no reason to even assign the gauge to a variable.
 
-> __Why the lambda instead of just passing `GetMemoryUsage` to the constructor?__ In this contrived example, I said `GetMemoryUsage` returns a double. The BosunSnapshotGauge constructor actually accepts a `Func<double?>`. It calls this function right before metrics are about to be flushed. If it returns a double value, the gauge reports that value. If it returns null, then the gauge does not report anything. This way, you have the flexibility of only reporting on something when there is sensible data to report.
+> __Why the lambda instead of just passing `GetMemoryUsage` to the constructor?__ In this contrived example, I said `GetMemoryUsage` returns a double. The SnapshotGauge constructor actually accepts a `Func<double?>`. It calls this function right before metrics are about to be flushed. If it returns a double value, the gauge reports that value. If it returns null, then the gauge does not report anything. This way, you have the flexibility of only reporting on something when there is sensible data to report.
 
 ### Event Gauges
 
 These are ideal for low-volume event-based data where it's practical to send all of the data points to Bosun. If you have a measurable event which occurs once every few seconds, then, instead of aggregating, you may want to use an event gauge. Every time you call `.Record()` on an event gauge, the metric will be serialized and queued. The queued metrics will be sent to Bosun on the normal reporting interval, like all other metrics.
 
 ```csharp
-var myEvent = collector.GetMetric("my_event", new BosunEventGauge());
+var myEvent = collector.GetMetric("my_event", new EventGauge());
 someObject.OnSomeEvent += (sender, e) => myEvent.Record(someObject.Value);
 ```
 
@@ -158,7 +158,7 @@ Let's create a simple route-timing metric which has a `route` tag, and reports o
 [GaugeAggregator(AggregateMode.Max)]
 [GaugeAggregator(AggregateMode.Median)]
 [GaugeAggregator(AggregateMode.Percentile, 0.95)]
-public class RouteTimingGauge : BosunAggregateGauge
+public class RouteTimingGauge : AggregateGauge
 {
 	[BosunTag]
 	public readonly string Route;
@@ -189,7 +189,7 @@ A sampling gauge simply reports the last recorded value at every reporting inter
 If the last recorded value is `Double.NaN`, then nothing will be reported to Bosun.
 
 ```csharp
-var sampler = collector.GetMetric("my_sampler", new BosunSamplingGauge());
+var sampler = collector.GetMetric("my_sampler", new SamplingGauge());
 sampler.Record(1.2);
 ```
 
@@ -200,7 +200,7 @@ sampler.Record(1.2);
 A metric group is a collection of metrics with the same name, differentiated by tag values. For example, let's say we have a counter which counts every request. We might want to tag this counter to indicate how many requests were successful versus how many encountered an error. Start by creating a class for our counter, as usual.
 
 ```csharp
-public RequestCounter : BosunCounter
+public RequestCounter : Counter
 {
 	[BosunTag]
 	public readonly string Result;
@@ -237,7 +237,7 @@ new MetricGroup<string, RequestCounter>(collector, "requests", str => new Reques
 You can also create metric groups which split along more than one tag (MetricGroup currently supports up to 5, though splitting on more than 2 or 3 may be a code-smell). Simply add additional type arguments to the MetricGroup generic type constructor. Let's use a three-tag counter as an example:
 
 ```csharp
-public ThreeTagCounter : BosunCounter
+public ThreeTagCounter : Counter
 {
 	[BosunTag] public readonly string One;
 	[BosunTag] public readonly string Two;
