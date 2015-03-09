@@ -16,11 +16,17 @@ namespace BosunReporter
 {
     public partial class MetricsCollector
     {
+        private class RootMetricInfo
+        {
+            public Type Type { get; set; }
+            public string Unit { get; set; }
+        }
+
         private static readonly DateTime UnixEpoch = new DateTime(1970, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc);
         
         private readonly object _metricsLock = new object();
         // all of the first-class names which have been claimed (excluding suffixes in aggregate gauges)
-        private readonly Dictionary<string, Type> _rootNameToType = new Dictionary<string, Type>();
+        private readonly Dictionary<string, RootMetricInfo> _rootNameToInfo = new Dictionary<string, RootMetricInfo>();
         // this dictionary is to avoid duplicate metrics
         private readonly Dictionary<string, BosunMetric> _rootNameAndTagsToMetric = new Dictionary<string, BosunMetric>();
         // All of the names which have been claimed, including the metrics which may have multiple suffixes, mapped to their root metric name.
@@ -106,7 +112,6 @@ namespace BosunReporter
             return new ReadOnlyDictionary<string, string>(defaultTags);
         }
 
-        // todo: actually do something with unit here (need to support binding to a unit the same way as binding to a type)
         public void BindMetric(string name, string unit, Type type)
         {
             BindMetricWithoutPrefix(MetricsNamePrefix + name, unit, type);
@@ -116,11 +121,26 @@ namespace BosunReporter
         {
             lock (_metricsLock)
             {
-                if (_rootNameToType.ContainsKey(name) && _rootNameToType[name] != type)
+                RootMetricInfo rmi;
+                if (_rootNameToInfo.TryGetValue(name, out rmi))
                 {
-                    throw new Exception(
-                        String.Format("Cannot bind metric name \"{0}\" to Type {1}. It has already been bound to {2}",
-                            name, type.FullName, _rootNameToType[name].FullName));
+                    if (rmi.Type != type)
+                    {
+                        throw new Exception(
+                            String.Format(
+                                "Cannot bind metric name \"{0}\" to Type {1}. It has already been bound to {2}",
+                                name, type.FullName, rmi.Type.FullName));
+                    }
+
+                    if (rmi.Unit != unit)
+                    {
+                        throw new Exception(
+                            String.Format(
+                                "Cannot bind metric name \"{0}\" to unit \"{1}\". It has already been bound to \"{2}\"",
+                                name, unit, rmi.Unit));
+                    }
+
+                    return;
                 }
 
                 if (!type.IsSubclassOf(typeof (BosunMetric)))
@@ -128,7 +148,7 @@ namespace BosunReporter
                     throw new Exception(String.Format("Cannot bind metric \"{0}\" to Type {1}. It does not inherit from BosunMetric.", name, type.FullName));
                 }
 
-                _rootNameToType[name] = type;
+                _rootNameToInfo[name] = new RootMetricInfo { Type = type, Unit = unit };
             }
         }
 
@@ -166,14 +186,23 @@ namespace BosunReporter
 
             lock (_metricsLock)
             {
-                if (_rootNameToType.ContainsKey(name))
+                RootMetricInfo rmi;
+                if (_rootNameToInfo.TryGetValue(name, out rmi))
                 {
-                    if (_rootNameToType[name] != metricType)
+                    if (rmi.Type != metricType)
                     {
                         throw new Exception(
                             String.Format(
                                 "Attempted to create metric name \"{0}\" with Type {1}. This metric name has already been bound to Type {2}.",
-                                name, metricType.FullName, _rootNameToType[name].FullName));
+                                name, metricType.FullName, rmi.Type.FullName));
+                    }
+
+                    if (rmi.Unit != unit)
+                    {
+                        throw new Exception(
+                            String.Format(
+                                "Cannot bind metric name \"{0}\" to unit \"{1}\". It has already been bound to \"{2}\"",
+                                name, unit, rmi.Unit));
                     }
                 }
                 else if (_nameAndSuffixToRootName.ContainsKey(name))
@@ -181,7 +210,7 @@ namespace BosunReporter
                     throw new Exception(
                         String.Format(
                             "Attempted to create metric name \"{0}\" with Type {1}. This metric name is already in use as a suffix of Type {2}.",
-                            name, metricType.FullName, _rootNameToType[_nameAndSuffixToRootName[name]].FullName));
+                            name, metricType.FullName, _rootNameToInfo[_nameAndSuffixToRootName[name]].Type.FullName));
                 }
 
                 // claim all suffixes. Do this in two passes (check then add) so we don't end up in an inconsistent state.
@@ -198,7 +227,7 @@ namespace BosunReporter
                         throw new Exception(
                             String.Format(
                                 "Attempted to create metric name \"{0}\" with Type {1}. This metric name is already in use as a suffix of Type {2}.",
-                                ns, metricType.FullName, _rootNameToType[_nameAndSuffixToRootName[ns]].FullName));
+                                ns, metricType.FullName, _rootNameToInfo[_nameAndSuffixToRootName[ns]].Type.FullName));
                     }
                 }
 
@@ -208,7 +237,7 @@ namespace BosunReporter
                 }
 
                 // claim the root type
-                _rootNameToType[name] = metricType;
+                _rootNameToInfo[name] = new RootMetricInfo { Type = metricType, Unit = unit };
 
                 // see if this metric name and tag combination already exists
                 var key = metric.MetricKey;

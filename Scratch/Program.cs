@@ -44,7 +44,7 @@ namespace Scratch
             counter.Increment();
 
             var gauge = collector.GetMetric("gauge", "watts", "Some description of a gauge.", new TestAggregateGauge("1"));
-            if (gauge != collector.GetMetric("gauge", null, null, new TestAggregateGauge("1")))
+            if (gauge != collector.GetMetric("gauge", "watts", null, new TestAggregateGauge("1")))
                 throw new Exception("WAT?");
 
             var gauge2 = collector.GetMetric<AggregateGauge>("gauge2", "newtons", "Number of newtons currently applied.");
