@@ -56,14 +56,14 @@ For more details, see the [Tags Documentation](https://github.com/bretcope/Bosun
 
 There are two high-level metric types: counters and gauges.
 
-[Counters](https://github.com/bretcope/BosunReporter.NET/blob/master/docs/MetricTypes.md#counters) are for _counting_ things. The most common use case is to increment a counter each time an event occurs. Bosun/OpenTSDB normalizes this data and is able to show you a rate (events per second) in the graphing interface. BosunReporter has two built-in counter types.
+__[Counters](https://github.com/bretcope/BosunReporter.NET/blob/master/docs/MetricTypes.md#counters)__ are for _counting_ things. The most common use case is to increment a counter each time an event occurs. Bosun/OpenTSDB normalizes this data and is able to show you a rate (events per second) in the graphing interface. BosunReporter has two built-in counter types.
 
 | Name | Description |
 | ---- | ----------- |
 | [Counter](https://github.com/bretcope/BosunReporter.NET/blob/master/docs/MetricTypes.md#counter) | A general-purpose manually incremented long-integer counter. |
 | [SnapshotCounter](https://github.com/bretcope/BosunReporter.NET/blob/master/docs/MetricTypes.md#snapshotcounter) | Calls a user-provided `Func<long?>` to get the current counter value each time metrics are going to be posted to the Bosun API. |
 
-[Gauges](https://github.com/bretcope/BosunReporter.NET/blob/master/docs/MetricTypes.md#gauges) describe a measurement at a point in time. A good example would be measuring how much RAM is being consumed by a process. BosunReporter.NET provides several different built-in types of gauges in order to support different programmatic use cases, but Bosun itself does not differentiate between these types.
+__[Gauges](https://github.com/bretcope/BosunReporter.NET/blob/master/docs/MetricTypes.md#gauges)__ describe a measurement at a point in time. A good example would be measuring how much RAM is being consumed by a process. BosunReporter.NET provides several different built-in types of gauges in order to support different programmatic use cases, but Bosun itself does not differentiate between these types.
 
 | Name | Description |
 | ---- | ----------- |
@@ -72,7 +72,7 @@ There are two high-level metric types: counters and gauges.
 | [AggregateGauge](https://github.com/bretcope/BosunReporter.NET/blob/master/docs/MetricTypes.md#aggregategauge) | Aggregates data points (min, max, avg, median, etc) before sending them to Bosun. Good for recording high-volume events. |
 | [SamplingGauge](https://github.com/bretcope/BosunReporter.NET/blob/master/docs/MetricTypes.md#samplinggauge) | Record as often as you want, but only the last value recorded before the reporting interval is sent to Bosun (it _samples_ the current value). |
 
-If none of the build-in metric types meet your specific needs, it's easy to [create your own](https://github.com/bretcope/BosunReporter.NET/blob/master/docs/MetricTypes.md#create-your-own).
+If none of the built-in metric types meet your specific needs, it's easy to [create your own](https://github.com/bretcope/BosunReporter.NET/blob/master/docs/MetricTypes.md#create-your-own).
 
 ### Metric Groups
 
