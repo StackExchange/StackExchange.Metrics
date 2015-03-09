@@ -132,9 +132,19 @@ namespace BosunReporter
             }
         }
 
+        public T GetMetric<T>(string name, string unit, string description, Func<T> metricFactory) where T : BosunMetric
+        {
+            return GetMetric(name, unit, description, metricFactory());
+        }
+
         public T GetMetric<T>(string name, string unit, string description, T metric = null) where T : BosunMetric
         {
             return GetMetricWithoutPrefix(MetricsNamePrefix + name, unit, description, metric);
+        }
+
+        public T GetMetricWithoutPrefix<T>(string name, string unit, string description, Func<T> metricFactory) where T : BosunMetric
+        {
+            return GetMetricWithoutPrefix(name, unit, description, metricFactory());
         }
 
         public T GetMetricWithoutPrefix<T>(string name, string unit, string description, T metric = null) where T : BosunMetric
