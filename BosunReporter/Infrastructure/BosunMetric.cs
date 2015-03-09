@@ -9,13 +9,25 @@ namespace BosunReporter.Infrastructure
 {
     public abstract class BosunMetric
     {
-        private static readonly IReadOnlyCollection<string> NO_SUFFIXES = new List<string> {""}.AsReadOnly();
-
         public abstract string MetricType { get; }
         public MetricsCollector Collector { get; internal set; }
         public bool IsAttached { get; internal set; }
 
-        public virtual IReadOnlyCollection<string> Suffixes => NO_SUFFIXES;
+        private IReadOnlyCollection<string> _suffixes;
+        private HashSet<string> _suffixSet;
+        public IReadOnlyCollection<string> Suffixes
+        {
+            get
+            {
+                if (_suffixes == null)
+                {
+                    _suffixes = GetSuffixes().ToList().AsReadOnly();
+                    _suffixSet = new HashSet<string>(_suffixes);
+                }
+
+                return _suffixes;
+            }
+        }
 
         private string _tagsJson;
         protected internal string TagsJson => _tagsJson ?? (_tagsJson = GetTagsJson());
@@ -78,6 +90,11 @@ namespace BosunReporter.Infrastructure
             }
         }
 
+        protected virtual IEnumerable<string> GetSuffixes()
+        {
+            yield return "";
+        }
+
         internal IEnumerable<string> Serialize(string unixTimestamp)
         {
             if (_name == null)
@@ -125,6 +142,12 @@ namespace BosunReporter.Infrastructure
 
         private string ToJson(string suffix, string value, string unixTimestamp)
         {
+            if (!_suffixSet.Contains(suffix))
+            {
+                throw new InvalidOperationException("Invalid suffix \"" + suffix + "\" on metric \"" + Name + "\". " +
+                    "This is probably because you forgot to implement GetSuffixes() properly in a custom-coded metric type.");
+            }
+
             return "{\"metric\":\""+ _name + suffix +"\",\"value\":"+ value +",\"tags\":"+ TagsJson +",\"timestamp\":"+ unixTimestamp +"}";
         }
 

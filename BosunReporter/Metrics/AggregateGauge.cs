@@ -29,8 +29,6 @@ namespace BosunReporter.Metrics
 
         public override string MetricType => "gauge";
 
-        public override IReadOnlyCollection<string> Suffixes => _aggregatorStrategy.Suffixes;
-
         public AggregateGauge()
         {
             _aggregatorStrategy = GetAggregatorStategy();
@@ -43,6 +41,11 @@ namespace BosunReporter.Metrics
             // setup heap, if required.
             if (_aggregatorStrategy.UseList)
                 _list = new List<double>();
+        }
+
+        protected override IEnumerable<string> GetSuffixes()
+        {
+            return _aggregatorStrategy.Suffixes;
         }
 
         public void Record(double value)

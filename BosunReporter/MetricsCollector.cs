@@ -56,6 +56,7 @@ namespace BosunReporter
         public bool HasPendingMetrics => PendingMetricsCount > 0;
 
         public event Action<Exception> OnBackgroundException;
+        public bool HasExceptionHandler => OnBackgroundException != null && OnBackgroundException.GetInvocationList().Length != 0;
 
         public IEnumerable<BosunMetric> Metrics => _rootNameAndTagsToMetric.Values.AsEnumerable();
 
@@ -239,7 +240,20 @@ namespace BosunReporter
             var sw = new Stopwatch();
             sw.Start();
 #endif
-            EnqueueMetrics(GetSerializedMetrics());
+            try
+            {
+                EnqueueMetrics(GetSerializedMetrics());
+            }
+            catch (Exception e)
+            {
+                if (HasExceptionHandler)
+                {
+                    OnBackgroundException(e);
+                    return;
+                }
+
+                throw;
+            }
 #if DEBUG
             sw.Stop();
             Debug.WriteLine("BosunReporter: Metric Snapshot took {0}ms", sw.ElapsedMilliseconds);
@@ -279,7 +293,7 @@ namespace BosunReporter
                     _skipFlushes = 4;
                     if (ThrowOnPostFail)
                     {
-                        if (OnBackgroundException != null && OnBackgroundException.GetInvocationList().Length != 0)
+                        if (HasExceptionHandler)
                             OnBackgroundException(ex);
                         else
                             throw;
@@ -392,7 +406,7 @@ namespace BosunReporter
                 {
                     var ex = new BosunQueueFullException();
 
-                    if (OnBackgroundException != null && OnBackgroundException.GetInvocationList().Length != 0)
+                    if (HasExceptionHandler)
                         OnBackgroundException(ex);
                     else
                         throw ex;
