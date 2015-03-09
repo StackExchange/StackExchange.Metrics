@@ -11,7 +11,7 @@ namespace BosunReporter.Metrics
 
         public override string MetricType => "counter";
 
-        protected override IEnumerable<string> GetSerializedMetrics(string unixTimestamp)
+        protected override IEnumerable<string> Serialize(string unixTimestamp)
         {
             yield return ToJson("", Value, unixTimestamp);
         }

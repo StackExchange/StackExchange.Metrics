@@ -118,7 +118,7 @@ sampler.Record(1.2);
 
 ## Create Your Own
 
-The built-in metric types described above should work for most use cases. However, you can also write your own by inheriting from the abstract `BosunMetric` class and writing an implementation for the `MetricType` property, and the `GetSerializedMetrics` method.
+The built-in metric types described above should work for most use cases. However, you can also write your own by inheriting from the abstract `BosunMetric` class and writing an implementation for the `MetricType` property, and the `Serialize` method.
 
 Both of the built-in counter types use a `long` as their value type. Here's how we might implement a floating point counter:
 
@@ -143,7 +143,7 @@ public class DoubleCounter : BosunMetric, IDoubleCounter
 	}
 	
 	// this method is called by the collector when it's time to post to the Bosun API
-	protected override IEnumerable<string> GetSerializedMetrics(string unixTimestamp)
+	protected override IEnumerable<string> Serialize(string unixTimestamp)
 	{
 		// ToJson is a protected method on BosunMetric
 		yield return ToJson("", Value, unixTimestamp);
@@ -153,7 +153,7 @@ public class DoubleCounter : BosunMetric, IDoubleCounter
 
 > Implementing the [IDoubleCounter](https://github.com/bretcope/BosunReporter.NET/blob/master/BosunReporter/Infrastructure/MetricInterfaces.cs#L18) interface is optional, but good practice.
 
-Notice how `GetSerializedMetrics` returns an `IEnumerable<string>` instead of a single string. This is what enables the [AggregateGauge](#aggregategauge) to serialize into multiple metrics with different suffixes. The first argument to `ToJson` is a suffix. In this example, we only have one suffix, which is an empty string.
+Notice how `Serialize` returns an `IEnumerable<string>` instead of a single string. This is what enables the [AggregateGauge](#aggregategauge) to serialize into multiple metrics with different suffixes. The first argument to `ToJson` is a suffix. In this example, we only have one suffix, which is an empty string.
 
 __If you choose to use any other suffix__, or multiple suffixes, you must also override the `protected virtual IEnumerable<string> GetSuffixes()` method so that it returns the suffixes in use. This method is called only once (the first time the `BosunMetric.Suffixes` property is accessed). The results are cached and remain immutable for the lifetime of the metric. BosunReporter uses this list to ensure there are no name collisions. If you attempt to call `ToJson` with a suffix not in the list, an exception will be thrown.
 

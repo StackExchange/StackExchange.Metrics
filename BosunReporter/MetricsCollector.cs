@@ -505,7 +505,7 @@ namespace BosunReporter
             var unixTimestamp = GetUnixTimestamp();
             lock (_metricsLock)
             {
-                return Metrics.AsParallel().Select(m => m.Serialize(unixTimestamp)).SelectMany(s => s).ToList();
+                return Metrics.AsParallel().Select(m => m.SerializeInternal(unixTimestamp)).SelectMany(s => s).ToList();
             }
         }
 

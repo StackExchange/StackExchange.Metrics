@@ -95,15 +95,13 @@ namespace BosunReporter.Infrastructure
             yield return "";
         }
 
-        internal IEnumerable<string> Serialize(string unixTimestamp)
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal IEnumerable<string> SerializeInternal(string unixTimestamp)
         {
-            if (_name == null)
-                throw new NullReferenceException("Cannot serialize a metric which has not been named. Always use BosunReporter.GetMetric() to create metrics.");
-
-            return GetSerializedMetrics(unixTimestamp);
+            return Serialize(unixTimestamp);
         }
 
-        protected abstract IEnumerable<string> GetSerializedMetrics(string unixTimestamp);
+        protected abstract IEnumerable<string> Serialize(string unixTimestamp);
 
         protected void AssertAttached()
         {

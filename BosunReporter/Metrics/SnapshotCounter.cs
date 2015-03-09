@@ -22,7 +22,7 @@ namespace BosunReporter.Metrics
         {
         }
 
-        protected override IEnumerable<string> GetSerializedMetrics(string unixTimestamp)
+        protected override IEnumerable<string> Serialize(string unixTimestamp)
         {
             var val = GetValue();
             if (!val.HasValue)

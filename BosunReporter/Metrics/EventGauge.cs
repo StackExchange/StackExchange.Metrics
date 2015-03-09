@@ -12,7 +12,7 @@ namespace BosunReporter.Metrics
 
         public override string MetricType => "gauge";
 
-        protected override IEnumerable<string> GetSerializedMetrics(string unixTimestamp)
+        protected override IEnumerable<string> Serialize(string unixTimestamp)
         {
             if (_serializedMetrics.Count > 0)
             {
