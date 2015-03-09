@@ -64,6 +64,8 @@ namespace BosunReporter
         public event Action<Exception> OnBackgroundException;
         public bool HasExceptionHandler => OnBackgroundException != null && OnBackgroundException.GetInvocationList().Length != 0;
 
+        public event Action BeforeSerialization;
+
         public IEnumerable<BosunMetric> Metrics => _rootNameAndTagsToMetric.Values.AsEnumerable();
 
         public MetricsCollector(BosunOptions options)
@@ -373,6 +375,9 @@ namespace BosunReporter
 #endif
             try
             {
+                if (BeforeSerialization != null && BeforeSerialization.GetInvocationList().Length != 0)
+                    BeforeSerialization();
+
                 EnqueueMetrics(GetSerializedMetrics());
             }
             catch (Exception e)
