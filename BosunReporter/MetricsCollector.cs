@@ -28,7 +28,7 @@ namespace BosunReporter
         // all of the first-class names which have been claimed (excluding suffixes in aggregate gauges)
         private readonly Dictionary<string, RootMetricInfo> _rootNameToInfo = new Dictionary<string, RootMetricInfo>();
         // this dictionary is to avoid duplicate metrics
-        private readonly Dictionary<string, BosunMetric> _rootNameAndTagsToMetric = new Dictionary<string, BosunMetric>();
+        private Dictionary<string, BosunMetric> _rootNameAndTagsToMetric = new Dictionary<string, BosunMetric>();
         // All of the names which have been claimed, including the metrics which may have multiple suffixes, mapped to their root metric name.
         // This is to prevent suffix collisions with other metrics.
         private readonly Dictionary<string, string> _nameAndSuffixToRootName = new Dictionary<string, string>();
@@ -42,19 +42,19 @@ namespace BosunReporter
         private readonly Timer _reportingTimer;
         private readonly Timer _metaDataTimer;
 
-        internal readonly Dictionary<Type, List<BosunTag>> TagsByTypeCache = new Dictionary<Type, List<BosunTag>>();
+        internal Dictionary<Type, List<BosunTag>> TagsByTypeCache = new Dictionary<Type, List<BosunTag>>();
 
         // options
-        public readonly string MetricsNamePrefix;
-        public Uri BosunUrl;
-        public Func<Uri> GetBosunUrl;
-        public int MaxQueueLength;
-        public int BatchSize;
-        public bool ThrowOnPostFail;
-        public bool ThrowOnQueueFull;
-        public readonly int ReportingInterval;
-        public readonly Func<string, string> PropertyToTagName;
-        public readonly ReadOnlyDictionary<string, string> DefaultTags;
+        public string MetricsNamePrefix { get; }
+        public Uri BosunUrl { get; set; }
+        public Func<Uri> GetBosunUrl { get; set; }
+        public int MaxQueueLength { get; set; }
+        public int BatchSize { get; set; }
+        public bool ThrowOnPostFail { get; set; }
+        public bool ThrowOnQueueFull { get; set; }
+        public int ReportingInterval { get; }
+        public Func<string, string> PropertyToTagName { get; }
+        public ReadOnlyDictionary<string, string> DefaultTags { get; private set; }
 
         public bool ShutdownCalled { get; private set; }
 
@@ -284,6 +284,78 @@ namespace BosunReporter
             _metaDataTimer.Dispose();
             Snapshot(false);
             Flush(false);
+        }
+
+        public void UpdateDefaultTags(Dictionary<string, string> defaultTags)
+        {
+            // validate
+            var validated = ValidateDefaultTags(defaultTags);
+
+            // don't want any new metrics to be created while we're figuring things out
+            lock (_metricsLock)
+            {
+                // first, check if anything actually changed
+                if (AreIdenticalTags(DefaultTags, validated))
+                {
+                    Debug.WriteLine("Not updating default tags. The new defaults are the same as the previous defaults.");
+                    return;
+                }
+
+                // there are differences, now make sure we can apply the new defaults without collisions
+                var rootNameAndTagsToMetric = new Dictionary<string, BosunMetric>();
+                var tagsByTypeCache = new Dictionary<Type, List<BosunTag>>();
+                var tagsJsonByKey = new Dictionary<string, string>();
+                foreach (var m in Metrics)
+                {
+                    var tagsJson = m.GetTagsJson(validated, tagsByTypeCache);
+                    var key = m.GetMetricKey(tagsJson);
+
+                    if (rootNameAndTagsToMetric.ContainsKey(key))
+                    {
+                        throw new InvalidOperationException("Cannot update default tags. Doing so would cause collisions.");
+                    }
+
+                    rootNameAndTagsToMetric.Add(key, m);
+                    tagsJsonByKey.Add(key, tagsJson);
+                }
+
+#if DEBUG
+                Debug.WriteLine("Updating default tags:");
+                foreach (var kvp in validated)
+                {
+                    Debug.WriteLine("  " + kvp.Key + ": " + kvp.Value);
+                }
+#endif
+
+                // looks like we can successfully swap in the new default tags
+                foreach (var kvp in rootNameAndTagsToMetric)
+                {
+                    var key = kvp.Key;
+                    var m = kvp.Value;
+                    m.SwapTagsJson(tagsJsonByKey[key]);
+                }
+
+                TagsByTypeCache = tagsByTypeCache;
+                _rootNameAndTagsToMetric = rootNameAndTagsToMetric;
+                DefaultTags = validated;
+            }
+        }
+
+        private static bool AreIdenticalTags(ReadOnlyDictionary<string, string> a, ReadOnlyDictionary<string, string> b)
+        {
+            foreach (var kvp in a)
+            {
+                if (!b.ContainsKey(kvp.Key) || b[kvp.Key] != kvp.Value)
+                    return false;
+            }
+
+            foreach (var kvp in b)
+            {
+                if (!a.ContainsKey(kvp.Key) || a[kvp.Key] != kvp.Value)
+                    return false;
+            }
+
+            return true;
         }
 
         private void Snapshot(object isCalledFromTimer)

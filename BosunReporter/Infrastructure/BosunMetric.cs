@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
@@ -30,12 +31,12 @@ namespace BosunReporter.Infrastructure
         }
 
         private string _tagsJson;
-        protected internal string TagsJson => _tagsJson ?? (_tagsJson = GetTagsJson());
+        protected internal string TagsJson => _tagsJson ?? (_tagsJson = GetTagsJson(Collector.DefaultTags, Collector.TagsByTypeCache));
 
         private string _name;
         private readonly object _nameLock = new object();
 
-        internal string MetricKey => _name + TagsJson;
+        internal string MetricKey => GetMetricKey(TagsJson);
 
         public string Name
         {
@@ -60,6 +61,17 @@ namespace BosunReporter.Infrastructure
 
         protected BosunMetric()
         {
+        }
+
+        internal string GetMetricKey(string tagsJson)
+        {
+            return _name + tagsJson;
+        }
+
+        // this method is only used when default tags are updated
+        internal void SwapTagsJson(string tagsJson)
+        {
+            _tagsJson = tagsJson;
         }
 
         public virtual string GetDescription(string suffix)
@@ -149,12 +161,12 @@ namespace BosunReporter.Infrastructure
             return "{\"metric\":\""+ _name + suffix +"\",\"value\":"+ value +",\"tags\":"+ TagsJson +",\"timestamp\":"+ unixTimestamp +"}";
         }
 
-        private string GetTagsJson()
+        internal string GetTagsJson(ReadOnlyDictionary<string, string> defaultTags, Dictionary<Type, List<BosunTag>> tagsByTypeCache)
         {
             var sb = new StringBuilder();
-            foreach (var tag in GetTagsList())
+            foreach (var tag in GetTagsList(defaultTags, tagsByTypeCache))
             {
-                var value = tag.IsFromDefault ? Collector.DefaultTags[tag.Name] : (string)tag.FieldInfo.GetValue(this);
+                var value = tag.IsFromDefault ? defaultTags[tag.Name] : (string)tag.FieldInfo.GetValue(this);
                 if (value == null)
                 {
                     if (tag.IsOptional)
@@ -187,13 +199,12 @@ namespace BosunReporter.Infrastructure
             sb.Append('}');
             return sb.ToString();
         }
-
-        // todo: store a static cache of the tag list so we don't have to do reflection for every metric instantiated
-        private List<BosunTag> GetTagsList()
+        
+        private List<BosunTag> GetTagsList(ReadOnlyDictionary<string, string> defaultTags, Dictionary<Type, List<BosunTag>> tagsByTypeCache)
         {
             var type = GetType();
-            if (Collector.TagsByTypeCache.ContainsKey(type))
-                return Collector.TagsByTypeCache[type];
+            if (tagsByTypeCache.ContainsKey(type))
+                return tagsByTypeCache[type];
 
             // build list of tag members of the current type
             var fields = type.GetFields();
@@ -208,7 +219,7 @@ namespace BosunReporter.Infrastructure
             // get default tags
             if (type.GetCustomAttribute<IgnoreDefaultBosunTagsAttribute>(true) == null)
             {
-                foreach (var name in Collector.DefaultTags.Keys)
+                foreach (var name in defaultTags.Keys)
                 {
                     if (tags.Any(t => t.Name == name))
                         continue;

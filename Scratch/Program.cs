@@ -91,6 +91,11 @@ namespace Scratch
                     }
 
                 }, null, 1000, 1000);
+
+            Thread.Sleep(4000);
+            collector.UpdateDefaultTags(new Dictionary<string, string> { { "host", NameTransformers.Sanitize(Environment.MachineName.ToLower()) } });
+//            Thread.Sleep(4000);
+//            collector.UpdateDefaultTags(new Dictionary<string, string>() { { "host", "test_env" } });
         }
 
         static void Run(object obj)
