@@ -53,6 +53,18 @@ namespace Scratch
                 new Thread(Run).Start(new Tuple<AggregateGauge, AggregateGauge, int>(gauge, gauge2, i));
             }
 
+            Type t;
+            string u;
+            if (collector.TryGetMetricInfo("gauge2", out t, out u))
+            {
+                Console.WriteLine(t);
+                Console.WriteLine(u);
+            }
+            else
+            {
+                Console.WriteLine("NOOOOO!!!!!");
+            }
+
             var si = 0;
             var snapshot = collector.GetMetric("my_snapshot", "snappys", "Snap snap snap.", new SnapshotGauge(() => ++si % 5));
 

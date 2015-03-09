@@ -94,6 +94,26 @@ namespace BosunReporter
                 _metaDataTimer = new Timer(PostMetaData, true, TimeSpan.FromSeconds(30), TimeSpan.FromSeconds(options.MetaDataReportingInterval));
         }
 
+        public bool TryGetMetricInfo(string name, out Type type, out string unit)
+        {
+            return TryGetMetricWithoutPrefixInfo(MetricsNamePrefix + name, out type, out unit);
+        }
+
+        public bool TryGetMetricWithoutPrefixInfo(string name, out Type type, out string unit)
+        {
+            RootMetricInfo rmi;
+            if (_rootNameToInfo.TryGetValue(name, out rmi))
+            {
+                type = rmi.Type;
+                unit = rmi.Unit;
+                return true;
+            }
+
+            type = null;
+            unit = null;
+            return false;
+        }
+
         private ReadOnlyDictionary<string, string> ValidateDefaultTags(Dictionary<string, string> tags)
         {
             var defaultTags = tags == null
