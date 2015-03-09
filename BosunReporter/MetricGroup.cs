@@ -87,9 +87,9 @@ namespace BosunReporter
 				isNew = true;
 				TMetric metric;
 				if (WithoutPrefix)
-					metric = _collector.GetMetric(Name, Unit, Description, _metricFactory(tag1));
-				else
 					metric = _collector.GetMetricWithoutPrefix(Name, Unit, Description, _metricFactory(tag1));
+				else
+					metric = _collector.GetMetric(Name, Unit, Description, _metricFactory(tag1));
 
 				_metrics[tag1] = metric;
 				return metric;
@@ -198,9 +198,9 @@ namespace BosunReporter
 				isNew = true;
 				TMetric metric;
 				if (WithoutPrefix)
-					metric = _collector.GetMetric(Name, Unit, Description, _metricFactory(tag1, tag2));
-				else
 					metric = _collector.GetMetricWithoutPrefix(Name, Unit, Description, _metricFactory(tag1, tag2));
+				else
+					metric = _collector.GetMetric(Name, Unit, Description, _metricFactory(tag1, tag2));
 
 				_metrics[key] = metric;
 				return metric;
@@ -311,9 +311,9 @@ namespace BosunReporter
 				isNew = true;
 				TMetric metric;
 				if (WithoutPrefix)
-					metric = _collector.GetMetric(Name, Unit, Description, _metricFactory(tag1, tag2, tag3));
-				else
 					metric = _collector.GetMetricWithoutPrefix(Name, Unit, Description, _metricFactory(tag1, tag2, tag3));
+				else
+					metric = _collector.GetMetric(Name, Unit, Description, _metricFactory(tag1, tag2, tag3));
 
 				_metrics[key] = metric;
 				return metric;
@@ -424,9 +424,9 @@ namespace BosunReporter
 				isNew = true;
 				TMetric metric;
 				if (WithoutPrefix)
-					metric = _collector.GetMetric(Name, Unit, Description, _metricFactory(tag1, tag2, tag3, tag4));
-				else
 					metric = _collector.GetMetricWithoutPrefix(Name, Unit, Description, _metricFactory(tag1, tag2, tag3, tag4));
+				else
+					metric = _collector.GetMetric(Name, Unit, Description, _metricFactory(tag1, tag2, tag3, tag4));
 
 				_metrics[key] = metric;
 				return metric;
@@ -537,9 +537,9 @@ namespace BosunReporter
 				isNew = true;
 				TMetric metric;
 				if (WithoutPrefix)
-					metric = _collector.GetMetric(Name, Unit, Description, _metricFactory(tag1, tag2, tag3, tag4, tag5));
-				else
 					metric = _collector.GetMetricWithoutPrefix(Name, Unit, Description, _metricFactory(tag1, tag2, tag3, tag4, tag5));
+				else
+					metric = _collector.GetMetric(Name, Unit, Description, _metricFactory(tag1, tag2, tag3, tag4, tag5));
 
 				_metrics[key] = metric;
 				return metric;

@@ -116,9 +116,9 @@ namespace BosunReporter
 				isNew = true;
 				TMetric metric;
 				if (WithoutPrefix)
-					metric = _collector.GetMetric(Name, Unit, Description, _metricFactory(<#= tagList #>));
-				else
 					metric = _collector.GetMetricWithoutPrefix(Name, Unit, Description, _metricFactory(<#= tagList #>));
+				else
+					metric = _collector.GetMetric(Name, Unit, Description, _metricFactory(<#= tagList #>));
 
 				_metrics[<#= dictionaryKeyValue #>] = metric;
 				return metric;
