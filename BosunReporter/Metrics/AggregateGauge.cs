@@ -80,6 +80,57 @@ namespace BosunReporter.Metrics
             }
         }
 
+        public override string GetDescription(string suffix)
+        {
+            if (!String.IsNullOrEmpty(Description))
+            {
+                var aggregator = _aggregatorStrategy.Aggregators.First(a => a.Suffix == suffix);
+
+                switch (aggregator.AggregateMode)
+                {
+                    case AggregateMode.Last:
+                        return Description + " (last)";
+                    case AggregateMode.Average:
+                        return Description + " (average)";
+                    case AggregateMode.Max:
+                        return Description + " (maximum)";
+                    case AggregateMode.Min:
+                        return Description + " (minimum)";
+                    case AggregateMode.Median:
+                        return Description + " (median)";
+                    case AggregateMode.Percentile:
+                        return Description + " (" + DoubleToPercentileString(aggregator.Percentile) + ")";
+                }
+            }
+
+            return Description;
+        }
+
+        private static string DoubleToPercentileString(double pct)
+        {
+            var ip = (int)(pct * 100.0);
+            var lastDigit = ip % 10;
+
+            string ending;
+            switch (lastDigit)
+            {
+                case 1:
+                    ending = "st";
+                    break;
+                case 2:
+                    ending = "nd";
+                    break;
+                case 3:
+                    ending = "rd";
+                    break;
+                default:
+                    ending = "th";
+                    break;
+            }
+
+            return ip + ending + " percentile";
+        }
+
         protected override IEnumerable<string> Serialize(string unixTimestamp)
         {
             var snapshot = GetSnapshot();
