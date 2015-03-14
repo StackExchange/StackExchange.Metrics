@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
 using BosunReporter.Infrastructure;
@@ -21,6 +22,7 @@ namespace BosunReporter.Metrics
         private readonly bool _specialCaseLast;
 
         private List<double> _list;
+        private List<double> _warmlist;
         private double _min = Double.PositiveInfinity;
         private double _max = Double.NegativeInfinity;
         private double _last;
@@ -159,7 +161,14 @@ namespace BosunReporter.Metrics
 
                 list = _list;
                 if (list != null)
-                    _list = new List<double>();
+                {
+#if DEBUG
+                    if (_warmlist != null)
+                        Debug.WriteLine("BosunReporter: Re-using pre-warmed list for aggregate gauge.");
+#endif
+                    _list = _warmlist ?? new List<double>();
+                    _warmlist = null;
+                }
 
                 last = _last;
                 min = _min;
@@ -197,6 +206,16 @@ namespace BosunReporter.Metrics
                 {
                     var index = (int) Math.Round(p*lastIndex);
                     snapshot[p] = list[index];
+                }
+
+                if (list.Count * 2 >= list.Capacity)
+                {
+                    // if at least half of the list capacity was used, then we'll consider re-using this list.
+                    list.Clear();
+                    lock (_recordLock)
+                    {
+                        _warmlist = list;
+                    }
                 }
             }
 
