@@ -42,10 +42,23 @@ namespace Scratch
             var counter = collector.GetMetric<TestCounter>("my_counter", "increments", "This is meaningless.");
             counter.Increment();
             counter.Increment();
-
-            var gauge = collector.GetMetric("gauge", "watts", "Some description of a gauge.", new TestAggregateGauge("1"));
+            
+            var gauge = collector.CreateMetric("gauge", "watts", "Some description of a gauge.", new TestAggregateGauge("1"));
             if (gauge != collector.GetMetric("gauge", "watts", null, new TestAggregateGauge("1")))
                 throw new Exception("WAT?");
+
+            try
+            {
+                collector.CreateMetric("gauge", "watts", "Some description of a gauge.", new TestAggregateGauge("1"));
+            }
+            catch(Exception)
+            {
+                goto SKIP_EXCEPTION;
+            }
+
+            throw new Exception("CreateMetric should have failed for duplicate metric.");
+
+            SKIP_EXCEPTION:
 
             var gauge2 = collector.GetMetric<AggregateGauge>("gauge2", "newtons", "Number of newtons currently applied.");
             for (var i = 0; i < 6; i++)

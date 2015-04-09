@@ -174,23 +174,67 @@ namespace BosunReporter
             }
         }
 
+        /// <summary>
+        /// Creates a metric and adds it to the collector. An exception will be thrown if a metric by the same name and tag values already exists.
+        /// The MetricsNamePrefix will be prepended to the metric name.
+        /// </summary>
+        public T CreateMetric<T>(string name, string unit, string description, Func<T> metricFactory) where T : BosunMetric
+        {
+            return GetMetricInternal(name, true, unit, description, metricFactory(), true);
+        }
+
+        public T CreateMetric<T>(string name, string unit, string description, T metric = null) where T : BosunMetric
+        {
+            return GetMetricInternal(name, true, unit, description, metric, true);
+        }
+
+        /// <summary>
+        /// Creates a metric and adds it to the collector. An exception will be thrown if a metric by the same name and tag values already exists.
+        /// The MetricsNamePrefix will NOT be prepended to the metric name.
+        /// </summary>
+        public T CreateMetricWithoutPrefix<T>(string name, string unit, string description, Func<T> metricFactory) where T : BosunMetric
+        {
+            return GetMetricInternal(name, false, unit, description, metricFactory(), true);
+        }
+
+        public T CreateMetricWithoutPrefix<T>(string name, string unit, string description, T metric = null) where T : BosunMetric
+        {
+            return GetMetricInternal(name, false, unit, description, metric, true);
+        }
+
+        /// <summary>
+        /// Creates a metric and adds it to the collector. If a metric by the same name and tag values already exists, then that metric is returned.
+        /// The MetricsNamePrefix will be prepended to the metric name.
+        /// </summary>
         public T GetMetric<T>(string name, string unit, string description, Func<T> metricFactory) where T : BosunMetric
         {
-            return GetMetric(name, unit, description, metricFactory());
+            return GetMetricInternal(name, true, unit, description, metricFactory(), false);
         }
 
         public T GetMetric<T>(string name, string unit, string description, T metric = null) where T : BosunMetric
         {
-            return GetMetricWithoutPrefix(MetricsNamePrefix + name, unit, description, metric);
+            return GetMetricInternal(name, true, unit, description, metric, false);
         }
 
+        /// <summary>
+        /// Creates a metric and adds it to the collector. If a metric by the same name and tag values already exists, then that metric is returned.
+        /// The MetricsNamePrefix will NOT be prepended to the metric name.
+        /// </summary>
         public T GetMetricWithoutPrefix<T>(string name, string unit, string description, Func<T> metricFactory) where T : BosunMetric
         {
-            return GetMetricWithoutPrefix(name, unit, description, metricFactory());
+            return GetMetricInternal(name, false, unit, description, metricFactory(), false);
         }
 
         public T GetMetricWithoutPrefix<T>(string name, string unit, string description, T metric = null) where T : BosunMetric
         {
+            return GetMetricInternal(name, false, unit, description, metric, false);
+        }
+
+        private T GetMetricInternal<T>(string name, bool addPrefix, string unit, string description, T metric, bool mustBeNew) where T : BosunMetric
+        {
+            if (addPrefix)
+                name = MetricsNamePrefix + name;
+
             var metricType = typeof (T);
             if (metric == null)
             {
@@ -264,7 +308,12 @@ namespace BosunReporter
                 // see if this metric name and tag combination already exists
                 var key = metric.MetricKey;
                 if (_rootNameAndTagsToMetric.ContainsKey(key))
+                {
+                    if (mustBeNew)
+                        throw new Exception(String.Format("Attempted to create duplicate metric with name \"{0}\" and tags {1}.", name, metric.TagsJson));
+
                     return (T) _rootNameAndTagsToMetric[key];
+                }
 
                 // metric doesn't exist yet.
                 _rootNameAndTagsToMetric[key] = metric;
