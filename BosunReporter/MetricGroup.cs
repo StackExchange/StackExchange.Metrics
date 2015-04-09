@@ -116,6 +116,24 @@ namespace BosunReporter
 
 			return (tag1) => (TMetric)constructor.Invoke(new object[] { tag1 });
 		}
+
+
+        /// <summary>
+        /// This method may only be called if T1 is an enum type. It calls Add() for every enum value of T1.
+        /// </summary>
+        public void PopulateFromEnum()
+        {
+            var type = typeof(T1);
+            if (!type.IsEnum)
+                throw new Exception("PopulateFromEnum can only be called when the type argument T1 is an enum type.");
+                
+            foreach (var val in Enum.GetValues(type))
+            {
+                Add((T1)val);
+            }
+        }
+
+
 	}
 
 
@@ -229,6 +247,9 @@ namespace BosunReporter
 
 			return (tag1, tag2) => (TMetric)constructor.Invoke(new object[] { tag1, tag2 });
 		}
+
+
+
 	}
 
 
@@ -342,6 +363,9 @@ namespace BosunReporter
 
 			return (tag1, tag2, tag3) => (TMetric)constructor.Invoke(new object[] { tag1, tag2, tag3 });
 		}
+
+
+
 	}
 
 
@@ -455,6 +479,9 @@ namespace BosunReporter
 
 			return (tag1, tag2, tag3, tag4) => (TMetric)constructor.Invoke(new object[] { tag1, tag2, tag3, tag4 });
 		}
+
+
+
 	}
 
 
@@ -568,6 +595,9 @@ namespace BosunReporter
 
 			return (tag1, tag2, tag3, tag4, tag5) => (TMetric)constructor.Invoke(new object[] { tag1, tag2, tag3, tag4, tag5 });
 		}
+
+
+
 	}
 
 

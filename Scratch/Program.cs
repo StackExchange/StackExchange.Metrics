@@ -53,6 +53,9 @@ namespace Scratch
                 new Thread(Run).Start(new Tuple<AggregateGauge, AggregateGauge, int>(gauge, gauge2, i));
             }
 
+            var enumCounter = collector.GetMetricGroup<SomeEnum, EnumCounter>("some_enum", "things", "Some of something");
+            enumCounter.PopulateFromEnum();
+
             Type t;
             string u;
             if (collector.TryGetMetricInfo("gauge2", out t, out u))
@@ -83,6 +86,11 @@ namespace Scratch
                     group["low"].Record(random.Next(0, 10));
                     group["medium"].Record(random.Next(10, 20));
                     group["high"].Record(random.Next(20, 30));
+
+                    enumCounter[SomeEnum.One].Increment();
+                    enumCounter[SomeEnum.Two].Increment(2);
+                    enumCounter[SomeEnum.Three].Increment(3);
+                    enumCounter[SomeEnum.Four].Increment(4);
 
                     if (sai == 40)
                     {
@@ -176,6 +184,24 @@ namespace Scratch
         public TestGroupGauge(string range)
         {
             Range = range;
+        }
+    }
+
+    public enum SomeEnum
+    {
+        One = 1,
+        Two = 2,
+        Three = 3,
+        Four = 4,
+    }
+
+    public class EnumCounter : Counter
+    {
+        [BosunTag] public readonly string Value;
+
+        public EnumCounter(SomeEnum val)
+        {
+            Value = val.ToString();
         }
     }
 }

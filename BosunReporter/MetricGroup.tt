@@ -147,6 +147,24 @@ namespace BosunReporter
 
 			return (<#= tagList #>) => (TMetric)constructor.Invoke(new object[] { <#= tagList #> });
 		}
+
+<# if (dimensions == 1) { #>
+        /// <summary>
+        /// This method may only be called if T1 is an enum type. It calls Add() for every enum value of T1.
+        /// </summary>
+        public void PopulateFromEnum()
+        {
+            var type = typeof(T1);
+            if (!type.IsEnum)
+                throw new Exception("PopulateFromEnum can only be called when the type argument T1 is an enum type.");
+                
+            foreach (var val in Enum.GetValues(type))
+            {
+                Add((T1)val);
+            }
+        }
+<# } #>
+
 	}
 
 <#
