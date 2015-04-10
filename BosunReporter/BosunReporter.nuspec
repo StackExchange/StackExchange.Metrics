@@ -16,4 +16,7 @@
       <dependency id="Jil" version="2.9.0"/>
     </dependencies>
   </metadata>
+  <files>
+    <file src="bin\Release\BosunReporter.*" target="lib" />
+  </files>
 </package>
