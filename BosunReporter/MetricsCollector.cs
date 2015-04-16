@@ -499,11 +499,9 @@ namespace BosunReporter
 
             Debug.WriteLine("BosunReporter: Flushing metrics batch. Size: " + batch.Count);
 
-            var body = '[' + String.Join(",", batch) + ']';
-
             try
             {
-                PostToBosun("/api/put", true, sw => sw.Write(body));
+                PostToBosun("/api/put", true, sw => WriteJsonArrayBody(sw, batch));
             }
             catch (Exception)
             {
@@ -512,6 +510,24 @@ namespace BosunReporter
                 EnqueueMetrics(batch);
                 throw;
             }
+        }
+
+        private static void WriteJsonArrayBody(StreamWriter sw, List<string> batch)
+        {
+            sw.Write("[");
+
+            var first = true;
+            foreach (var o in batch)
+            {
+                if (first)
+                    first = false;
+                else
+                    sw.Write(",");
+
+                sw.Write(o);
+            }
+
+            sw.Write("]");
         }
 
         private delegate void ApiPostWriter(StreamWriter sw);
