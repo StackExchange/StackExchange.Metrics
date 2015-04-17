@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Reflection;
 using BosunReporter.Infrastructure;
@@ -20,6 +21,7 @@ namespace BosunReporter.Metrics
         private readonly bool _specialCaseMax;
         private readonly bool _specialCaseMin;
         private readonly bool _specialCaseLast;
+        private readonly bool _reportCount;
 
         private List<double> _list;
         private List<double> _warmlist;
@@ -39,6 +41,7 @@ namespace BosunReporter.Metrics
             _specialCaseMin = _aggregatorStrategy.SpecialCaseMin;
             _specialCaseMax = _aggregatorStrategy.SpecialCaseMax;
             _specialCaseLast = _aggregatorStrategy.SpecialCaseLast;
+            _reportCount = _aggregatorStrategy.ReportCount;
 
             // setup heap, if required.
             if (_aggregatorStrategy.UseList)
@@ -102,6 +105,8 @@ namespace BosunReporter.Metrics
                         return Description + " (median)";
                     case AggregateMode.Percentile:
                         return Description + " (" + DoubleToPercentileString(aggregator.Percentile) + ")";
+                    case AggregateMode.Count:
+                        return Description + " (count of the number of events recorded)";
                 }
             }
 
@@ -183,6 +188,8 @@ namespace BosunReporter.Metrics
 
             var snapshot = new Dictionary<double, double>();
 
+            if (_reportCount)
+                snapshot[-3.0] = count;
             if (_specialCaseLast)
                 snapshot[-2.0] = last;
             if (_trackMean)
@@ -259,8 +266,10 @@ namespace BosunReporter.Metrics
             public readonly bool SpecialCaseLast;
             public readonly bool TrackLast;
             public readonly bool TrackMean;
+            public readonly bool ReportCount;
             public readonly ReadOnlyCollection<double> Percentiles;
 
+            [SuppressMessage("ReSharper", "CompareOfFloatsByEqualityOperator")]
             public GaugeAggregatorStrategy(ReadOnlyCollection<GaugeAggregatorAttribute> aggregators)
             {
                 Aggregators = aggregators;
@@ -272,14 +281,21 @@ namespace BosunReporter.Metrics
                 {
                     suffixes.Add(r.Suffix);
 
-                    if (r.Percentile == -1.0)
+                    if (r.Percentile < 0)
                     {
-                        TrackMean = true;
-                    }
-                    else if (r.Percentile == -2.0)
-                    {
-                        SpecialCaseLast = true;
-                        TrackLast = true;
+                        if (r.Percentile == -1.0)
+                        {
+                            TrackMean = true;
+                        }
+                        else if (r.Percentile == -2.0)
+                        {
+                            SpecialCaseLast = true;
+                            TrackLast = true;
+                        }
+                        else if (r.Percentile == -3.0)
+                        {
+                            ReportCount = true;
+                        }
                     }
                     else if (r.Percentile == 0.0)
                     {
@@ -329,7 +345,8 @@ namespace BosunReporter.Metrics
         Percentile,
         Max,
         Min,
-        Last
+        Last,
+        Count,
     }
 
     [AttributeUsage(AttributeTargets.Class, AllowMultiple = true)]
@@ -358,6 +375,10 @@ namespace BosunReporter.Metrics
                 case AggregateMode.Last:
                     Percentile = -2.0;
                     defaultSuffix = "";
+                    break;
+                case AggregateMode.Count:
+                    Percentile = -3.0;
+                    defaultSuffix = "_count";
                     break;
                 case AggregateMode.Median:
                     Percentile = 0.5;

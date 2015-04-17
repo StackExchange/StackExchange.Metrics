@@ -142,6 +142,7 @@ namespace Scratch
         }
     }
 
+    [GaugeAggregator(AggregateMode.Count)]
     [GaugeAggregator(AggregateMode.Average)]
     [GaugeAggregator(AggregateMode.Max)]
     [GaugeAggregator(AggregateMode.Min)]
