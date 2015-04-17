@@ -85,9 +85,9 @@ namespace Scratch
             var snapshot = collector.GetMetric("my_snapshot", "snappys", "Snap snap snap.", new SnapshotGauge(() => ++si % 5));
 
             var group = collector.GetMetricGroup<string, TestGroupGauge>("test_group", "tests", "These gauges are for testing.");
-            group.Add("low");
-            group.Add("medium");
-            group.Add("high");
+            group.Add("low").Description = "Low testing.";
+            group.Add("medium").Description = "Medium testing.";
+            group.Add("high").Description = "High testing.";
             var sampler = collector.GetMetric("sampler", "french fries", "Collect them all.", new SamplingGauge());
             var eventGauge = collector.GetMetric("event", "count", "How many last time.", new EventGauge());
             var sai = 0;
