@@ -639,7 +639,7 @@ namespace BosunReporter
 
         internal static string GetUnixTimestamp()
         {
-            return ((long)(DateTime.UtcNow - UnixEpoch).TotalSeconds).ToString("D");
+            return ((long)(DateTime.UtcNow - UnixEpoch).TotalMilliseconds).ToString("D");
         }
 
         private IEnumerable<string> GetSerializedMetrics()
