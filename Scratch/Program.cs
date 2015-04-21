@@ -28,6 +28,7 @@ namespace Scratch
                 ThrowOnPostFail = true,
                 ReportingInterval = 5,
                 PropertyToTagName = NameTransformers.CamelToLowerSnakeCase,
+                TagValueConverter = (name, value) => name == "converted" ? value.ToLowerInvariant() : value,
                 DefaultTags = new Dictionary<string, string> { {"host", NameTransformers.Sanitize(Environment.MachineName.ToLower())} }
             };
             var collector = new MetricsCollector(options);
@@ -90,6 +91,8 @@ namespace Scratch
             group.Add("high").Description = "High testing.";
             var sampler = collector.GetMetric("sampler", "french fries", "Collect them all.", new SamplingGauge());
             var eventGauge = collector.GetMetric("event", "count", "How many last time.", new EventGauge());
+            var converted = collector.CreateMetric("convert_test", "units", "Checking to see if the tag value converter works.", new ConvertedTagsTestCounter("ThingsAndStuff"));
+
             var sai = 0;
             var random = new Random();
             _samplerTimer = new Timer(o => 
@@ -104,6 +107,8 @@ namespace Scratch
                     enumCounter[SomeEnum.Two].Increment(2);
                     enumCounter[SomeEnum.Three].Increment(3);
                     enumCounter[SomeEnum.Four].Increment(4);
+
+                    converted.Increment();
 
                     if (sai == 40)
                     {
@@ -216,6 +221,16 @@ namespace Scratch
         public EnumCounter(SomeEnum val)
         {
             Value = val.ToString();
+        }
+    }
+
+    public class ConvertedTagsTestCounter : Counter
+    {
+        [BosunTag] public readonly string Converted;
+
+        public ConvertedTagsTestCounter(string toConvert)
+        {
+            Converted = toConvert;
         }
     }
 }

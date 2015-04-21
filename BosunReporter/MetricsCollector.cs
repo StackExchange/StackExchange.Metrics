@@ -54,6 +54,7 @@ namespace BosunReporter
         public bool ThrowOnQueueFull { get; set; }
         public int ReportingInterval { get; }
         public Func<string, string> PropertyToTagName { get; }
+        public TagValueConverterDelegate TagValueConverter { get; }
         public ReadOnlyDictionary<string, string> DefaultTags { get; private set; }
 
         public bool ShutdownCalled { get; private set; }
@@ -82,6 +83,7 @@ namespace BosunReporter
             ThrowOnQueueFull = options.ThrowOnQueueFull;
             ReportingInterval = options.ReportingInterval;
             PropertyToTagName = options.PropertyToTagName;
+            TagValueConverter = options.TagValueConverter;
             DefaultTags = ValidateDefaultTags(options.DefaultTags);
 
             // start continuous queue-flushing
@@ -122,13 +124,16 @@ namespace BosunReporter
                 ? new Dictionary<string, string>()
                 : new Dictionary<string, string>(tags);
 
-            foreach (var kvp in defaultTags)
+            foreach (var key in defaultTags.Keys.ToArray())
             {
-                if (!Validation.IsValidTagName(kvp.Key))
-                    throw new Exception(String.Format("\"{0}\" is not a valid Bosun tag name.", kvp.Key));
+                if (!Validation.IsValidTagName(key))
+                    throw new Exception(String.Format("\"{0}\" is not a valid Bosun tag name.", key));
 
-                if (!Validation.IsValidTagValue(kvp.Value))
-                    throw new Exception(String.Format("\"{0}\" is not a valid Bosun tag value.", kvp.Value));
+                if (TagValueConverter != null)
+                    defaultTags[key] = TagValueConverter(key, defaultTags[key]);
+
+                if (!Validation.IsValidTagValue(defaultTags[key]))
+                    throw new Exception(String.Format("\"{0}\" is not a valid Bosun tag value.", defaultTags[key]));
             }
 
             return new ReadOnlyDictionary<string, string>(defaultTags);
@@ -358,7 +363,7 @@ namespace BosunReporter
                 var tagsJsonByKey = new Dictionary<string, string>();
                 foreach (var m in Metrics)
                 {
-                    var tagsJson = m.GetTagsJson(validated, tagsByTypeCache);
+                    var tagsJson = m.GetTagsJson(validated, TagValueConverter, tagsByTypeCache);
                     var key = m.GetMetricKey(tagsJson);
 
                     if (rootNameAndTagsToMetric.ContainsKey(key))

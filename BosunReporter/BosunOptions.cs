@@ -3,6 +3,8 @@ using System.Collections.Generic;
 
 namespace BosunReporter
 {
+    public delegate string TagValueConverterDelegate(string tagName, string tagValue);
+
     public class BosunOptions
     {
         /// <summary>
@@ -53,6 +55,13 @@ namespace BosunReporter
         /// This function does not apply to any tag names which are set manually via the BosunTag attribute.
         /// </summary>
         public Func<string, string> PropertyToTagName;
+        /// <summary>
+        /// Allows you to specify a function which takes a tag name and value, and returns a possibly altered value.
+        /// This could be used as a global sanitizer or normalizer. It is applied to all tag values, including default tags.
+        /// If the return value is not a valid OpenTSDB tag, an exception will be thrown.
+        /// Null values are possible for the tagValue argument, so be sure to handle nulls appropriately.
+        /// </summary>
+        public TagValueConverterDelegate TagValueConverter;
         /// <summary>
         /// A list of tag names/values which will be automatically inculuded on every metric.
         /// The IgnoreDefaultTags attribute can be used on classes inheriting from BosunMetric to exclude default tags.

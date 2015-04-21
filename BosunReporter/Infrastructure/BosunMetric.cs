@@ -31,7 +31,7 @@ namespace BosunReporter.Infrastructure
         }
 
         private string _tagsJson;
-        protected internal string TagsJson => _tagsJson ?? (_tagsJson = GetTagsJson(Collector.DefaultTags, Collector.TagsByTypeCache));
+        protected internal string TagsJson => _tagsJson ?? (_tagsJson = GetTagsJson(Collector.DefaultTags, Collector.TagValueConverter, Collector.TagsByTypeCache));
 
         private string _name;
         private readonly object _nameLock = new object();
@@ -161,12 +161,13 @@ namespace BosunReporter.Infrastructure
             return "{\"metric\":\""+ _name + suffix +"\",\"value\":"+ value +",\"tags\":"+ TagsJson +",\"timestamp\":"+ unixTimestamp +"}";
         }
 
-        internal string GetTagsJson(ReadOnlyDictionary<string, string> defaultTags, Dictionary<Type, List<BosunTag>> tagsByTypeCache)
+        internal string GetTagsJson(ReadOnlyDictionary<string, string> defaultTags, TagValueConverterDelegate tagValueConverter, Dictionary<Type, List<BosunTag>> tagsByTypeCache)
         {
             var sb = new StringBuilder();
             foreach (var tag in GetTagsList(defaultTags, tagsByTypeCache))
             {
                 var value = tag.IsFromDefault ? defaultTags[tag.Name] : (string)tag.FieldInfo.GetValue(this);
+                value = tagValueConverter(tag.Name, value);
                 if (value == null)
                 {
                     if (tag.IsOptional)
