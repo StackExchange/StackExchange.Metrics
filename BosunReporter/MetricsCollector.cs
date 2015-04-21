@@ -72,7 +72,7 @@ namespace BosunReporter
         public MetricsCollector(BosunOptions options)
         {
             MetricsNamePrefix = options.MetricsNamePrefix ?? "";
-            if (MetricsNamePrefix != "" && !Validation.IsValidMetricName(MetricsNamePrefix))
+            if (MetricsNamePrefix != "" && !BosunValidation.IsValidMetricName(MetricsNamePrefix))
                 throw new Exception("\"" + MetricsNamePrefix + "\" is not a valid metric name prefix.");
 
             GetBosunUrl = options.GetBosunUrl;
@@ -126,13 +126,13 @@ namespace BosunReporter
 
             foreach (var key in defaultTags.Keys.ToArray())
             {
-                if (!Validation.IsValidTagName(key))
+                if (!BosunValidation.IsValidTagName(key))
                     throw new Exception(String.Format("\"{0}\" is not a valid Bosun tag name.", key));
 
                 if (TagValueConverter != null)
                     defaultTags[key] = TagValueConverter(key, defaultTags[key]);
 
-                if (!Validation.IsValidTagValue(defaultTags[key]))
+                if (!BosunValidation.IsValidTagValue(defaultTags[key]))
                     throw new Exception(String.Format("\"{0}\" is not a valid Bosun tag value.", defaultTags[key]));
             }
 
@@ -290,7 +290,7 @@ namespace BosunReporter
                     var ns = name + s;
                         
                     // verify this is a valid metric name at all (it should be, since both parts are pre-validated, but just in case).
-                    if (!Validation.IsValidMetricName(ns))
+                    if (!BosunValidation.IsValidMetricName(ns))
                         throw new Exception(String.Format("\"{0}\" is not a valid metric name", ns));
 
                     if (_nameAndSuffixToRootName.ContainsKey(ns) && _nameAndSuffixToRootName[ns] != name)

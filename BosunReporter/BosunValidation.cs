@@ -1,8 +1,8 @@
 ﻿using System.Text.RegularExpressions;
 
-namespace BosunReporter.Infrastructure
+namespace BosunReporter
 {
-    internal static class Validation
+    public static class BosunValidation
     {
         private static readonly Regex _validTsdbString = new Regex(@"^[a-zA-Z0-9\-_./]+$");
         public static readonly Regex InvalidChars = new Regex(@"[^a-zA-Z0-9\-_./]+");

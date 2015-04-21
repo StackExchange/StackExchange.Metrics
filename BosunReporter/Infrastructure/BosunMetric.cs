@@ -48,7 +48,7 @@ namespace BosunReporter.Infrastructure
                     if (_name != null)
                         throw new InvalidOperationException("Metrics cannot be renamed.");
 
-                    if (value == null || !Validation.IsValidMetricName(value))
+                    if (value == null || !BosunValidation.IsValidMetricName(value))
                         throw new Exception(value + " is not a valid metric name. Only characters in the regex class [a-zA-Z0-9\\-_./] are allowed.");
 
                     _name = value;
@@ -178,7 +178,7 @@ namespace BosunReporter.Infrastructure
                             "null is not a valid tag value for {0}.{1}. This tag was declared as non-optional.",
                             GetType().FullName, tag.FieldInfo.Name));
                 }
-                if (!Validation.IsValidTagValue(value))
+                if (!BosunValidation.IsValidTagValue(value))
                 {
                     throw new InvalidOperationException(
                         String.Format(

@@ -403,7 +403,7 @@ namespace BosunReporter.Metrics
             }
 
             Suffix = suffix ?? defaultSuffix;
-            if (Suffix.Length > 0 && !Validation.IsValidMetricName(Suffix))
+            if (Suffix.Length > 0 && !BosunValidation.IsValidMetricName(Suffix))
                 throw new Exception("\"" + Suffix + "\" is not a valid metric suffix.");
         }
     }

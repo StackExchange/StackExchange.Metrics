@@ -69,7 +69,7 @@
     <Compile Include="Exceptions.cs" />
     <Compile Include="NameTransformers.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="Infrastructure\Validation.cs" />
+    <Compile Include="BosunValidation.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="MetricGroup.tt">

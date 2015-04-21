@@ -46,7 +46,7 @@ namespace BosunReporter.Infrastructure
             else
                 Name = fieldInfo.Name;
 
-            if (!Validation.IsValidTagName(Name))
+            if (!BosunValidation.IsValidTagName(Name))
             {
                 throw new InvalidOperationException(
                     String.Format("\"{0}\" is not a valid Bosun Tag name. Field: {1}.{2}.",
