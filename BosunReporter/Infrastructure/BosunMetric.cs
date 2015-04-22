@@ -59,6 +59,8 @@ namespace BosunReporter.Infrastructure
         public virtual string Description { get; set; }
         public virtual string Unit { get; internal set; }
 
+        public virtual bool SerializeInitialValue => MetricType == "counter";
+
         protected BosunMetric()
         {
         }

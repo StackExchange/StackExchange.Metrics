@@ -311,6 +311,10 @@ namespace BosunReporter
                 // metric doesn't exist yet.
                 _rootNameAndTagsToMetric[key] = metric;
                 metric.IsAttached = true;
+
+                if (metric.SerializeInitialValue)
+                    EnqueueMetrics(metric.SerializeInternal(GetUnixTimestamp()));
+
                 return metric;
             }
         }
