@@ -139,10 +139,8 @@ namespace BosunReporter
             if (constructor == null)
             {
 				throw new Exception(
-					String.Format(
-						"Cannot create a MetricGroup for Type \"{0}\". It does not have a constructor which matches the signature of types provided to the metric group. " +
-						"Either add a constructor with that signature, or use the metricFactory argument to define a custom factory.",
-						typeof(TMetric).FullName));
+						$"Cannot create a MetricGroup for Type \"{typeof(TMetric).FullName}\". It does not have a constructor which matches the signature of types provided to the metric group. " +
+						"Either add a constructor with that signature, or use the metricFactory argument to define a custom factory.");
             }
 
 			return (<#= tagList #>) => (TMetric)constructor.Invoke(new object[] { <#= tagList #> });

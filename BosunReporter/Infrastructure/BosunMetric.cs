@@ -174,16 +174,13 @@ namespace BosunReporter.Infrastructure
                         continue;
 
                     throw new InvalidOperationException(
-                        String.Format(
-                            "null is not a valid tag value for {0}.{1}. This tag was declared as non-optional.",
-                            GetType().FullName, tag.FieldInfo.Name));
+                        $"null is not a valid tag value for {GetType().FullName}.{tag.FieldInfo.Name}. This tag was declared as non-optional.");
                 }
                 if (!BosunValidation.IsValidTagValue(value))
                 {
                     throw new InvalidOperationException(
-                        String.Format(
-                            "Invalid value for tag {0}.{1}. \"{2}\" is not a valid tag value. Only characters in the regex class [a-zA-Z0-9\\-_./] are allowed.",
-                            GetType().FullName, tag.FieldInfo.Name, value));
+                        $"Invalid value for tag {GetType().FullName}.{tag.FieldInfo.Name}. \"{value}\" is not a valid tag value. " +
+                        $"Only characters in the regex class [a-zA-Z0-9\\-_./] are allowed.");
                 }
 
                 // everything is already validated, so we can skip a more formal JSON parser which would handle escaping
@@ -193,7 +190,7 @@ namespace BosunReporter.Infrastructure
             if (sb.Length == 0)
             {
                 throw new InvalidOperationException(
-                    String.Format("At least one tag value must be specified for every metric. {0} was instantiated without any tag values.", GetType().FullName));
+                    $"At least one tag value must be specified for every metric. {GetType().FullName} was instantiated without any tag values.");
             }
 
             sb[0] = '{'; // replaces the first comma

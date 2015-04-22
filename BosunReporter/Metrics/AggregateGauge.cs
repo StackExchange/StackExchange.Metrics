@@ -248,7 +248,7 @@ namespace BosunReporter.Metrics
                 foreach (var r in aggregators)
                 {
                     if (hash.Contains(r.Suffix))
-                        throw new Exception(String.Format("{0} has more than one gauge aggregator with the name \"{1}\".", type.FullName, r.Suffix));
+                        throw new Exception($"{type.FullName} has more than one gauge aggregator with the name \"{r.Suffix}\".");
                 }
 
                 return _aggregatorsByTypeCache[type] = new GaugeAggregatorStrategy(aggregators);

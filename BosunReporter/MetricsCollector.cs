@@ -127,13 +127,13 @@ namespace BosunReporter
             foreach (var key in defaultTags.Keys.ToArray())
             {
                 if (!BosunValidation.IsValidTagName(key))
-                    throw new Exception(String.Format("\"{0}\" is not a valid Bosun tag name.", key));
+                    throw new Exception($"\"{key}\" is not a valid Bosun tag name.");
 
                 if (TagValueConverter != null)
                     defaultTags[key] = TagValueConverter(key, defaultTags[key]);
 
                 if (!BosunValidation.IsValidTagValue(defaultTags[key]))
-                    throw new Exception(String.Format("\"{0}\" is not a valid Bosun tag value.", defaultTags[key]));
+                    throw new Exception($"\"{defaultTags[key]}\" is not a valid Bosun tag value.");
             }
 
             return new ReadOnlyDictionary<string, string>(defaultTags);
@@ -153,18 +153,12 @@ namespace BosunReporter
                 {
                     if (rmi.Type != type)
                     {
-                        throw new Exception(
-                            String.Format(
-                                "Cannot bind metric name \"{0}\" to Type {1}. It has already been bound to {2}",
-                                name, type.FullName, rmi.Type.FullName));
+                        throw new Exception($"Cannot bind metric name \"{name}\" to Type {type.FullName}. It has already been bound to {rmi.Type.FullName}");
                     }
 
                     if (rmi.Unit != unit)
                     {
-                        throw new Exception(
-                            String.Format(
-                                "Cannot bind metric name \"{0}\" to unit \"{1}\". It has already been bound to \"{2}\"",
-                                name, unit, rmi.Unit));
+                        throw new Exception($"Cannot bind metric name \"{name}\" to unit \"{unit}\". It has already been bound to \"{rmi.Unit}\"");
                     }
 
                     return;
@@ -172,7 +166,7 @@ namespace BosunReporter
 
                 if (!type.IsSubclassOf(typeof (BosunMetric)))
                 {
-                    throw new Exception(String.Format("Cannot bind metric \"{0}\" to Type {1}. It does not inherit from BosunMetric.", name, type.FullName));
+                    throw new Exception($"Cannot bind metric \"{name}\" to Type {type.FullName}. It does not inherit from BosunMetric.");
                 }
 
                 _rootNameToInfo[name] = new RootMetricInfo { Type = type, Unit = unit };
@@ -246,7 +240,7 @@ namespace BosunReporter
                 // if the type has a constructor without params, then create an instance
                 var constructor = metricType.GetConstructor(BindingFlags.Instance | BindingFlags.Public, null, Type.EmptyTypes, null);
                 if (constructor == null)
-                    throw new ArgumentNullException("metric", metricType.FullName + " has no public default constructor. Therefore the metric parameter cannot be null.");
+                    throw new ArgumentNullException(nameof(metric), metricType.FullName + " has no public default constructor. Therefore the metric parameter cannot be null.");
                 metric = (T)constructor.Invoke(new object[0]);
             }
             metric.Collector = this;
@@ -263,25 +257,20 @@ namespace BosunReporter
                     if (rmi.Type != metricType)
                     {
                         throw new Exception(
-                            String.Format(
-                                "Attempted to create metric name \"{0}\" with Type {1}. This metric name has already been bound to Type {2}.",
-                                name, metricType.FullName, rmi.Type.FullName));
+                            $"Attempted to create metric name \"{name}\" with Type {metricType.FullName}. This metric name has already been bound to Type {rmi.Type.FullName}.");
                     }
 
                     if (rmi.Unit != unit)
                     {
                         throw new Exception(
-                            String.Format(
-                                "Cannot bind metric name \"{0}\" to unit \"{1}\". It has already been bound to \"{2}\"",
-                                name, unit, rmi.Unit));
+                            $"Cannot bind metric name \"{name}\" to unit \"{unit}\". It has already been bound to \"{rmi.Unit}\"");
                     }
                 }
                 else if (_nameAndSuffixToRootName.ContainsKey(name))
                 {
                     throw new Exception(
-                        String.Format(
-                            "Attempted to create metric name \"{0}\" with Type {1}. This metric name is already in use as a suffix of Type {2}.",
-                            name, metricType.FullName, _rootNameToInfo[_nameAndSuffixToRootName[name]].Type.FullName));
+                        $"Attempted to create metric name \"{name}\" with Type {metricType.FullName}. " +
+                        $"This metric name is already in use as a suffix of Type {_rootNameToInfo[_nameAndSuffixToRootName[name]].Type.FullName}.");
                 }
 
                 // claim all suffixes. Do this in two passes (check then add) so we don't end up in an inconsistent state.
@@ -291,14 +280,13 @@ namespace BosunReporter
                         
                     // verify this is a valid metric name at all (it should be, since both parts are pre-validated, but just in case).
                     if (!BosunValidation.IsValidMetricName(ns))
-                        throw new Exception(String.Format("\"{0}\" is not a valid metric name", ns));
+                        throw new Exception($"\"{ns}\" is not a valid metric name");
 
                     if (_nameAndSuffixToRootName.ContainsKey(ns) && _nameAndSuffixToRootName[ns] != name)
                     {
                         throw new Exception(
-                            String.Format(
-                                "Attempted to create metric name \"{0}\" with Type {1}. This metric name is already in use as a suffix of Type {2}.",
-                                ns, metricType.FullName, _rootNameToInfo[_nameAndSuffixToRootName[ns]].Type.FullName));
+                            $"Attempted to create metric name \"{ns}\" with Type {metricType.FullName}. " +
+                            $"This metric name is already in use as a suffix of Type {_rootNameToInfo[_nameAndSuffixToRootName[ns]].Type.FullName}.");
                     }
                 }
 
@@ -315,7 +303,7 @@ namespace BosunReporter
                 if (_rootNameAndTagsToMetric.ContainsKey(key))
                 {
                     if (mustBeNew)
-                        throw new Exception(String.Format("Attempted to create duplicate metric with name \"{0}\" and tags {1}.", name, metric.TagsJson));
+                        throw new Exception($"Attempted to create duplicate metric with name \"{name}\" and tags {metric.TagsJson}.");
 
                     return (T) _rootNameAndTagsToMetric[key];
                 }

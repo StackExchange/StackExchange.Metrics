@@ -108,10 +108,8 @@ namespace BosunReporter
             if (constructor == null)
             {
 				throw new Exception(
-					String.Format(
-						"Cannot create a MetricGroup for Type \"{0}\". It does not have a constructor which matches the signature of types provided to the metric group. " +
-						"Either add a constructor with that signature, or use the metricFactory argument to define a custom factory.",
-						typeof(TMetric).FullName));
+						$"Cannot create a MetricGroup for Type \"{typeof(TMetric).FullName}\". It does not have a constructor which matches the signature of types provided to the metric group. " +
+						"Either add a constructor with that signature, or use the metricFactory argument to define a custom factory.");
             }
 
 			return (tag1) => (TMetric)constructor.Invoke(new object[] { tag1 });
@@ -239,10 +237,8 @@ namespace BosunReporter
             if (constructor == null)
             {
 				throw new Exception(
-					String.Format(
-						"Cannot create a MetricGroup for Type \"{0}\". It does not have a constructor which matches the signature of types provided to the metric group. " +
-						"Either add a constructor with that signature, or use the metricFactory argument to define a custom factory.",
-						typeof(TMetric).FullName));
+						$"Cannot create a MetricGroup for Type \"{typeof(TMetric).FullName}\". It does not have a constructor which matches the signature of types provided to the metric group. " +
+						"Either add a constructor with that signature, or use the metricFactory argument to define a custom factory.");
             }
 
 			return (tag1, tag2) => (TMetric)constructor.Invoke(new object[] { tag1, tag2 });
@@ -355,10 +351,8 @@ namespace BosunReporter
             if (constructor == null)
             {
 				throw new Exception(
-					String.Format(
-						"Cannot create a MetricGroup for Type \"{0}\". It does not have a constructor which matches the signature of types provided to the metric group. " +
-						"Either add a constructor with that signature, or use the metricFactory argument to define a custom factory.",
-						typeof(TMetric).FullName));
+						$"Cannot create a MetricGroup for Type \"{typeof(TMetric).FullName}\". It does not have a constructor which matches the signature of types provided to the metric group. " +
+						"Either add a constructor with that signature, or use the metricFactory argument to define a custom factory.");
             }
 
 			return (tag1, tag2, tag3) => (TMetric)constructor.Invoke(new object[] { tag1, tag2, tag3 });
@@ -471,10 +465,8 @@ namespace BosunReporter
             if (constructor == null)
             {
 				throw new Exception(
-					String.Format(
-						"Cannot create a MetricGroup for Type \"{0}\". It does not have a constructor which matches the signature of types provided to the metric group. " +
-						"Either add a constructor with that signature, or use the metricFactory argument to define a custom factory.",
-						typeof(TMetric).FullName));
+						$"Cannot create a MetricGroup for Type \"{typeof(TMetric).FullName}\". It does not have a constructor which matches the signature of types provided to the metric group. " +
+						"Either add a constructor with that signature, or use the metricFactory argument to define a custom factory.");
             }
 
 			return (tag1, tag2, tag3, tag4) => (TMetric)constructor.Invoke(new object[] { tag1, tag2, tag3, tag4 });
@@ -587,10 +579,8 @@ namespace BosunReporter
             if (constructor == null)
             {
 				throw new Exception(
-					String.Format(
-						"Cannot create a MetricGroup for Type \"{0}\". It does not have a constructor which matches the signature of types provided to the metric group. " +
-						"Either add a constructor with that signature, or use the metricFactory argument to define a custom factory.",
-						typeof(TMetric).FullName));
+						$"Cannot create a MetricGroup for Type \"{typeof(TMetric).FullName}\". It does not have a constructor which matches the signature of types provided to the metric group. " +
+						"Either add a constructor with that signature, or use the metricFactory argument to define a custom factory.");
             }
 
 			return (tag1, tag2, tag3, tag4, tag5) => (TMetric)constructor.Invoke(new object[] { tag1, tag2, tag3, tag4, tag5 });

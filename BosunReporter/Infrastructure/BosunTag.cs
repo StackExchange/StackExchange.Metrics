@@ -33,8 +33,7 @@ namespace BosunReporter.Infrastructure
             if (!FieldInfo.IsInitOnly || FieldInfo.FieldType != typeof(string))
             {
                 throw new InvalidOperationException(
-                    String.Format("The BosunTag attribute can only be applied to readonly string fields. {0}.{1} is invalid.",
-                        fieldInfo.DeclaringType.FullName, fieldInfo.Name));
+                    $"The BosunTag attribute can only be applied to readonly string fields. {fieldInfo.DeclaringType.FullName}.{fieldInfo.Name} is invalid.");
             }
 
             Attribute = attribute;
@@ -48,9 +47,7 @@ namespace BosunReporter.Infrastructure
 
             if (!BosunValidation.IsValidTagName(Name))
             {
-                throw new InvalidOperationException(
-                    String.Format("\"{0}\" is not a valid Bosun Tag name. Field: {1}.{2}.",
-                        Name, fieldInfo.DeclaringType.FullName, fieldInfo.Name));
+                throw new InvalidOperationException($"\"{Name}\" is not a valid Bosun Tag name. Field: {fieldInfo.DeclaringType.FullName}.{fieldInfo.Name}.");
             }
         }
     }
