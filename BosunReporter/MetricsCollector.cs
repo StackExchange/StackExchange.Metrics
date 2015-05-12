@@ -636,7 +636,11 @@ namespace BosunReporter
 
         internal static string GetUnixTimestamp()
         {
-            return ((long)(DateTime.UtcNow - UnixEpoch).TotalMilliseconds).ToString("D");
+            return GetUnixTimestamp(DateTime.UtcNow);
+        }
+        internal static string GetUnixTimestamp(DateTime time)
+        {
+            return ((long)(time - UnixEpoch).TotalMilliseconds).ToString("D");
         }
 
         private IEnumerable<string> GetSerializedMetrics()

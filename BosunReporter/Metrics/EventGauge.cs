@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using BosunReporter.Infrastructure;
+using System;
 
 namespace BosunReporter.Metrics
 {
@@ -26,6 +27,11 @@ namespace BosunReporter.Metrics
         {
             AssertAttached();
             _serializedMetrics.Add(ToJson("", value, MetricsCollector.GetUnixTimestamp()));
+        }
+        public void Record(double value, DateTime time)
+        {
+            AssertAttached();
+            _serializedMetrics.Add(ToJson("", value, MetricsCollector.GetUnixTimestamp(time)));
         }
     }
 }
