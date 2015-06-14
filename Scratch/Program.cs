@@ -220,11 +220,11 @@ namespace Scratch
 
     public class EnumCounter : Counter
     {
-        [BosunTag] public readonly string Value;
+        [BosunTag] public readonly SomeEnum Value;
 
         public EnumCounter(SomeEnum val)
         {
-            Value = val.ToString();
+            Value = val;
         }
     }
 

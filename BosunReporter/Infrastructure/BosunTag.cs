@@ -30,10 +30,10 @@ namespace BosunReporter.Infrastructure
             IsOptional = attribute.IsOptional;
 
             FieldInfo = fieldInfo;
-            if (!FieldInfo.IsInitOnly || FieldInfo.FieldType != typeof(string))
+            if (!FieldInfo.IsInitOnly || (FieldInfo.FieldType != typeof(string) && !FieldInfo.FieldType.IsEnum))
             {
                 throw new InvalidOperationException(
-                    $"The BosunTag attribute can only be applied to readonly string fields. {fieldInfo.DeclaringType.FullName}.{fieldInfo.Name} is invalid.");
+                    $"The BosunTag attribute can only be applied to readonly string or enum fields. {fieldInfo.DeclaringType.FullName}.{fieldInfo.Name} is invalid.");
             }
 
             Attribute = attribute;
