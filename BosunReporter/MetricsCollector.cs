@@ -11,6 +11,7 @@ using System.Text;
 using System.Threading;
 using BosunReporter.Infrastructure;
 using Jil;
+using PerformanceTypes;
 
 namespace BosunReporter
 {
@@ -42,6 +43,8 @@ namespace BosunReporter
         private readonly Timer _reportingTimer;
         private readonly Timer _metaDataTimer;
 
+        private static readonly AsyncCallback s_asyncNoopCallback = AsyncNoopCallback;
+
         internal Dictionary<Type, List<BosunTag>> TagsByTypeCache = new Dictionary<Type, List<BosunTag>>();
 
         // options
@@ -61,11 +64,18 @@ namespace BosunReporter
 
         public int PendingMetricsCount => _pendingMetrics?.Count ?? 0;
         public bool HasPendingMetrics => PendingMetricsCount > 0;
+        public long TotalMetricsPosted { get; private set; }
+        public int PostSuccessCount { get; private set; }
+        public int PostFailedCount { get; private set; }
+        public DateTime? LastPostSuccessTime { get; private set; }
+        public DateTime? LastPostFailedTime { get; private set; }
 
         public event Action<Exception> OnBackgroundException;
         public bool HasExceptionHandler => OnBackgroundException != null && OnBackgroundException.GetInvocationList().Length != 0;
 
         public event Action BeforeSerialization;
+        public event Action<AfterSerializationInfo> AfterSerialization;
+        public event Action<AfterPostInfo> AfterPost;
 
         public IEnumerable<BosunMetric> Metrics => _rootNameAndTagsToMetric.Values.AsEnumerable();
 
@@ -411,20 +421,27 @@ namespace BosunReporter
             if ((bool)isCalledFromTimer && ShutdownCalled) // don't perform timer actions if we're shutting down
                 return;
 
-            Debug.WriteLine("BosunReporter: Running metrics snapshot.");
             if (GetBosunUrl != null)
                 BosunUrl = GetBosunUrl();
 
-#if DEBUG
-            var sw = new Stopwatch();
-            sw.Start();
-#endif
+
             try
             {
                 if (BeforeSerialization != null && BeforeSerialization.GetInvocationList().Length != 0)
                     BeforeSerialization();
 
-                EnqueueMetrics(GetSerializedMetrics());
+                var sw = new StopwatchStruct();
+                sw.Start();
+                var list = GetSerializedMetrics();
+                sw.Stop();
+                
+                EnqueueMetrics(list);
+                
+                AfterSerialization?.Invoke(new AfterSerializationInfo
+                {
+                    Count = list.Count,
+                    MillisecondsDuration = sw.GetElapsedMilliseconds(),
+                });
             }
             catch (Exception e)
             {
@@ -436,10 +453,6 @@ namespace BosunReporter
 
                 throw;
             }
-#if DEBUG
-            sw.Stop();
-            Debug.WriteLine("BosunReporter: Metric Snapshot took {0}ms", sw.ElapsedMilliseconds);
-#endif
         }
 
         private void Flush(object isCalledFromTimer)
@@ -496,18 +509,43 @@ namespace BosunReporter
 
             Debug.WriteLine("BosunReporter: Flushing metrics batch. Size: " + batch.Count);
 
+            var timer = new StopwatchStruct();
             try
             {
+                timer.Start();
                 PostToBosun("/api/put", true, sw => WriteJsonArrayBody(sw, batch));
+                timer.Stop();
+
+                PostSuccessCount++;
+                TotalMetricsPosted += batch.Count;
+                LastPostSuccessTime = DateTime.UtcNow;
             }
             catch (Exception)
             {
                 // posting to Bosun failed, so put the batch back in the queue to try again later
                 Debug.WriteLine("BosunReporter: Posting to the Bosun API failed. Pushing metrics back onto the queue.");
+                PostFailedCount++;
+                LastPostFailedTime = DateTime.UtcNow;
                 EnqueueMetrics(batch);
                 throw;
             }
+
+            var afterPost = AfterPost;
+            if (afterPost != null)
+            {
+                var info = new AfterPostInfo()
+                {
+                    Count = batch.Count,
+                    MillisecondsDuration = timer.GetElapsedMilliseconds(),
+                };
+
+                // Use BeginInvoke here to invoke the event listeners asynchronously.
+                // We're inside a lock, so calling the listeners synchronously would put us at risk of a deadlock.
+                afterPost.BeginInvoke(info, s_asyncNoopCallback, null);
+            }
         }
+
+        private static void AsyncNoopCallback(IAsyncResult result) { }
 
         private static void WriteJsonArrayBody(StreamWriter sw, List<string> batch)
         {
@@ -643,7 +681,7 @@ namespace BosunReporter
             return ((long)(time - UnixEpoch).TotalMilliseconds).ToString("D");
         }
 
-        private IEnumerable<string> GetSerializedMetrics()
+        private List<string> GetSerializedMetrics()
         {
             var unixTimestamp = GetUnixTimestamp();
             lock (_metricsLock)
@@ -708,5 +746,17 @@ namespace BosunReporter
 
             return json.ToString();
         }
+    }
+
+    public class AfterSerializationInfo
+    {
+        public int Count { get; internal set; }
+        public double MillisecondsDuration { get; internal set; }
+    }
+
+    public class AfterPostInfo
+    {
+        public int Count { get; internal set; }
+        public double MillisecondsDuration { get; internal set; }
     }
 }
