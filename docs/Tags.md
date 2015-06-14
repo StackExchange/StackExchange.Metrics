@@ -25,24 +25,24 @@ public class RouteCounter : Counter
 And then let's instantiate one.
 
 ```csharp
-var testRouteOkCounter = collector.GetMetric(
-                                             "hits",
-                                             "units",
-                                             "description",
+var testRouteOkCounter = collector.CreateMetric(
+                                             "hits",          // metric name
+                                             "http requests", // units
+                                             "description",   // meaningful description
                                              new RouteCounter("Test/Route", true));
 ```
 
 The metric name `hits` has now been bound to the `RouteCounter` type. If we try to use that metric name with any other type, the library will throw an exception. However, we can use that metric name with as many different instances of `RouteCounter` as we'd like. For example:
 
 ```csharp
-var testRouteErrorCounter = collector.GetMetric(
+var testRouteErrorCounter = collector.CreateMetric(
                                                 "hits",
                                                 "units",
                                                 "description",
                                                 new RouteCounter("Test/Route", false));
 ```
 
-It it worth noting that the `GetMetric()` method is idempotent, so you'll never end up with duplicate metrics.
+It is worth noting that `CreateMetric()` will throw an exception if you try to create a duplicate metric. That behavior is generally desirable since multiple attempts to create the same metric likely represent a mistake. However, there is also a `GetMetric()` method (with identical signatures) which is idempotent. It still won't allow you to create duplicate metrics, but instead of throwing an exception if an identical metric already exists, it will return the existing metric.
 
 ```csharp
 var one = collector.GetMetric("hits", units, desc, new RouteCounter("Test/Route", true));
@@ -51,6 +51,6 @@ var two = collector.GetMetric("hits", units, desc, new RouteCounter("Test/Route"
 Console.WriteLine(one == two); // outputs True
 ```
 
-This, like the rest of the library, is thread safe. You could use this method to always instantiate and use metrics on-demand. Although, if you're concerned with performance, it is computationally cheaper to store the metrics in variables or a hash rather than calling `GetMetric()` every time you need it.
+This, like the rest of the library, is thread safe. You _could_ use this method to always instantiate and use metrics on-demand. However, if you care about performance or allocations, it is cheaper to store the metrics in variables or a hash rather than calling `GetMetric()` every time you need it. Or even better, consider using a [Metric Group](https://github.com/bretcope/BosunReporter.NET/blob/master/docs/MetricGroup.md) to create your metrics.
 
-This `RouteCounter` type we just created, and any other BosunMetric type, can be used with as many metric names as you'd like. __You don't have to create a class for every metric you use__ if they share common tag lists. In fact, using common tag lists is a great idea which will help encourage consistency in your metrics conventions.
+> This `RouteCounter` type we just created, and any other BosunMetric type, can be used with as many metric names as you'd like. __You don't have to create a class for every metric you use__ if they share common tag lists. In fact, using common tag lists is a great idea which will help encourage consistency in your metrics conventions.

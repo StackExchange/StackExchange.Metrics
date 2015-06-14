@@ -9,7 +9,7 @@ Counters are for _counting_ things. The most common use case is to increment a c
 This is the basic counter type. It uses a `long` value and calls `Interlocked.Add()` internally to incrementing the value.
 
 ```csharp
-var counter = collector.GetMetric<Counter>("my_counter", "units", "description");
+var counter = collector.CreateMetric<Counter>("my_counter", "units", "description");
 
 // increment by 1
 counter.Increment();
@@ -24,7 +24,7 @@ A snapshot counter is useful when you only care about updating the counter once 
 
 ```csharp
 var count = 0;
-collector.GetMetric("name", "unit", "desc", new SnapshotCounter(() => count++));
+collector.CreateMetric("name", "unit", "desc", new SnapshotCounter(() => count++));
 ```
 
 ## Gauges
@@ -36,7 +36,7 @@ Gauges describe a measurement at a point in time. A good example would be measur
 These are great for metrics where you want to record snapshots of a value, like CPU or memory usage. Pretend we have a method called `GetMemoryUsage` which returns a double. Now, let's write a snapshot gauge which calls that automatically at every metrics reporting interval.
 
 ```csharp
-collector.GetMetric("memory_usage", units, desc, new SnapshotGauge(() => GetMemoryUsage()));
+collector.CreateMetric("memory_usage", units, desc, new SnapshotGauge(() => GetMemoryUsage()));
 ```
 
 That's it. There's no reason to even assign the gauge to a variable.
@@ -48,7 +48,7 @@ That's it. There's no reason to even assign the gauge to a variable.
 These are ideal for low-volume event-based data where it's practical to send all of the data points to Bosun. If you have a measurable event which occurs once every few seconds, then, instead of aggregating, you may want to use an event gauge. Every time you call `.Record()` on an event gauge, the metric will be serialized and queued. The queued metrics will be sent to Bosun on the normal reporting interval, like all other metrics.
 
 ```csharp
-var myEvent = collector.GetMetric<EventGauge>("my_event", units, desc);
+var myEvent = collector.CreateMetric<EventGauge>("my_event", units, desc);
 someObject.OnSomeEvent += (sender, e) => myEvent.Record(someObject.Value);
 ```
 
@@ -89,7 +89,7 @@ public class RouteTimingGauge : AggregateGauge
 Then, instantiate the gauge for our route, and record timings to it.
  
 ```csharp
-var testRouteTiming = collector.GetMetric(
+var testRouteTiming = collector.CreateMetric(
                                           "route_tr",
                                           units,
                                           desc,
@@ -112,7 +112,7 @@ A sampling gauge simply reports the last recorded value at every reporting inter
 If the last recorded value is `Double.NaN`, then nothing will be reported to Bosun.
 
 ```csharp
-var sampler = collector.GetMetric<SamplingGauge>("my_sampler", units, desc);
+var sampler = collector.CreateMetric<SamplingGauge>("my_sampler", units, desc);
 sampler.Record(1.2);
 ```
 

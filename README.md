@@ -25,7 +25,7 @@ var collector = new MetricsCollector(new BosunOptions()
 Create a counter with only the default tags:
 
 ```csharp
-var counter = collector.GetMetric<Counter>("my_counter", "units", "description");
+var counter = collector.CreateMetric<Counter>("my_counter", "units", "description");
 ```
 
 Increment the counter by 1:
