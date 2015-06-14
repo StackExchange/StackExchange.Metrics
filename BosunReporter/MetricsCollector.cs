@@ -62,13 +62,27 @@ namespace BosunReporter
 
         public bool ShutdownCalled { get; private set; }
 
+        // insights
+        /// <summary>
+        /// The number of metrics (individual data points) which are currently queued for sending to Bosun.
+        /// </summary>
         public int PendingMetricsCount => _pendingMetrics?.Count ?? 0;
         public bool HasPendingMetrics => PendingMetricsCount > 0;
+        /// <summary>
+        /// Total number of data points successfully sent fo Bosun.
+        /// </summary>
         public long TotalMetricsPosted { get; private set; }
+        /// <summary>
+        /// The number of times an HTTP POST to Bosun's /api/put endpoint has succeeded.
+        /// </summary>
         public int PostSuccessCount { get; private set; }
-        public int PostFailedCount { get; private set; }
-        public DateTime? LastPostSuccessTime { get; private set; }
-        public DateTime? LastPostFailedTime { get; private set; }
+        /// <summary>
+        /// The number of times an HTTP POST to Bosun's /api/put endpoint has failed.
+        /// </summary>
+        public int PostFailCount { get; private set; }
+
+        public AfterSerializationInfo LastSerializationInfo { get; private set; }
+        public AfterPostInfo LastPostInfo { get; private set; }
 
         public event Action<Exception> OnBackgroundException;
         public bool HasExceptionHandler => OnBackgroundException != null && OnBackgroundException.GetInvocationList().Length != 0;
@@ -430,18 +444,19 @@ namespace BosunReporter
                 if (BeforeSerialization != null && BeforeSerialization.GetInvocationList().Length != 0)
                     BeforeSerialization();
 
+                var info = new AfterSerializationInfo();
                 var sw = new StopwatchStruct();
                 sw.Start();
                 var list = GetSerializedMetrics();
                 sw.Stop();
                 
                 EnqueueMetrics(list);
-                
-                AfterSerialization?.Invoke(new AfterSerializationInfo
-                {
-                    Count = list.Count,
-                    MillisecondsDuration = sw.GetElapsedMilliseconds(),
-                });
+
+                info.Count = list.Count;
+                info.MillisecondsDuration = sw.GetElapsedMilliseconds();
+
+                LastSerializationInfo = info;
+                AfterSerialization?.Invoke(info);
             }
             catch (Exception e)
             {
@@ -509,6 +524,7 @@ namespace BosunReporter
 
             Debug.WriteLine("BosunReporter: Flushing metrics batch. Size: " + batch.Count);
 
+            var info = new AfterPostInfo();
             var timer = new StopwatchStruct();
             try
             {
@@ -518,30 +534,26 @@ namespace BosunReporter
 
                 PostSuccessCount++;
                 TotalMetricsPosted += batch.Count;
-                LastPostSuccessTime = DateTime.UtcNow;
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                timer.Stop();
                 // posting to Bosun failed, so put the batch back in the queue to try again later
                 Debug.WriteLine("BosunReporter: Posting to the Bosun API failed. Pushing metrics back onto the queue.");
-                PostFailedCount++;
-                LastPostFailedTime = DateTime.UtcNow;
+                PostFailCount++;
+                info.Exception = ex;
                 EnqueueMetrics(batch);
                 throw;
             }
-
-            var afterPost = AfterPost;
-            if (afterPost != null)
+            finally
             {
-                var info = new AfterPostInfo()
-                {
-                    Count = batch.Count,
-                    MillisecondsDuration = timer.GetElapsedMilliseconds(),
-                };
+                info.Count = batch.Count;
+                info.MillisecondsDuration = timer.GetElapsedMilliseconds();
+                LastPostInfo = info;
 
                 // Use BeginInvoke here to invoke the event listeners asynchronously.
                 // We're inside a lock, so calling the listeners synchronously would put us at risk of a deadlock.
-                afterPost.BeginInvoke(info, s_asyncNoopCallback, null);
+                AfterPost?.BeginInvoke(info, s_asyncNoopCallback, null);
             }
         }
 
@@ -752,11 +764,25 @@ namespace BosunReporter
     {
         public int Count { get; internal set; }
         public double MillisecondsDuration { get; internal set; }
+        public DateTime StartTime { get; }
+
+        public AfterSerializationInfo()
+        {
+            StartTime = DateTime.UtcNow;
+        }
     }
 
     public class AfterPostInfo
     {
         public int Count { get; internal set; }
         public double MillisecondsDuration { get; internal set; }
+        public bool Successful => Exception == null;
+        public Exception Exception { get; internal set; }
+        public DateTime StartTime { get; }
+
+        public AfterPostInfo()
+        {
+            StartTime = DateTime.UtcNow;
+        }
     }
 }
