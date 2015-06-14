@@ -20,6 +20,8 @@ public class RouteCounter : Counter
 }
 ```
 
+> Tags are expressed as readonly fields marked with the `BosunTag` attribute. Only string and enum types are allowed.
+
 And then let's instantiate one.
 
 ```csharp
