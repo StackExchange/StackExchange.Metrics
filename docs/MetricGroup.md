@@ -19,7 +19,7 @@ public class RequestCounter : Counter
 {
 	[BosunTag]
 	public readonly Result Result;
-	public RequestCounter(string result) { Result = result; }
+	public RequestCounter(Result result) { Result = result; }
 }
 ```
 
