@@ -168,7 +168,7 @@ namespace BosunReporter.Infrastructure
             var sb = new StringBuilder();
             foreach (var tag in GetTagsList(defaultTags, tagsByTypeCache))
             {
-                var value = tag.IsFromDefault ? defaultTags[tag.Name] : tag.FieldInfo.GetValue(this).ToString();
+                var value = tag.IsFromDefault ? defaultTags[tag.Name] : tag.FieldInfo.GetValue(this)?.ToString();
                 if (tagValueConverter != null)
                     value = tagValueConverter(tag.Name, value);
 
