@@ -11,7 +11,6 @@ using System.Text;
 using System.Threading;
 using BosunReporter.Infrastructure;
 using Jil;
-using PerformanceTypes;
 
 namespace BosunReporter
 {
