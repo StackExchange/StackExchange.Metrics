@@ -594,6 +594,14 @@ namespace BosunReporter
             if (gzip)
                 request.Headers["Content-Encoding"] = "gzip";
 
+            // support for http://username:password@domain.com, by default this does not work
+            var userInfo = url.GetComponents(UriComponents.UserInfo, UriFormat.Unescaped);
+            if (!string.IsNullOrEmpty(userInfo))
+            {
+                var auth = "Basic " + Convert.ToBase64String(Encoding.Default.GetBytes(userInfo));
+                request.Headers["Authorization"] = auth;
+            }
+
             try
             {
                 using (var stream = request.GetRequestStream())
