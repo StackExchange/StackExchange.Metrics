@@ -594,11 +594,11 @@ namespace BosunReporter
             if (gzip)
                 request.Headers["Content-Encoding"] = "gzip";
 
-            // support of for http://username:password@domain.com, by default this does not work
+            // support for http://username:password@domain.com, by default this does not work
             var userInfo = url.GetComponents(UriComponents.UserInfo, UriFormat.Unescaped);
-            if (false == string.IsNullOrEmpty(userInfo))
+            if (!string.IsNullOrEmpty(userInfo))
             {
-                var auth = string.Format("Basic {0}", Convert.ToBase64String(Encoding.Default.GetBytes(userInfo)));
+                var auth = $"Basic {0}" + Convert.ToBase64String(Encoding.Default.GetBytes(userInfo));
                 request.Headers["Authorization"] = auth;
             }
 
