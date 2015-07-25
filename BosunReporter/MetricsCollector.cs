@@ -598,7 +598,7 @@ namespace BosunReporter
             var userInfo = url.GetComponents(UriComponents.UserInfo, UriFormat.Unescaped);
             if (!string.IsNullOrEmpty(userInfo))
             {
-                var auth = $"Basic {0}" + Convert.ToBase64String(Encoding.Default.GetBytes(userInfo));
+                var auth = "Basic " + Convert.ToBase64String(Encoding.Default.GetBytes(userInfo));
                 request.Headers["Authorization"] = auth;
             }
 
