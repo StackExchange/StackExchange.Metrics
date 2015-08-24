@@ -33,6 +33,13 @@ namespace BosunReporter.Metrics
 
         public override string MetricType => "gauge";
 
+        /// <summary>
+        /// Determines the minimum number of events which need to be recorded in any given reporting interval
+        /// before they will be aggregated and reported. If this threshold is not met, the recorded data points
+        /// will be discarded at the end of the reporting interval.
+        /// </summary>
+        public virtual int MinimumEvents => 1;
+
         public AggregateGauge()
         {
             _aggregatorStrategy = GetAggregatorStategy();
@@ -186,43 +193,47 @@ namespace BosunReporter.Metrics
                 _count = 0;
             }
 
-            var snapshot = new Dictionary<double, double>();
-
-            if (_reportCount)
-                snapshot[-3.0] = count;
-            if (_specialCaseLast)
-                snapshot[-2.0] = last;
-            if (_trackMean)
-                snapshot[-1.0] = sum/count;
-            if (_specialCaseMax)
-                snapshot[1.0] = max;
-            if (_specialCaseMin)
-                snapshot[0.0] = min;
-
-            if (list != null)
+            Dictionary<double, double> snapshot = null;
+            if (count >= MinimumEvents)
             {
-                var lastIndex = list.Count - 1;
+                snapshot = new Dictionary<double, double>();
 
-                if (_aggregatorStrategy.TrackLast)
-                    snapshot[-2.0] = list[lastIndex];
+                if (_reportCount)
+                    snapshot[-3.0] = count;
+                if (_specialCaseLast)
+                    snapshot[-2.0] = last;
+                if (_trackMean)
+                    snapshot[-1.0] = sum/count;
+                if (_specialCaseMax)
+                    snapshot[1.0] = max;
+                if (_specialCaseMin)
+                    snapshot[0.0] = min;
 
-                list.Sort();
-                var percentiles = _aggregatorStrategy.Percentiles;
-
-                foreach (var p in percentiles)
+                if (list != null)
                 {
-                    var index = (int) Math.Round(p*lastIndex);
-                    snapshot[p] = list[index];
-                }
+                    var lastIndex = list.Count - 1;
 
-                if (list.Count * 2 >= list.Capacity)
-                {
-                    // if at least half of the list capacity was used, then we'll consider re-using this list.
-                    list.Clear();
-                    lock (_recordLock)
+                    if (_aggregatorStrategy.TrackLast)
+                        snapshot[-2.0] = list[lastIndex];
+
+                    list.Sort();
+                    var percentiles = _aggregatorStrategy.Percentiles;
+
+                    foreach (var p in percentiles)
                     {
-                        _warmlist = list;
+                        var index = (int) Math.Round(p*lastIndex);
+                        snapshot[p] = list[index];
                     }
+                }
+            }
+
+            if (list != null && list.Count * 2 >= list.Capacity)
+            {
+                // if at least half of the list capacity was used, then we'll consider re-using this list.
+                list.Clear();
+                lock (_recordLock)
+                {
+                    _warmlist = list;
                 }
             }
 
