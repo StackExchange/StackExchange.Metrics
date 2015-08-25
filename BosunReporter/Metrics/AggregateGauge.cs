@@ -14,6 +14,8 @@ namespace BosunReporter.Metrics
     {
         private static readonly Dictionary<Type, GaugeAggregatorStrategy> _aggregatorsByTypeCache = new Dictionary<Type, GaugeAggregatorStrategy>();
 
+        public static Func<int> GetDefaultMinimumEvents { get; set; } = () => 1;
+
         private readonly object _recordLock = new object();
         private readonly GaugeAggregatorStrategy _aggregatorStrategy;
 
@@ -38,7 +40,7 @@ namespace BosunReporter.Metrics
         /// before they will be aggregated and reported. If this threshold is not met, the recorded data points
         /// will be discarded at the end of the reporting interval.
         /// </summary>
-        public virtual int MinimumEvents => 1;
+        public virtual int MinimumEvents => GetDefaultMinimumEvents();
 
         public AggregateGauge()
         {
