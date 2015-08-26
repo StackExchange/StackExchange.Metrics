@@ -18,8 +18,11 @@ namespace Scratch
 
             Func<Uri> getUrl = () =>
             {
-                return new Uri("http://192.168.59.103:8070/");
+                return new Uri("http://192.168.99.100:8070/");
             };
+
+            // for testing minimum event threshold
+//            AggregateGauge.GetDefaultMinimumEvents = () => 306000;
 
             var options = new BosunOptions()
             {
