@@ -66,8 +66,11 @@ Percentile | `_%%`          | Allows you to specify an arbitrary percentile (i.e
 Max        | `_max`         | The highest recorded value.
 Min        | `_min`         | The lowest recorded value.
 Last       | (no suffix)    | The last recorded value before the reporting/snapshot interval.
+Count      | `_count`       | The number of events recorded during the reporting interval.
 
 All aggregators are reset at each reporting/snapshot interval. If no data points have been recorded since the last reporting interval, then nothing will be sent to Bosun since there is effectively no data.
+
+> By default, the minimum number of events which must be recorded before the AggregateGauge will report anything is one event per reporting interval. You can change this default by assigning your own `Func<int>` to the static `AggregateGauge.GetDefaultMinimumEvents` property. Or, you can override the `AggregateGauge.MinimumEvents` property on classes which inherit from AggregateGauge.
 
 Let's create a simple route-timing metric which has a `route` tag, and reports on the median, 95th percentile, and max values. First, create a class which defines this gauge type.
 
