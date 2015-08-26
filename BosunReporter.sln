@@ -1,11 +1,22 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 2013
-VisualStudioVersion = 12.0.31101.0
+# Visual Studio 14
+VisualStudioVersion = 14.0.23107.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BosunReporter", "BosunReporter\BosunReporter.csproj", "{9D6C3CB4-C01A-4335-8C69-347A335F24D1}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Scratch", "Scratch\Scratch.csproj", "{1CE60D86-9385-41FE-AEB8-427180FEFB6D}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{447B6C2F-9B2C-4325-8BEB-FB6B7A079A15}"
+	ProjectSection(SolutionItems) = preProject
+		.gitattributes = .gitattributes
+		.gitignore = .gitignore
+		appveyor.yml = appveyor.yml
+		BosunReporter\BosunReporter.nuspec = BosunReporter\BosunReporter.nuspec
+		LICENSE.MIT = LICENSE.MIT
+		README.md = README.md
+		Scripts\SetNugetVersion.ps1 = Scripts\SetNugetVersion.ps1
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
