@@ -155,33 +155,36 @@ namespace BosunReporter.Metrics
 
             foreach (var a in _aggregatorStrategy.Aggregators)
             {
-                yield return ToJson(a.Suffix, snapshot[a.Percentile], unixTimestamp);
+                double val;
+                if (snapshot.TryGetValue(a.Percentile, out val))
+                    yield return ToJson(a.Suffix, val, unixTimestamp);
             }
         }
 
         private Dictionary<double, double> GetSnapshot()
         {
-            List<double> list;
+            List<double> list = null;
             double last;
             double min;
             double max;
             int count;
             double sum;
 
+
             lock (_recordLock)
             {
-                if (_count == 0) // there's no data to report if count == 0
-                    return null;
-
-                list = _list;
-                if (list != null)
+                if (_count > 0)
                 {
+                    list = _list;
+                    if (list != null)
+                    {
 #if DEBUG
-                    if (_warmlist != null)
-                        Debug.WriteLine("BosunReporter: Re-using pre-warmed list for aggregate gauge.");
+                        if (_warmlist != null)
+                            Debug.WriteLine("BosunReporter: Re-using pre-warmed list for aggregate gauge.");
 #endif
-                    _list = _warmlist ?? new List<double>();
-                    _warmlist = null;
+                        _list = _warmlist ?? new List<double>();
+                        _warmlist = null;
+                    }
                 }
 
                 last = _last;
@@ -196,35 +199,41 @@ namespace BosunReporter.Metrics
             }
 
             Dictionary<double, double> snapshot = null;
-            if (count >= MinimumEvents)
+            var reportAllAggregates = count > 0 && count >= MinimumEvents;
+
+            if (reportAllAggregates || _reportCount)
             {
                 snapshot = new Dictionary<double, double>();
 
                 if (_reportCount)
                     snapshot[-3.0] = count;
-                if (_specialCaseLast)
-                    snapshot[-2.0] = last;
-                if (_trackMean)
-                    snapshot[-1.0] = sum/count;
-                if (_specialCaseMax)
-                    snapshot[1.0] = max;
-                if (_specialCaseMin)
-                    snapshot[0.0] = min;
 
-                if (list != null)
+                if (reportAllAggregates)
                 {
-                    var lastIndex = list.Count - 1;
+                    if (_specialCaseLast)
+                        snapshot[-2.0] = last;
+                    if (_trackMean)
+                        snapshot[-1.0] = sum/count;
+                    if (_specialCaseMax)
+                        snapshot[1.0] = max;
+                    if (_specialCaseMin)
+                        snapshot[0.0] = min;
 
-                    if (_aggregatorStrategy.TrackLast)
-                        snapshot[-2.0] = list[lastIndex];
-
-                    list.Sort();
-                    var percentiles = _aggregatorStrategy.Percentiles;
-
-                    foreach (var p in percentiles)
+                    if (list != null)
                     {
-                        var index = (int) Math.Round(p*lastIndex);
-                        snapshot[p] = list[index];
+                        var lastIndex = list.Count - 1;
+
+                        if (_aggregatorStrategy.TrackLast)
+                            snapshot[-2.0] = list[lastIndex];
+
+                        list.Sort();
+                        var percentiles = _aggregatorStrategy.Percentiles;
+
+                        foreach (var p in percentiles)
+                        {
+                            var index = (int) Math.Round(p*lastIndex);
+                            snapshot[p] = list[index];
+                        }
                     }
                 }
             }

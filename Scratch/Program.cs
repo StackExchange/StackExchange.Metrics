@@ -22,7 +22,7 @@ namespace Scratch
             };
 
             // for testing minimum event threshold
-//            AggregateGauge.GetDefaultMinimumEvents = () => 306000;
+//            AggregateGauge.GetDefaultMinimumEvents = () => 1306000;
 
             var options = new BosunOptions()
             {
