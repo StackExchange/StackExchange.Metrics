@@ -20,7 +20,7 @@ os: Visual Studio 2015 RC
 assembly_info:
   patch: true
   file: $(ASSEMBLY_FILE)
-  assembly_version: $(appveyor_build_version)
+  assembly_version: $(MAJOR_VERSION)
   assembly_file_version: $(appveyor_build_version)
   assembly_informational_version: $(NUGET_VERSION)
 
