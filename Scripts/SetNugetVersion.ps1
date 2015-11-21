@@ -1,4 +1,4 @@
-# make sure AssemblyInfo.cs has 
+# make sure AssemblyInfo.cs has AssemblyInformationalVersion
 $asmInfo = (Get-Content "$PSScriptRoot\..\$env:ASSEMBLY_FILE") | Out-String
 $pattern = '^\s*\[\s*assembly\s*:\s*AssemblyInformationalVersion\s*\(\s*"[^"]*"\s*\)\]\s*$'
 if (-not [Regex]::IsMatch($asmInfo, $pattern, [System.Text.RegularExpressions.RegexOptions]::Multiline))
@@ -11,11 +11,14 @@ if (-not [Regex]::IsMatch($asmInfo, $pattern, [System.Text.RegularExpressions.Re
 $version = "$env:NUGET_RELEASE_VERSION"
 
 # make sure version follows the 0.0.0 format
-if (![Regex]::IsMatch($version, '^\d+\.\d+\.\d+$'))
+$versionMatch = [Regex]::Match($version, '^(?<Major>\d+)\.(?<Minor>\d+)\.(?<Patch>\d+)$')
+if (!$versionMatch.Success)
 {
 	Write-Error "Invalid NUGET_RELEASE_VERSION: $version"
 	Exit 1
 }
+
+$majorVersion = $versionMatch.Groups["Major"].Value
 
 # set the correct nuget package version (depends on whether this is a release or not)
 if ("$env:APPVEYOR_REPO_TAG" -ne "true") # non-tagged (pre-release build)
@@ -45,6 +48,9 @@ if ($matches.Count -ne 1)
 	Exit 1
 }
 
-# set the NUGET_VERSION env variable
+# set environment variables
+[Environment]::SetEnvironmentVariable("MAJOR_VERSION", "$majorVersion", "Process")
+Write-Host "MAJOR_VERSION set as $majorVersion"
+
 [Environment]::SetEnvironmentVariable("NUGET_VERSION", "$version", "Process")
 Write-Host "NUGET_VERSION set as $version"
