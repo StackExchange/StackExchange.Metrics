@@ -219,10 +219,23 @@ namespace BosunReporter.Infrastructure
             }
 
             // get default tags
-            if (type.GetCustomAttribute<IgnoreDefaultBosunTagsAttribute>(true) == null)
+            var tagAttributes = GetTagAttributesData(type);
+            if (tagAttributes.IncludeByDefault || tagAttributes.IncludeByTag?.Count > 0)
             {
                 foreach (var name in defaultTags.Keys)
                 {
+                    var explicitInclude = false; // assignment isn't actually used, but the compiler complains without it
+                    if (tagAttributes.IncludeByTag?.TryGetValue(name, out explicitInclude) == true)
+                    {
+                        if (!explicitInclude)
+                            continue;
+                    }
+                    else
+                    {
+                        if (!tagAttributes.IncludeByDefault)
+                            continue;
+                    }
+
                     if (tags.Any(t => t.Name == name))
                         continue;
 
@@ -236,6 +249,75 @@ namespace BosunReporter.Infrastructure
             tags.Sort((a, b) => String.CompareOrdinal(a.Name, b.Name));
             Collector.TagsByTypeCache[type] = tags;
             return tags;
+        }
+
+        private struct TagAttributesData
+        {
+            public bool IncludeByDefault;
+            public Dictionary<string, bool> IncludeByTag;
+        }
+
+        static TagAttributesData GetTagAttributesData(Type type)
+        {
+            var foundDefault = false;
+            var includeByDefault = true;
+            Dictionary<string, bool> includeByTag = null;
+
+            var objType = typeof(object);
+
+            while (true)
+            {
+                var exclude = type.GetCustomAttribute<ExcludeDefaultTagsAttribute>(false);
+                var restore = type.GetCustomAttribute<RestoreDefaultTagsAttribute>(false);
+
+#pragma warning disable 618 // using obsolete class IgnoreDefaultBosunTagsAttribute
+                if (restore?.Tags.Length == 0)
+                {
+                    foundDefault = true;
+                    includeByDefault = true;
+                }
+                else if (exclude?.Tags.Length == 0 || type.GetCustomAttribute<IgnoreDefaultBosunTagsAttribute>(false) != null)
+                {
+                    foundDefault = true;
+                    includeByDefault = false;
+                }
+#pragma warning restore 618
+
+                if (restore?.Tags.Length > 0)
+                {
+                    if (includeByTag == null)
+                        includeByTag = new Dictionary<string, bool>();
+
+                    foreach (var tag in restore.Tags)
+                    {
+                        includeByTag[tag] = true;
+                    }
+                }
+
+                if (exclude?.Tags.Length > 0)
+                {
+                    if (includeByTag == null)
+                        includeByTag = new Dictionary<string, bool>();
+
+                    foreach (var tag in exclude.Tags)
+                    {
+                        includeByTag[tag] = false;
+                    }
+                }
+
+                if (foundDefault)
+                    break;
+
+                type = type.BaseType;
+                if (type == objType || type == null)
+                    break;
+            }
+
+            return new TagAttributesData
+            {
+                IncludeByDefault = includeByDefault,
+                IncludeByTag = includeByTag,
+            };
         }
     }
 }

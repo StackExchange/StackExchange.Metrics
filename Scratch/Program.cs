@@ -99,6 +99,7 @@ namespace Scratch
             var sampler = collector.GetMetric("sampler", "french fries", "Collect them all.", new SamplingGauge());
             var eventGauge = collector.GetMetric("event", "count", "How many last time.", new EventGauge());
             var converted = collector.CreateMetric("convert_test", "units", "Checking to see if the tag value converter works.", new ConvertedTagsTestCounter("ThingsAndStuff"));
+            var noHost = collector.CreateMetric<ExcludeHostCounter>("no_host", "units", "Shouldn't have a host tag.");
 
             var sai = 0;
             var random = new Random();
@@ -116,6 +117,7 @@ namespace Scratch
                     enumCounter[SomeEnum.Four].Increment(4);
 
                     converted.Increment();
+                    noHost.Increment();
 
                     if (sai == 40)
                     {
@@ -182,8 +184,7 @@ namespace Scratch
 //            Host = "bret-host";
         }
     }
-
-    [IgnoreDefaultBosunTags]
+    
     public class TestSnapshotGauge : SnapshotGauge
     {
         [BosunTag] public readonly string Thing;
@@ -238,6 +239,17 @@ namespace Scratch
         public ConvertedTagsTestCounter(string toConvert)
         {
             Converted = toConvert;
+        }
+    }
+
+    [ExcludeDefaultTags("host")]
+    public class ExcludeHostCounter : Counter
+    {
+        [BosunTag] public readonly string Other;
+
+        public ExcludeHostCounter()
+        {
+            Other = "true";
         }
     }
 }
