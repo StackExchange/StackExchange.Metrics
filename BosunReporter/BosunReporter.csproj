@@ -58,6 +58,7 @@
     <Compile Include="Metrics\AggregateGauge.cs" />
     <Compile Include="Metrics\EventGauge.cs" />
     <Compile Include="Infrastructure\MetaData.cs" />
+    <Compile Include="Metrics\ExternalCounter.cs" />
     <Compile Include="Metrics\SamplingGauge.cs" />
     <Compile Include="MetricGroup.cs">
       <AutoGen>True</AutoGen>

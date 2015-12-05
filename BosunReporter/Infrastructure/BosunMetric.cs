@@ -5,6 +5,7 @@ using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Text;
+using BosunReporter.Metrics;
 
 namespace BosunReporter.Infrastructure
 {
@@ -342,7 +343,7 @@ namespace BosunReporter.Infrastructure
                     return info;
                 
                 var needsPreSerialize = type.GetMethod(nameof(PreSerialize), BindingFlags.Instance | BindingFlags.NonPublic).DeclaringType != typeof(BosunMetric);
-                var isExternalCounter = false; // todo - fix when ExternalCounter is merged in
+                var isExternalCounter = typeof(ExternalCounter).IsAssignableFrom(type);
 
                 info = _typeInfoCache[type] = new MetricTypeInfo
                 {
