@@ -10,25 +10,25 @@ namespace BosunReporter.Infrastructure
 {
     public abstract class BosunMetric
     {
+        private struct MetricTypeInfo
+        {
+            public bool NeedsPreSerialize;
+            public bool IsExternalCounter;
+        }
+
+        private static readonly Dictionary<Type, MetricTypeInfo> _typeInfoCache = new Dictionary<Type, MetricTypeInfo>();
+        private static readonly object _typeInfoLock = new object();
+
+        private static readonly string[] s_singleEmptyStringArray = {""};
+
         public abstract string MetricType { get; }
         public MetricsCollector Collector { get; internal set; }
         public bool IsAttached { get; internal set; }
 
-        private IReadOnlyCollection<string> _suffixes;
         private HashSet<string> _suffixSet;
-        public IReadOnlyCollection<string> Suffixes
-        {
-            get
-            {
-                if (_suffixes == null)
-                {
-                    _suffixes = GetSuffixes().ToList().AsReadOnly();
-                    _suffixSet = new HashSet<string>(_suffixes);
-                }
-
-                return _suffixes;
-            }
-        }
+        public IReadOnlyCollection<string> Suffixes => Array.AsReadOnly(SuffixesArray);
+        internal string[] SuffixesArray { get; private set; }
+        internal int SuffixCount => SuffixesArray.Length;
 
         private string _tagsJson;
         protected internal string TagsJson => _tagsJson ?? (_tagsJson = GetTagsJson(Collector.DefaultTags, Collector.TagValueConverter, Collector.TagsByTypeCache));
@@ -76,47 +76,78 @@ namespace BosunReporter.Infrastructure
             _tagsJson = tagsJson;
         }
 
-        public virtual string GetDescription(string suffix)
+        public virtual string GetDescription(int suffixIndex)
         {
             return Description;
         }
 
-        public virtual string GetUnit(string suffix)
+        public virtual string GetUnit(int suffixIndex)
         {
             return Unit;
         }
 
         public virtual IEnumerable<MetaData> GetMetaData()
         {
-            foreach (var suffix in Suffixes)
+            for (var i = 0; i < SuffixesArray.Length; i++)
             {
-                var fullName = Name + suffix;
+                var fullName = Name + SuffixesArray[i];
 
                 yield return new MetaData(fullName, "rate", null, MetricType);
 
-                var desc = GetDescription(suffix);
+                var desc = GetDescription(i);
                 if (!String.IsNullOrEmpty(desc))
                     yield return new MetaData(fullName, "desc", TagsJson, desc);
 
-                var unit = GetUnit(suffix);
+                var unit = GetUnit(i);
                 if (!String.IsNullOrEmpty(unit))
                     yield return new MetaData(fullName, "unit", null, unit);
             }
         }
 
-        protected virtual IEnumerable<string> GetSuffixes()
+        protected virtual string[] GetImmutableSuffixesArray()
         {
-            yield return "";
+            return s_singleEmptyStringArray;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal IEnumerable<string> SerializeInternal(string unixTimestamp)
+        internal void SerializeInternal(MetricWriter writer, string unixTimestamp)
         {
-            return Serialize(unixTimestamp);
+            Serialize(writer, unixTimestamp);
         }
 
-        protected abstract IEnumerable<string> Serialize(string unixTimestamp);
+        protected abstract void Serialize(MetricWriter writer, string unixTimestamp);
 
+        internal bool NeedsPreSerializeCalled()
+        {
+            return GetMetricTypeInfo().NeedsPreSerialize;
+        }
+
+        internal bool IsExternalCounter()
+        {
+            return GetMetricTypeInfo().IsExternalCounter;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal void PreSerializeInternal()
+        {
+            PreSerialize();
+        }
+
+        protected virtual void PreSerialize()
+        {
+            // If this method is overriden, it will be called shortly before Serialize.
+            // Unlike Serialize, which is called on all metrics in serial, PreSerialize
+            // is called in parallel, which makes it better place to do computationally
+            // expensive operations.
+        }
+
+        internal void LoadSuffixes()
+        {
+            SuffixesArray = GetImmutableSuffixesArray();
+            _suffixSet = new HashSet<string>(SuffixesArray);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         protected void AssertAttached()
         {
             if (!IsAttached)
@@ -135,35 +166,15 @@ namespace BosunReporter.Infrastructure
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        protected string ToJson(string suffix, int value, string unixTimestamp)
+        protected void WriteValue(MetricWriter writer, double value, string unixTimestamp, int suffixIndex = 0)
         {
-            return ToJson(suffix, value.ToString("D"), unixTimestamp);
+            writer.AddMetric(Name, SuffixesArray[suffixIndex], value, TagsJson, unixTimestamp);
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        protected string ToJson(string suffix, long value, string unixTimestamp)
-        {
-            return ToJson(suffix, value.ToString("D"), unixTimestamp);
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        protected string ToJson(string suffix, double value, string unixTimestamp)
-        {
-            return ToJson(suffix, value.ToString("0.###############"), unixTimestamp);
-        }
-
-        private string ToJson(string suffix, string value, string unixTimestamp)
-        {
-            if (!_suffixSet.Contains(suffix))
-            {
-                throw new InvalidOperationException("Invalid suffix \"" + suffix + "\" on metric \"" + Name + "\". " +
-                    "This is probably because you forgot to implement GetSuffixes() properly in a custom-coded metric type.");
-            }
-
-            return "{\"metric\":\""+ _name + suffix +"\",\"value\":"+ value +",\"tags\":"+ TagsJson +",\"timestamp\":"+ unixTimestamp +"}";
-        }
-
-        internal string GetTagsJson(ReadOnlyDictionary<string, string> defaultTags, TagValueConverterDelegate tagValueConverter, Dictionary<Type, List<BosunTag>> tagsByTypeCache)
+        internal string GetTagsJson(
+            ReadOnlyDictionary<string, string> defaultTags,
+            TagValueConverterDelegate tagValueConverter,
+            Dictionary<Type, List<BosunTag>> tagsByTypeCache)
         {
             var sb = new StringBuilder();
             foreach (var tag in GetTagsList(defaultTags, tagsByTypeCache))
@@ -257,7 +268,7 @@ namespace BosunReporter.Infrastructure
             public Dictionary<string, bool> IncludeByTag;
         }
 
-        static TagAttributesData GetTagAttributesData(Type type)
+        private static TagAttributesData GetTagAttributesData(Type type)
         {
             var foundDefault = false;
             var includeByDefault = true;
@@ -318,6 +329,31 @@ namespace BosunReporter.Infrastructure
                 IncludeByDefault = includeByDefault,
                 IncludeByTag = includeByTag,
             };
+        }
+
+        private MetricTypeInfo GetMetricTypeInfo()
+        {
+            var type = GetType();
+            MetricTypeInfo info;
+            if (_typeInfoCache.TryGetValue(type, out info))
+                return info;
+
+            lock (_typeInfoLock)
+            {
+                if (_typeInfoCache.TryGetValue(type, out info))
+                    return info;
+                
+                var needsPreSerialize = type.GetMethod(nameof(PreSerialize), BindingFlags.Instance | BindingFlags.NonPublic).DeclaringType != typeof(BosunMetric);
+                var isExternalCounter = false; // todo - fix when ExternalCounter is merged in
+
+                info = _typeInfoCache[type] = new MetricTypeInfo
+                {
+                    NeedsPreSerialize = needsPreSerialize,
+                    IsExternalCounter = isExternalCounter,
+                };
+
+                return info;
+            }
         }
     }
 }

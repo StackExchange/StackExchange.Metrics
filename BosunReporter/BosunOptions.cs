@@ -24,13 +24,13 @@ namespace BosunReporter
         /// </summary>
         public Func<Uri> GetBosunUrl;
         /// <summary>
-        /// The maximum number of metrics which will be queued for sending.
+        /// The maximum size (in bytes) the HTTP body of a single post to the Bosun API can be.
         /// </summary>
-        public int MaxQueueLength = 100000;
+        public int MaxPayloadSize = 8000;
         /// <summary>
-        /// The number of metrics which will be sent in a single post to the Bosun API.
+        /// The maximum number of payloads which can be queued for sending before they start being dropped.
         /// </summary>
-        public int BatchSize = 250;
+        public int MaxPendingPayloads = 120;
         /// <summary>
         /// If true, BosunReporter will throw an exception every time posting to the Bosun API fails.
         /// </summary>

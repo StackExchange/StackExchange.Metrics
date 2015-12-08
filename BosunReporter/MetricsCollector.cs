@@ -9,6 +9,7 @@ using System.Net;
 using System.Reflection;
 using System.Text;
 using System.Threading;
+using System.Threading.Tasks;
 using BosunReporter.Infrastructure;
 using Jil;
 
@@ -22,25 +23,28 @@ namespace BosunReporter
             public string Unit { get; set; }
         }
 
-        private static readonly DateTime UnixEpoch = new DateTime(1970, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc);
+        private static readonly DateTime s_unixEpoch = new DateTime(1970, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc);
         
         private readonly object _metricsLock = new object();
         // all of the first-class names which have been claimed (excluding suffixes in aggregate gauges)
         private readonly Dictionary<string, RootMetricInfo> _rootNameToInfo = new Dictionary<string, RootMetricInfo>();
         // this dictionary is to avoid duplicate metrics
         private Dictionary<string, BosunMetric> _rootNameAndTagsToMetric = new Dictionary<string, BosunMetric>();
+        private readonly List<BosunMetric> _localMetrics = new List<BosunMetric>();
+        private readonly List<BosunMetric> _externalCounterMetrics = new List<BosunMetric>();
+        private readonly List<BosunMetric> _metricsNeedingPreSerialize = new List<BosunMetric>();
         // All of the names which have been claimed, including the metrics which may have multiple suffixes, mapped to their root metric name.
         // This is to prevent suffix collisions with other metrics.
         private readonly Dictionary<string, string> _nameAndSuffixToRootName = new Dictionary<string, string>();
         
-        private List<string> _pendingMetrics;
-        private readonly object _pendingLock = new object();
         private readonly object _flushingLock = new object();
-        private int _isFlushing = 0; // int instead of a bool so in can be used with Interlocked.CompareExchange
         private int _skipFlushes = 0;
         private readonly Timer _flushTimer;
         private readonly Timer _reportingTimer;
         private readonly Timer _metaDataTimer;
+
+        private readonly PayloadQueue _localMetricsQueue;
+        private readonly PayloadQueue _externalCounterQueue;
 
         private static readonly AsyncCallback s_asyncNoopCallback = AsyncNoopCallback;
 
@@ -50,8 +54,6 @@ namespace BosunReporter
         public string MetricsNamePrefix { get; }
         public Uri BosunUrl { get; set; }
         public Func<Uri> GetBosunUrl { get; set; }
-        public int MaxQueueLength { get; set; }
-        public int BatchSize { get; set; }
         public bool ThrowOnPostFail { get; set; }
         public bool ThrowOnQueueFull { get; set; }
         public int ReportingInterval { get; }
@@ -62,11 +64,6 @@ namespace BosunReporter
         public bool ShutdownCalled { get; private set; }
 
         // insights
-        /// <summary>
-        /// The number of metrics (individual data points) which are currently queued for sending to Bosun.
-        /// </summary>
-        public int PendingMetricsCount => _pendingMetrics?.Count ?? 0;
-        public bool HasPendingMetrics => PendingMetricsCount > 0;
         /// <summary>
         /// Total number of data points successfully sent fo Bosun.
         /// </summary>
@@ -86,6 +83,34 @@ namespace BosunReporter
         public event Action<Exception> OnBackgroundException;
         public bool HasExceptionHandler => OnBackgroundException != null && OnBackgroundException.GetInvocationList().Length != 0;
 
+        public int MaxPendingPayloads
+        {
+            get { return _localMetricsQueue.MaxPendingPayloads; }
+            set
+            {
+                if (value < 1)
+                    throw new Exception("Cannot set MaxPendingPayloads to less than 1.");
+
+                _localMetricsQueue.MaxPendingPayloads = value;
+                _externalCounterQueue.MaxPendingPayloads = value;
+            }
+        }
+
+        public int MaxPayloadSize
+        {
+            get { return _localMetricsQueue.PayloadSize; }
+            set
+            {
+                if (value < 1000)
+                    throw new Exception("Cannot set a MaxPayloadSize less than 1000 bytes.");
+
+                _localMetricsQueue.PayloadSize = value;
+                _externalCounterQueue.PayloadSize = value;
+            }
+        }
+
+        public int PendingPayloadCount => _localMetricsQueue.PendingPayloadsCount + _externalCounterQueue.PendingPayloadsCount;
+
         public event Action BeforeSerialization;
         public event Action<AfterSerializationInfo> AfterSerialization;
         public event Action<AfterPostInfo> AfterPost;
@@ -94,14 +119,23 @@ namespace BosunReporter
 
         public MetricsCollector(BosunOptions options)
         {
+            _localMetricsQueue = new PayloadQueue();
+            _externalCounterQueue = new PayloadQueue();
+
+            _localMetricsQueue.PayloadDropped += OnPayloadDropped;
+            _externalCounterQueue.PayloadDropped += OnPayloadDropped;
+
+            // these two setters actually update the queues themselves
+            MaxPayloadSize = options.MaxPayloadSize;
+            MaxPendingPayloads = options.MaxPendingPayloads;
+
             MetricsNamePrefix = options.MetricsNamePrefix ?? "";
             if (MetricsNamePrefix != "" && !BosunValidation.IsValidMetricName(MetricsNamePrefix))
                 throw new Exception("\"" + MetricsNamePrefix + "\" is not a valid metric name prefix.");
 
             GetBosunUrl = options.GetBosunUrl;
             BosunUrl = GetBosunUrl == null ? options.BosunUrl : GetBosunUrl();
-            MaxQueueLength = options.MaxQueueLength;
-            BatchSize = options.BatchSize;
+
             ThrowOnPostFail = options.ThrowOnPostFail;
             ThrowOnQueueFull = options.ThrowOnQueueFull;
             ReportingInterval = options.ReportingInterval;
@@ -272,6 +306,8 @@ namespace BosunReporter
             metric.Description = description;
             metric.Unit = unit;
 
+            metric.LoadSuffixes();
+
             lock (_metricsLock)
             {
                 RootMetricInfo rmi;
@@ -297,7 +333,7 @@ namespace BosunReporter
                 }
 
                 // claim all suffixes. Do this in two passes (check then add) so we don't end up in an inconsistent state.
-                foreach (var s in metric.Suffixes)
+                foreach (var s in metric.SuffixesArray)
                 {
                     var ns = name + s;
                         
@@ -313,7 +349,7 @@ namespace BosunReporter
                     }
                 }
 
-                foreach (var s in metric.Suffixes)
+                foreach (var s in metric.SuffixesArray)
                 {
                     _nameAndSuffixToRootName[name + s] = name;
                 }
@@ -335,8 +371,34 @@ namespace BosunReporter
                 _rootNameAndTagsToMetric[key] = metric;
                 metric.IsAttached = true;
 
+                var needsPreSerialize = metric.NeedsPreSerializeCalled();
+                if (needsPreSerialize)
+                    _metricsNeedingPreSerialize.Add(metric);
+
+                var isExternal = metric.IsExternalCounter();
+                if (isExternal)
+                    _externalCounterMetrics.Add(metric);
+                else 
+                    _localMetrics.Add(metric);
+
                 if (metric.SerializeInitialValue)
-                    EnqueueMetrics(metric.SerializeInternal(GetUnixTimestamp()));
+                {
+                    MetricWriter writer = null;
+                    try
+                    {
+                        var queue = isExternal ? _externalCounterQueue : _localMetricsQueue;
+                        writer = queue.GetWriter();
+
+                        if (needsPreSerialize)
+                            metric.PreSerializeInternal();
+
+                        metric.SerializeInternal(writer, GetUnixTimestamp());
+                    }
+                    finally
+                    {
+                        writer?.EndBatch();
+                    }
+                }
 
                 return metric;
             }
@@ -443,16 +505,18 @@ namespace BosunReporter
                 if (BeforeSerialization != null && BeforeSerialization.GetInvocationList().Length != 0)
                     BeforeSerialization();
 
-                var info = new AfterSerializationInfo();
                 var sw = new StopwatchStruct();
                 sw.Start();
-                var list = GetSerializedMetrics();
+                int metricsCount, bytesWritten;
+                SerializeMetrics(out metricsCount, out bytesWritten);
                 sw.Stop();
-                
-                EnqueueMetrics(list);
 
-                info.Count = list.Count;
-                info.MillisecondsDuration = sw.GetElapsedMilliseconds();
+                var info = new AfterSerializationInfo
+                {
+                    Count = metricsCount,
+                    BytesWritten = bytesWritten,
+                    MillisecondsDuration = sw.GetElapsedMilliseconds(),
+                };
 
                 LastSerializationInfo = info;
                 AfterSerialization?.Invoke(info);
@@ -473,66 +537,78 @@ namespace BosunReporter
         {
             if ((bool)isCalledFromTimer && ShutdownCalled) // don't perform timer actions if we're shutting down
                 return;
-
-            // prevent calls to Flush from stacking up - skip this check if we're in draining mode
-            if (Interlocked.CompareExchange(ref _isFlushing, 1, 0) != 0 && !ShutdownCalled)
+            
+            var lockTaken = false;
+            try
             {
-                Debug.WriteLine("BosunReporter: Flush already in progress (skipping).");
-                return;
+                lockTaken = Monitor.TryEnter(_flushingLock);
+
+                // the lock prevents calls to Flush from stacking up, but we skip this check if we're in draining mode
+                if (!lockTaken && !ShutdownCalled)
+                {
+                    Debug.WriteLine("BosunReporter: Flush already in progress (skipping).");
+                    return;
+                }
+
+                if (!ShutdownCalled && _skipFlushes > 0)
+                {
+                    _skipFlushes--;
+                    return;
+                }
+
+                bool any;
+                do
+                {
+                    any = false;
+                    any |= FlushPayload("/api/put", _localMetricsQueue);
+//                        any |= FlushPayload("external counter URL path", _externalCounterQueue);
+
+                } while (any);
             }
-
-            lock (_flushingLock)
+            catch (BosunPostException ex)
             {
-                try
+                // there was a problem flushing - back off for the next five seconds (Bosun may simply be restarting)
+                _skipFlushes = 4;
+                if (ThrowOnPostFail)
                 {
-                    if (!ShutdownCalled && _skipFlushes > 0)
-                    {
-                        _skipFlushes--;
-                        return;
-                    }
-
-                    while (_pendingMetrics != null && _pendingMetrics.Count > 0)
-                    {
-                        FlushBatch();
-                    }
+                    if (HasExceptionHandler)
+                        OnBackgroundException(ex);
+                    else
+                        throw;
                 }
-                catch (BosunPostException ex)
-                {
-                    // there was a problem flushing - back off for the next five seconds (Bosun may simply be restarting)
-                    _skipFlushes = 4;
-                    if (ThrowOnPostFail)
-                    {
-                        if (HasExceptionHandler)
-                            OnBackgroundException(ex);
-                        else
-                            throw;
-                    }
-                }
-                finally
-                {
-                    Interlocked.Exchange(ref _isFlushing, 0);
-                }
+            }
+            finally
+            {
+                if (lockTaken)
+                    Monitor.Exit(_flushingLock);
             }
         }
 
-        private void FlushBatch()
+        private bool FlushPayload(string path, PayloadQueue queue)
         {
-            var batch = DequeueMetricsBatch();
-            if (batch.Count == 0)
-                return;
+            var payload = queue.DequeuePendingPayload();
+            if (payload == null)
+                return false;
 
-            Debug.WriteLine("BosunReporter: Flushing metrics batch. Size: " + batch.Count);
+            var metricsCount = payload.MetricsCount;
+            var bytes = payload.Used;
+
+            Debug.WriteLine($"BosunReporter: Flushing metrics batch. {metricsCount} metrics. {bytes} bytes.");
 
             var info = new AfterPostInfo();
             var timer = new StopwatchStruct();
             try
             {
                 timer.Start();
-                PostToBosun("/api/put", true, sw => WriteJsonArrayBody(sw, batch));
+                PostToBosun(path, true, sw => sw.Write(payload.Data, 0, payload.Used));
                 timer.Stop();
 
+                queue.ReleasePayload(payload);
+
                 PostSuccessCount++;
-                TotalMetricsPosted += batch.Count;
+                TotalMetricsPosted += payload.MetricsCount;
+
+                return true;
             }
             catch (Exception ex)
             {
@@ -541,12 +617,14 @@ namespace BosunReporter
                 Debug.WriteLine("BosunReporter: Posting to the Bosun API failed. Pushing metrics back onto the queue.");
                 PostFailCount++;
                 info.Exception = ex;
-                EnqueueMetrics(batch);
+                queue.AddPendingPayload(payload);
                 throw;
             }
             finally
             {
-                info.Count = batch.Count;
+                // don't use the payload variable in this block - it may have been released back to the pool by now
+                info.Count = metricsCount;
+                info.BytesWritten = bytes;
                 info.MillisecondsDuration = timer.GetElapsedMilliseconds();
                 LastPostInfo = info;
 
@@ -558,25 +636,7 @@ namespace BosunReporter
 
         private static void AsyncNoopCallback(IAsyncResult result) { }
 
-        private static void WriteJsonArrayBody(StreamWriter sw, List<string> batch)
-        {
-            sw.Write("[");
-
-            var first = true;
-            foreach (var o in batch)
-            {
-                if (first)
-                    first = false;
-                else
-                    sw.Write(",");
-
-                sw.Write(o);
-            }
-
-            sw.Write("]");
-        }
-
-        private delegate void ApiPostWriter(StreamWriter sw);
+        private delegate void ApiPostWriter(Stream sw);
         private void PostToBosun(string path, bool gzip, ApiPostWriter postWriter)
         {
             var url = BosunUrl;
@@ -609,17 +669,13 @@ namespace BosunReporter
                     if (gzip)
                     {
                         using (var gzipStream = new GZipStream(stream, CompressionMode.Compress))
-                        using (var sw = new StreamWriter(gzipStream, new UTF8Encoding(false)))
                         {
-                            postWriter(sw);
+                            postWriter(gzipStream);
                         }
                     }
                     else
                     {
-                        using (var sw = new StreamWriter(stream, new UTF8Encoding(false)))
-                        {
-                            postWriter(sw);
-                        }
+                        postWriter(stream);
                     }
                 }
 
@@ -644,68 +700,60 @@ namespace BosunReporter
             }
         }
 
-        private void EnqueueMetrics(IEnumerable<string> metrics)
-        {
-            lock (_pendingLock)
-            {
-                if (_pendingMetrics == null || _pendingMetrics.Count == 0)
-                {
-                    _pendingMetrics = metrics.Take(MaxQueueLength).ToList();
-                }
-                else
-                {
-                    _pendingMetrics.AddRange(metrics.Take(MaxQueueLength - _pendingMetrics.Count));
-                }
-
-                if (ThrowOnQueueFull && _pendingMetrics.Count == MaxQueueLength)
-                {
-                    var ex = new BosunQueueFullException();
-
-                    if (HasExceptionHandler)
-                        OnBackgroundException(ex);
-                    else
-                        throw ex;
-                }
-            }
-        }
-
-        private List<string> DequeueMetricsBatch()
-        {
-            lock (_pendingLock)
-            {
-                List<string> batch;
-                if (_pendingMetrics == null)
-                    return new List<string>();
-
-                if (_pendingMetrics.Count <= BatchSize)
-                {
-                    batch = _pendingMetrics;
-                    _pendingMetrics = null;
-                    return batch;
-                }
-
-                // todo: this is not a great way to do this perf-wise
-                batch = _pendingMetrics.GetRange(0, BatchSize);
-                _pendingMetrics.RemoveRange(0, BatchSize);
-                return batch;
-            }
-        }
-
         internal static string GetUnixTimestamp()
         {
             return GetUnixTimestamp(DateTime.UtcNow);
         }
         internal static string GetUnixTimestamp(DateTime time)
         {
-            return ((long)(time - UnixEpoch).TotalMilliseconds).ToString("D");
+            return ((long)(time - s_unixEpoch).TotalMilliseconds).ToString("D");
         }
 
-        private List<string> GetSerializedMetrics()
+        private void SerializeMetrics(out int metricsCount, out int bytesWritten)
         {
             var unixTimestamp = GetUnixTimestamp();
             lock (_metricsLock)
             {
-                return Metrics.AsParallel().Select(m => m.SerializeInternal(unixTimestamp)).SelectMany(s => s).ToList();
+                if (_metricsNeedingPreSerialize.Count > 0)
+                {
+                    Parallel.ForEach(_metricsNeedingPreSerialize, m => m.PreSerializeInternal());
+                }
+
+                metricsCount = 0;
+                bytesWritten = 0;
+                MetricWriter localWriter = null;
+                MetricWriter externalCounterWriter = null;
+                try
+                {
+                    if (_localMetrics.Count > 0)
+                    {
+                        localWriter = _localMetricsQueue.GetWriter();
+                        SerializeMetricListToWriter(localWriter, _localMetrics, unixTimestamp);
+                        metricsCount += localWriter.MetricsCount;
+                        bytesWritten += localWriter.TotalBytesWritten;
+                    }
+
+                    if (_externalCounterMetrics.Count > 0)
+                    {
+                        externalCounterWriter = _externalCounterQueue.GetWriter();
+                        SerializeMetricListToWriter(externalCounterWriter, _externalCounterMetrics, unixTimestamp);
+                        metricsCount += externalCounterWriter.MetricsCount;
+                        bytesWritten += externalCounterWriter.TotalBytesWritten;
+                    }
+                }
+                finally
+                {
+                    localWriter?.EndBatch();
+                    externalCounterWriter?.EndBatch();
+                }
+            }
+        }
+
+        private static void SerializeMetricListToWriter(MetricWriter writer, List<BosunMetric> metrics, string unixTimestamp)
+        {
+            foreach (var m in metrics)
+            {
+                m.SerializeInternal(writer, unixTimestamp);
             }
         }
 
@@ -725,7 +773,13 @@ namespace BosunReporter
                 Debug.WriteLine("BosunReporter: Gathering metadata.");
                 var metaJson = GatherMetaData();
                 Debug.WriteLine("BosunReporter: Sending metadata.");
-                PostToBosun("/api/metadata/put", false, sw => sw.Write(metaJson));
+                PostToBosun("/api/metadata/put", false, stream =>
+                {
+                    using (var sw = new StreamWriter(stream, new UTF8Encoding(false)))
+                    {
+                        sw.Write(metaJson);
+                    }
+                });
             }
             catch (BosunPostException)
             {
@@ -736,7 +790,6 @@ namespace BosunReporter
 
         private string GatherMetaData()
         {
-            var metaList = new List<MetaData>();
             var json = new StringBuilder();
 
             lock (_metricsLock)
@@ -765,11 +818,23 @@ namespace BosunReporter
 
             return json.ToString();
         }
+
+        private void OnPayloadDropped(BosunQueueFullException ex)
+        {
+            if (ThrowOnQueueFull)
+            {
+                if (HasExceptionHandler)
+                    OnBackgroundException(ex);
+                else
+                    throw ex;
+            }
+        }
     }
 
     public class AfterSerializationInfo
     {
         public int Count { get; internal set; }
+        public int BytesWritten { get; internal set; }
         public double MillisecondsDuration { get; internal set; }
         public DateTime StartTime { get; }
 
@@ -782,6 +847,7 @@ namespace BosunReporter
     public class AfterPostInfo
     {
         public int Count { get; internal set; }
+        public int BytesWritten { get; internal set; }
         public double MillisecondsDuration { get; internal set; }
         public bool Successful => Exception == null;
         public Exception Exception { get; internal set; }

@@ -9,29 +9,38 @@ namespace BosunReporter.Metrics
 {
     public class EventGauge : BosunMetric, IDoubleGauge
     {
-        private ConcurrentBag<string> _serializedMetrics = new ConcurrentBag<string>();
+        private struct PendingMetric
+        {
+            public double Value;
+            public DateTime Time;
+        }
+
+        private ConcurrentBag<PendingMetric> _pendingMetrics = new ConcurrentBag<PendingMetric>();
 
         public override string MetricType => "gauge";
 
-        protected override IEnumerable<string> Serialize(string unixTimestamp)
+        protected override void Serialize(MetricWriter writer, string unixTimestamp)
         {
-            if (_serializedMetrics.Count > 0)
-            {
-                return Interlocked.Exchange(ref _serializedMetrics, new ConcurrentBag<string>());
-            }
+            if (_pendingMetrics.Count == 0)
+                return;
 
-            return Enumerable.Empty<string>();
+            var pending = Interlocked.Exchange(ref _pendingMetrics, new ConcurrentBag<PendingMetric>());
+            foreach (var p in pending)
+            {
+                WriteValue(writer, p.Value, MetricsCollector.GetUnixTimestamp(p.Time));
+            }
         }
 
         public void Record(double value)
         {
             AssertAttached();
-            _serializedMetrics.Add(ToJson("", value, MetricsCollector.GetUnixTimestamp()));
+            _pendingMetrics.Add(new PendingMetric { Value = value, Time = DateTime.UtcNow });
         }
+
         public void Record(double value, DateTime time)
         {
             AssertAttached();
-            _serializedMetrics.Add(ToJson("", value, MetricsCollector.GetUnixTimestamp(time)));
+            _pendingMetrics.Add(new PendingMetric { Value = value, Time = time });
         }
     }
 }

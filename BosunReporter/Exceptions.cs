@@ -19,9 +19,17 @@ namespace BosunReporter
 
     public class BosunQueueFullException : Exception
     {
-        public BosunQueueFullException(Exception innerException = null)
-            : base("Bosun metric queue is full. Metric data is likely being lost due to repeated failures in posting to the Bosun API.", innerException)
+        public int MetricsCount { get; }
+        public int Bytes { get; }
+
+        public BosunQueueFullException(int metricsCount, int bytes)
+            : base("Bosun metric queue is full. Metric data is likely being lost due to repeated failures in posting to the Bosun API.")
         {
+            MetricsCount = metricsCount;
+            Bytes = bytes;
+
+            Data["MetricsCount"] = metricsCount;
+            Data["Bytes"] = bytes;
         }
     }
 }

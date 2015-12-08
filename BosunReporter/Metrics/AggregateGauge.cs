@@ -12,18 +12,29 @@ namespace BosunReporter.Metrics
     [GaugeAggregator(AggregateMode.Last)]
     public class AggregateGauge : BosunMetric, IDoubleGauge
     {
+        private enum SnapshotReportingMode
+        {
+            None,
+            CountOnly,
+            All
+        }
+
         private static readonly Dictionary<Type, GaugeAggregatorStrategy> _aggregatorsByTypeCache = new Dictionary<Type, GaugeAggregatorStrategy>();
 
         public static Func<int> GetDefaultMinimumEvents { get; set; } = () => 1;
 
         private readonly object _recordLock = new object();
-        private readonly GaugeAggregatorStrategy _aggregatorStrategy;
+        private readonly double[] _percentiles;
+        private readonly string[] _suffixes;
 
         private readonly bool _trackMean;
         private readonly bool _specialCaseMax;
         private readonly bool _specialCaseMin;
         private readonly bool _specialCaseLast;
         private readonly bool _reportCount;
+
+        private readonly double[] _snapshot;
+        private SnapshotReportingMode _snapshotReportingMode;
 
         private List<double> _list;
         private List<double> _warmlist;
@@ -44,22 +55,27 @@ namespace BosunReporter.Metrics
 
         public AggregateGauge()
         {
-            _aggregatorStrategy = GetAggregatorStategy();
+            var strategy = GetAggregatorStategy();
             // denormalize these for one less level of indirection
-            _trackMean = _aggregatorStrategy.TrackMean;
-            _specialCaseMin = _aggregatorStrategy.SpecialCaseMin;
-            _specialCaseMax = _aggregatorStrategy.SpecialCaseMax;
-            _specialCaseLast = _aggregatorStrategy.SpecialCaseLast;
-            _reportCount = _aggregatorStrategy.ReportCount;
+            _percentiles= strategy.Percentiles;
+            _suffixes = strategy.Suffixes;
+            _trackMean = strategy.TrackMean;
+            _specialCaseMin = strategy.SpecialCaseMin;
+            _specialCaseMax = strategy.SpecialCaseMax;
+            _specialCaseLast = strategy.SpecialCaseLast;
+            _reportCount = strategy.ReportCount;
 
             // setup heap, if required.
-            if (_aggregatorStrategy.UseList)
+            if (strategy.UseList)
                 _list = new List<double>();
+
+            _snapshot = new double[_suffixes.Length];
+            _snapshotReportingMode = SnapshotReportingMode.None;
         }
 
-        protected override IEnumerable<string> GetSuffixes()
+        protected override string[] GetImmutableSuffixesArray()
         {
-            return _aggregatorStrategy.Suffixes;
+            return _suffixes;
         }
 
         public void Record(double value)
@@ -94,13 +110,11 @@ namespace BosunReporter.Metrics
             }
         }
 
-        public override string GetDescription(string suffix)
+        public override string GetDescription(int suffixIndex)
         {
             if (!String.IsNullOrEmpty(Description))
             {
-                var aggregator = _aggregatorStrategy.Aggregators.First(a => a.Suffix == suffix);
-
-                switch (aggregator.AggregateMode)
+                switch (PercentileToAggregateMode(_percentiles[suffixIndex]))
                 {
                     case AggregateMode.Last:
                         return Description + " (last)";
@@ -113,7 +127,7 @@ namespace BosunReporter.Metrics
                     case AggregateMode.Median:
                         return Description + " (median)";
                     case AggregateMode.Percentile:
-                        return Description + " (" + DoubleToPercentileString(aggregator.Percentile) + ")";
+                        return Description + " (" + DoubleToPercentileString(_percentiles[suffixIndex]) + ")";
                     case AggregateMode.Count:
                         return Description + " (count of the number of events recorded)";
                 }
@@ -147,21 +161,28 @@ namespace BosunReporter.Metrics
             return ip + ending + " percentile";
         }
 
-        protected override IEnumerable<string> Serialize(string unixTimestamp)
+        protected override void Serialize(MetricWriter writer, string unixTimestamp)
         {
-            var snapshot = GetSnapshot();
-            if (snapshot == null)
-                yield break;
+            var mode = _snapshotReportingMode;
+            if (mode == SnapshotReportingMode.None)
+                return;
 
-            foreach (var a in _aggregatorStrategy.Aggregators)
+            var countOnly = mode == SnapshotReportingMode.CountOnly;
+            for (var i = 0; i < _percentiles.Length; i++)
             {
-                double val;
-                if (snapshot.TryGetValue(a.Percentile, out val))
-                    yield return ToJson(a.Suffix, val, unixTimestamp);
+                if (countOnly && PercentileToAggregateMode(_percentiles[i]) != AggregateMode.Count)
+                    continue;
+
+                WriteValue(writer, _snapshot[i], unixTimestamp, i);
             }
         }
 
-        private Dictionary<double, double> GetSnapshot()
+        protected override void PreSerialize()
+        {
+            CaptureSnapshot();
+        }
+
+        private void CaptureSnapshot()
         {
             List<double> list = null;
             double last;
@@ -169,7 +190,6 @@ namespace BosunReporter.Metrics
             double max;
             int count;
             double sum;
-
 
             lock (_recordLock)
             {
@@ -197,48 +217,70 @@ namespace BosunReporter.Metrics
                 count = _count;
                 _count = 0;
             }
-
-            Dictionary<double, double> snapshot = null;
-            var reportAllAggregates = count > 0 && count >= MinimumEvents;
-
-            if (reportAllAggregates || _reportCount)
+            
+            if (count == 0 || count < MinimumEvents)
             {
-                snapshot = new Dictionary<double, double>();
+                _snapshotReportingMode = _reportCount ? SnapshotReportingMode.CountOnly : SnapshotReportingMode.None;
+            }
+            else
+            {
+                _snapshotReportingMode = SnapshotReportingMode.All;
+            }
 
-                if (_reportCount)
-                    snapshot[-3.0] = count;
+            if (_snapshotReportingMode != SnapshotReportingMode.None)
+            {
+                var countOnly = _snapshotReportingMode == SnapshotReportingMode.CountOnly;
 
-                if (reportAllAggregates)
+                var lastIndex = 0;
+
+                if (!countOnly && list != null)
                 {
-                    if (_specialCaseLast)
-                        snapshot[-2.0] = last;
-                    if (_trackMean)
-                        snapshot[-1.0] = sum/count;
-                    if (_specialCaseMax)
-                        snapshot[1.0] = max;
-                    if (_specialCaseMin)
-                        snapshot[0.0] = min;
+                    lastIndex = list.Count - 1;
 
-                    if (list != null)
+                    if (!_specialCaseLast)
+                        last = list[lastIndex];
+
+                    list.Sort();
+                }
+
+                for (var i = 0; i < _percentiles.Length; i++)
+                {
+                    var mode = PercentileToAggregateMode(_percentiles[i]);
+                    if (countOnly && mode != AggregateMode.Count)
+                        continue;
+
+                    double value;
+                    switch(mode)
                     {
-                        var lastIndex = list.Count - 1;
-
-                        if (_aggregatorStrategy.TrackLast)
-                            snapshot[-2.0] = list[lastIndex];
-
-                        list.Sort();
-                        var percentiles = _aggregatorStrategy.Percentiles;
-
-                        foreach (var p in percentiles)
-                        {
-                            var index = (int) Math.Round(p*lastIndex);
-                            snapshot[p] = list[index];
-                        }
+                        case AggregateMode.Average:
+                            value = sum/count;
+                            break;
+                        case AggregateMode.Median:
+                        case AggregateMode.Percentile:
+                            var index = (int)Math.Round(_percentiles[i] * lastIndex);
+                            value = list[index];
+                            break;
+                        case AggregateMode.Max:
+                            value = _specialCaseMax ? max : list[lastIndex];
+                            break;
+                        case AggregateMode.Min:
+                            value = _specialCaseMin ? min : list[0];
+                            break;
+                        case AggregateMode.Last:
+                            value = last;
+                            break;
+                        case AggregateMode.Count:
+                            value = count;
+                            break;
+                        default:
+                            throw new NotImplementedException();
                     }
+
+                    _snapshot[i] = value;
                 }
             }
 
-            if (list != null && list.Count * 2 >= list.Capacity)
+            if (list != null && list.Count*2 >= list.Capacity)
             {
                 // if at least half of the list capacity was used, then we'll consider re-using this list.
                 list.Clear();
@@ -247,8 +289,6 @@ namespace BosunReporter.Metrics
                     _warmlist = list;
                 }
             }
-
-            return snapshot;
         }
 
         private GaugeAggregatorStrategy GetAggregatorStategy()
@@ -277,90 +317,147 @@ namespace BosunReporter.Metrics
             }
         }
 
+        [SuppressMessage("ReSharper", "CompareOfFloatsByEqualityOperator")]
+        internal static AggregateMode PercentileToAggregateMode(double percentile)
+        {
+            if (percentile < 0.0)
+            {
+                if (percentile == -1.0)
+                    return AggregateMode.Average;
+                if (percentile == -2.0)
+                    return AggregateMode.Last;
+                if (percentile == -3.0)
+                    return AggregateMode.Count;
+
+                throw new Exception($"Percentile {percentile} is invalid.");
+            }
+
+            if (percentile == 0.0)
+                return AggregateMode.Min;
+            if (percentile == 0.5)
+                return AggregateMode.Median;
+            if (percentile == 1.0)
+                return AggregateMode.Max;
+            if (percentile < 1.0)
+                return AggregateMode.Percentile;
+
+            throw new Exception($"Percentile {percentile} is invalid.");
+        }
+
+        internal static double AggregateModeToPercentileAndSuffix(AggregateMode mode, double percentile, out string defaultSuffix)
+        {
+            switch (mode)
+            {
+                case AggregateMode.Average:
+                    defaultSuffix = "_avg";
+                    return -1.0;
+                case AggregateMode.Last:
+                    defaultSuffix = "";
+                    return -2.0;
+                case AggregateMode.Count:
+                    defaultSuffix = "_count";
+                    return -3.0;
+                case AggregateMode.Median:
+                    defaultSuffix = "_median";
+                    return 0.5;
+                case AggregateMode.Percentile:
+                    if (Double.IsNaN(percentile) || percentile < 0 || percentile > 1)
+                        throw new ArgumentOutOfRangeException(nameof(percentile), "Percentile must be specified for gauge aggregators with percentile mode. Percentile must be between 0 and 1 (inclusive)");
+
+                    defaultSuffix = "_" + (int) (percentile*100);
+                    return percentile;
+                case AggregateMode.Max:
+                    defaultSuffix = "_max";
+                    return 1.0;
+                case AggregateMode.Min:
+                    defaultSuffix = "_min";
+                    return 0.0;
+                default:
+                    throw new Exception("Gauge mode not implemented.");
+            }
+        }
+
+        private struct AggregateInfo
+        {
+            public double Percentile { get; }
+            public string Suffix { get; }
+
+            public AggregateInfo(double percentile, string suffix)
+            {
+                Percentile = percentile;
+                Suffix = suffix;
+            }
+        }
+
         private class GaugeAggregatorStrategy
         {
-            public readonly ReadOnlyCollection<GaugeAggregatorAttribute> Aggregators;
-            public readonly ReadOnlyCollection<string> Suffixes;
+            public readonly double[] Percentiles;
+            public readonly string[] Suffixes;
 
             public readonly bool UseList;
             public readonly bool SpecialCaseMax;
             public readonly bool SpecialCaseMin;
             public readonly bool SpecialCaseLast;
-            public readonly bool TrackLast;
             public readonly bool TrackMean;
             public readonly bool ReportCount;
-            public readonly ReadOnlyCollection<double> Percentiles;
 
             [SuppressMessage("ReSharper", "CompareOfFloatsByEqualityOperator")]
             public GaugeAggregatorStrategy(ReadOnlyCollection<GaugeAggregatorAttribute> aggregators)
             {
-                Aggregators = aggregators;
+                Percentiles = new double[aggregators.Count];
+                Suffixes = new string[aggregators.Count];
 
-                var percentiles = new List<double>();
-                var suffixes = new List<string>();
-
+                var i = 0;
+                var arbitraryPercentagesCount = 0;
                 foreach (var r in aggregators)
                 {
-                    suffixes.Add(r.Suffix);
+                    var percentile = r.Percentile;
 
-                    if (r.Percentile < 0)
+                    Percentiles[i] = percentile;
+                    Suffixes[i] = r.Suffix;
+                    i++;
+
+                    if (percentile < 0)
                     {
-                        if (r.Percentile == -1.0)
+                        if (percentile == -1.0)
                         {
                             TrackMean = true;
                         }
-                        else if (r.Percentile == -2.0)
+                        else if (percentile == -2.0)
                         {
                             SpecialCaseLast = true;
-                            TrackLast = true;
                         }
-                        else if (r.Percentile == -3.0)
+                        else if (percentile == -3.0)
                         {
                             ReportCount = true;
                         }
                     }
-                    else if (r.Percentile == 0.0)
+                    else if (percentile == 0.0)
                     {
                         SpecialCaseMin = true;
                     }
-                    else if (r.Percentile == 1.0)
+                    else if (percentile == 1.0)
                     {
                         SpecialCaseMax = true;
                     }
                     else
                     {
-                        percentiles.Add(r.Percentile);
+                        arbitraryPercentagesCount++;
                     }
                 }
 
-                Suffixes = suffixes.AsReadOnly();
-
-                if (percentiles.Count > 0)
+                if (arbitraryPercentagesCount > 0)
                 {
                     UseList = true;
                     SpecialCaseLast = false;
-
-                    if (SpecialCaseMax)
-                    {
-                        percentiles.Add(1.0);
-                        SpecialCaseMax = false;
-                    }
-
-                    if (SpecialCaseMin)
-                    {
-                        percentiles.Add(0.0);
-                        SpecialCaseMin = false;
-                    }
-
-                    percentiles.Sort();
+                    SpecialCaseMax = false;
+                    SpecialCaseMin = false;
                 }
-
-                Percentiles = percentiles.AsReadOnly();
             }
         }
     }
 
-    public enum AggregateMode
+    public enum AggregateMode : byte
     {
         Average,
         Median,
@@ -378,53 +475,30 @@ namespace BosunReporter.Metrics
         public readonly string Suffix;
         public readonly double Percentile;
 
-        public GaugeAggregatorAttribute(AggregateMode mode) : this(mode, null, Double.NaN) { }
-        public GaugeAggregatorAttribute(AggregateMode mode, string suffix) : this(mode, suffix, Double.NaN) { }
-        public GaugeAggregatorAttribute(AggregateMode mode, double percentile) : this(mode, null, percentile) { }
-        public GaugeAggregatorAttribute(double percentile) : this(AggregateMode.Percentile, null, percentile) { }
+        public GaugeAggregatorAttribute(AggregateMode mode) : this(mode, null, Double.NaN)
+        {
+        }
+
+        public GaugeAggregatorAttribute(AggregateMode mode, string suffix) : this(mode, suffix, Double.NaN)
+        {
+        }
+
+        public GaugeAggregatorAttribute(AggregateMode mode, double percentile) : this(mode, null, percentile)
+        {
+        }
+
+        public GaugeAggregatorAttribute(double percentile) : this(AggregateMode.Percentile, null, percentile)
+        {
+        }
 
         public GaugeAggregatorAttribute(AggregateMode aggregateMode, string suffix, double percentile)
         {
             AggregateMode = aggregateMode;
 
             string defaultSuffix;
-            switch (aggregateMode)
-            {
-                case AggregateMode.Average:
-                    Percentile = -1.0;
-                    defaultSuffix = "_avg";
-                    break;
-                case AggregateMode.Last:
-                    Percentile = -2.0;
-                    defaultSuffix = "";
-                    break;
-                case AggregateMode.Count:
-                    Percentile = -3.0;
-                    defaultSuffix = "_count";
-                    break;
-                case AggregateMode.Median:
-                    Percentile = 0.5;
-                    defaultSuffix = "_median";
-                    break;
-                case AggregateMode.Percentile:
-                    if (Double.IsNaN(percentile) || percentile < 0 || percentile > 1)
-                        throw new ArgumentOutOfRangeException("percentile", "Percentile must be specified for gauge aggregators with percentile mode. Percentile must be between 0 and 1 (inclusive)");
-                    Percentile = percentile;
-                    defaultSuffix = "_" + (int)(percentile * 100);
-                    break;
-                case AggregateMode.Max:
-                    Percentile = 1.0;
-                    defaultSuffix = "_max";
-                    break;
-                case AggregateMode.Min:
-                    Percentile = 0.0;
-                    defaultSuffix = "_min";
-                    break;
-                default:
-                    throw new Exception("Gauge mode not implemented.");
-            }
-
+            Percentile = AggregateGauge.AggregateModeToPercentileAndSuffix(aggregateMode, percentile, out defaultSuffix);
             Suffix = suffix ?? defaultSuffix;
+
             if (Suffix.Length > 0 && !BosunValidation.IsValidMetricName(Suffix))
                 throw new Exception("\"" + Suffix + "\" is not a valid metric suffix.");
         }

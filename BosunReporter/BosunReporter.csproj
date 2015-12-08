@@ -49,6 +49,10 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Attributes.cs" />
+    <Compile Include="Infrastructure\DoubleEndedQueue.cs" />
+    <Compile Include="Infrastructure\PayloadQueue.cs" />
+    <Compile Include="Infrastructure\MetricWriter.cs" />
+    <Compile Include="Infrastructure\Payload.cs" />
     <Compile Include="Infrastructure\StopwatchStruct.cs" />
     <Compile Include="Metrics\AggregateGauge.cs" />
     <Compile Include="Metrics\EventGauge.cs" />
