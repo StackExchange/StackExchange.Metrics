@@ -82,12 +82,14 @@ namespace BosunReporter.Infrastructure
                     // Check if we want to keep writing to an existing pending payload.
                     // If the data has at least 600 bytes available, let's go ahead and reuse it (no metric should ever come close to 600 bytes).
                     // This is mostly an optimzation for the metrics which serialize independently on itialization.
-                    if (_pendingPayloads.TryPopNewest(out p) && p.Data.Length - p.Used > 600)
+                    if (_pendingPayloads.TryPopNewest(out p))
                     {
-                        return p;
-                    }
+                        if (p.Data.Length - p.Used > 600)
+                            return p;
 
-                    p = null;
+                        _pendingPayloads.Push(p);
+                        p = null;
+                    }
                 }
             }
 
