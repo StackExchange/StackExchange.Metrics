@@ -115,14 +115,14 @@ namespace BosunReporter.Infrastructure
             {
                 // payload is fresh, so we make the first character an open bracket
                 newData[0] = (byte)'[';
+                newUsed++;
             }
             else
             {
                 // we're reusing a previously finalized payload, so we need to turn the close bracket into a comma
-                newData[_used - 1] = (byte)',';
+                newData[newUsed - 1] = (byte)',';
             }
 
-            newUsed++;
 
             if (_data != null)
             {
