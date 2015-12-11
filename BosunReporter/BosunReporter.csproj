@@ -50,6 +50,7 @@
   <ItemGroup>
     <Compile Include="Attributes.cs" />
     <Compile Include="Infrastructure\DoubleEndedQueue.cs" />
+    <Compile Include="Infrastructure\MetricKey.cs" />
     <Compile Include="Infrastructure\PayloadQueue.cs" />
     <Compile Include="Infrastructure\MetricWriter.cs" />
     <Compile Include="Infrastructure\Payload.cs" />
