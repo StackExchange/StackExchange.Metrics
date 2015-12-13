@@ -13,13 +13,13 @@ namespace BosunReporter.Metrics
 
         public override string MetricType => "gauge";
 
-        protected override void Serialize(MetricWriter writer, string unixTimestamp)
+        protected override void Serialize(MetricWriter writer, DateTime now)
         {
             var value = _value;
             if (Double.IsNaN(value))
                 return;
 
-            WriteValue(writer, value, unixTimestamp);
+            WriteValue(writer, value, now);
         }
 
         /// <summary>

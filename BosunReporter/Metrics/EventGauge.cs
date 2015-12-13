@@ -19,7 +19,7 @@ namespace BosunReporter.Metrics
 
         public override string MetricType => "gauge";
 
-        protected override void Serialize(MetricWriter writer, string unixTimestamp)
+        protected override void Serialize(MetricWriter writer, DateTime now)
         {
             if (_pendingMetrics.Count == 0)
                 return;
@@ -27,7 +27,7 @@ namespace BosunReporter.Metrics
             var pending = Interlocked.Exchange(ref _pendingMetrics, new ConcurrentBag<PendingMetric>());
             foreach (var p in pending)
             {
-                WriteValue(writer, p.Value, MetricsCollector.GetUnixTimestamp(p.Time));
+                WriteValue(writer, p.Value, p.Time);
             }
         }
 

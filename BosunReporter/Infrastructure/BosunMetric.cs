@@ -31,12 +31,10 @@ namespace BosunReporter.Infrastructure
         internal int SuffixCount => SuffixesArray.Length;
 
         private string _tagsJson;
-        protected internal string TagsJson => _tagsJson ?? (_tagsJson = GetTagsJson(Collector.DefaultTags, Collector.TagValueConverter, Collector.TagsByTypeCache));
+        internal string TagsJson => _tagsJson ?? (_tagsJson = GetTagsJson(Collector.DefaultTags, Collector.TagValueConverter, Collector.TagsByTypeCache));
 
         private string _name;
         private readonly object _nameLock = new object();
-
-        internal string MetricKey => GetMetricKey(TagsJson);
 
         public string Name
         {
@@ -65,9 +63,9 @@ namespace BosunReporter.Infrastructure
         {
         }
 
-        internal string GetMetricKey(string tagsJson)
+        internal MetricKey GetMetricKey(string tagsJson = null)
         {
-            return _name + tagsJson;
+            return new MetricKey(_name, tagsJson ?? TagsJson);
         }
 
         // this method is only used when default tags are updated
@@ -110,12 +108,12 @@ namespace BosunReporter.Infrastructure
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal void SerializeInternal(MetricWriter writer, string unixTimestamp)
+        internal void SerializeInternal(MetricWriter writer, DateTime now)
         {
-            Serialize(writer, unixTimestamp);
+            Serialize(writer, now);
         }
 
-        protected abstract void Serialize(MetricWriter writer, string unixTimestamp);
+        protected abstract void Serialize(MetricWriter writer, DateTime now);
 
         internal bool NeedsPreSerializeCalled()
         {
@@ -166,9 +164,9 @@ namespace BosunReporter.Infrastructure
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        protected void WriteValue(MetricWriter writer, double value, string unixTimestamp, int suffixIndex = 0)
+        protected void WriteValue(MetricWriter writer, double value, DateTime now, int suffixIndex = 0)
         {
-            writer.AddMetric(Name, SuffixesArray[suffixIndex], value, TagsJson, unixTimestamp);
+            writer.AddMetric(Name, SuffixesArray[suffixIndex], value, TagsJson, now);
         }
 
         internal string GetTagsJson(

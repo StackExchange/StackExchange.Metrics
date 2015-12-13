@@ -6,6 +6,18 @@ namespace BosunReporter.Infrastructure
 {
     public class MetricWriter
     {
+        private const int DIGITS_IN_TIMESTAMP = 13; // all dates within a reasonable range 2000-2250 generate 13 decimal digit timestamps
+
+        private static readonly byte[] s_openCurlyMetricColon;
+        private static readonly byte[] s_commaValueColon;
+        private static readonly byte[] s_commaTagsColon;
+        private static readonly byte[] s_commaTimestampColon;
+        private static readonly byte[] s_closeCurlyComma;
+
+        private static readonly DateTime s_unixEpoch = new DateTime(1970, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc);
+        private static readonly DateTime s_minimumTimestamp = new DateTime(2000, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+        private static readonly DateTime s_maximumTimestamp = new DateTime(2250, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+
         private Payload _payload;
         private readonly PayloadQueue _queue;
 
@@ -18,11 +30,24 @@ namespace BosunReporter.Infrastructure
         private int _payloadsCount;
         private int _bytesWrittenByPreviousPayloads;
 
+        private DateTime _timestampCache = DateTime.MaxValue;
+        private readonly byte[] _timestampStringCache = new byte[DIGITS_IN_TIMESTAMP];
+
         private int BytesWrittenToCurrentPayload => _used - _payload.Used;
         internal int TotalBytesWritten => _bytesWrittenByPreviousPayloads + BytesWrittenToCurrentPayload;
 
-
         internal int MetricsCount { get; private set; }
+
+        static MetricWriter()
+        {
+            var ascii = new ASCIIEncoding();
+
+            s_openCurlyMetricColon = ascii.GetBytes("{\"metric\":\"");
+            s_commaValueColon = ascii.GetBytes("\",\"value\":");
+            s_commaTagsColon = ascii.GetBytes(",\"tags\":");
+            s_commaTimestampColon = ascii.GetBytes(",\"timestamp\":");
+            s_closeCurlyComma = ascii.GetBytes("},");
+        }
 
         internal MetricWriter(PayloadQueue queue)
         {
@@ -36,23 +61,30 @@ namespace BosunReporter.Infrastructure
             _payloadsCount = 0;
         }
 
-        internal void AddMetric(string name, string suffix, double value, string tagsJson, string unixTimestamp)
+        internal void AddMetric(string name, string suffix, double value, string tagsJson, DateTime timestamp)
         {
             MarkStartOfWrite();
 
-            Append("{\"metric\":\"");
+            Append(s_openCurlyMetricColon);
             Append(name);
             if (!string.IsNullOrEmpty(suffix))
                 Append(suffix);
-            Append("\",\"value\":");
+            Append(s_commaValueColon);
             Append(value);
-            Append(",\"tags\":");
+            Append(s_commaTagsColon);
             Append(tagsJson);
-            Append(",\"timestamp\":");
-            Append(unixTimestamp);
-            Append("},");
+            Append(s_commaTimestampColon);
+            Append(timestamp);
+            Append(s_closeCurlyComma);
 
             EndOfWrite();
+        }
+
+        private void Append(byte[] bytes)
+        {
+            EnsureRoomFor(bytes.Length);
+            Array.Copy(bytes, _data, bytes.Length);
+            _used += bytes.Length;
         }
 
         private void Append(string s)
@@ -73,6 +105,14 @@ namespace BosunReporter.Infrastructure
         private void Append(double d)
         {
             Append(d.ToString("R")); // todo - use Grisu
+        }
+        
+        private void Append(DateTime timestamp)
+        {
+            if (timestamp != _timestampCache)
+                SetTimestampCache(timestamp);
+
+            Append(_timestampStringCache);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -178,6 +218,25 @@ namespace BosunReporter.Infrastructure
             _used = 0;
             _data = null;
             MetricsCount = 0;
+        }
+
+        private void SetTimestampCache(DateTime timestamp)
+        {
+            if (timestamp < s_minimumTimestamp)
+                throw new Exception($"BosunReporter cannot serialize metrics dated before {s_minimumTimestamp}.");
+
+            if (timestamp > s_maximumTimestamp)
+                throw new Exception($"BosunReporter cannot serialize metrics dated after {s_maximumTimestamp}.");
+
+            var bytes = _timestampStringCache;
+            var val = (long)(timestamp - s_unixEpoch).TotalMilliseconds;
+            for (var i = DIGITS_IN_TIMESTAMP - 1; i >= 0; i--)
+            {
+                bytes[i] = (byte)(val % 10 + '0');
+                val /= 10;
+            }
+
+            _timestampCache = timestamp;
         }
     }
 }

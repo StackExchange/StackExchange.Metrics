@@ -24,12 +24,14 @@ namespace BosunReporter
         }
 
         private static readonly DateTime s_unixEpoch = new DateTime(1970, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc);
+
+        private static readonly MetricKeyComparer s_metricKeyComparer = new MetricKeyComparer();
         
         private readonly object _metricsLock = new object();
         // all of the first-class names which have been claimed (excluding suffixes in aggregate gauges)
         private readonly Dictionary<string, RootMetricInfo> _rootNameToInfo = new Dictionary<string, RootMetricInfo>();
         // this dictionary is to avoid duplicate metrics
-        private Dictionary<string, BosunMetric> _rootNameAndTagsToMetric = new Dictionary<string, BosunMetric>();
+        private Dictionary<MetricKey, BosunMetric> _rootNameAndTagsToMetric = new Dictionary<MetricKey, BosunMetric>(s_metricKeyComparer);
         private readonly List<BosunMetric> _localMetrics = new List<BosunMetric>();
         private readonly List<BosunMetric> _externalCounterMetrics = new List<BosunMetric>();
         private readonly List<BosunMetric> _metricsNeedingPreSerialize = new List<BosunMetric>();
@@ -358,7 +360,7 @@ namespace BosunReporter
                 _rootNameToInfo[name] = new RootMetricInfo { Type = metricType, Unit = unit };
 
                 // see if this metric name and tag combination already exists
-                var key = metric.MetricKey;
+                var key = metric.GetMetricKey();
                 if (_rootNameAndTagsToMetric.ContainsKey(key))
                 {
                     if (mustBeNew)
@@ -392,7 +394,7 @@ namespace BosunReporter
                         if (needsPreSerialize)
                             metric.PreSerializeInternal();
 
-                        metric.SerializeInternal(writer, GetUnixTimestamp());
+                        metric.SerializeInternal(writer, DateTime.UtcNow);
                     }
                     finally
                     {
@@ -435,9 +437,9 @@ namespace BosunReporter
                 }
 
                 // there are differences, now make sure we can apply the new defaults without collisions
-                var rootNameAndTagsToMetric = new Dictionary<string, BosunMetric>();
+                var rootNameAndTagsToMetric = new Dictionary<MetricKey, BosunMetric>(s_metricKeyComparer);
                 var tagsByTypeCache = new Dictionary<Type, List<BosunTag>>();
-                var tagsJsonByKey = new Dictionary<string, string>();
+                var tagsJsonByKey = new Dictionary<MetricKey, string>(s_metricKeyComparer);
                 foreach (var m in Metrics)
                 {
                     var tagsJson = m.GetTagsJson(validated, TagValueConverter, tagsByTypeCache);
@@ -711,9 +713,9 @@ namespace BosunReporter
 
         private void SerializeMetrics(out int metricsCount, out int bytesWritten)
         {
-            var unixTimestamp = GetUnixTimestamp();
             lock (_metricsLock)
             {
+                var timestamp = DateTime.UtcNow;
                 if (_metricsNeedingPreSerialize.Count > 0)
                 {
                     Parallel.ForEach(_metricsNeedingPreSerialize, m => m.PreSerializeInternal());
@@ -728,7 +730,7 @@ namespace BosunReporter
                     if (_localMetrics.Count > 0)
                     {
                         localWriter = _localMetricsQueue.GetWriter();
-                        SerializeMetricListToWriter(localWriter, _localMetrics, unixTimestamp);
+                        SerializeMetricListToWriter(localWriter, _localMetrics, timestamp);
                         metricsCount += localWriter.MetricsCount;
                         bytesWritten += localWriter.TotalBytesWritten;
                     }
@@ -736,7 +738,7 @@ namespace BosunReporter
                     if (_externalCounterMetrics.Count > 0)
                     {
                         externalCounterWriter = _externalCounterQueue.GetWriter();
-                        SerializeMetricListToWriter(externalCounterWriter, _externalCounterMetrics, unixTimestamp);
+                        SerializeMetricListToWriter(externalCounterWriter, _externalCounterMetrics, timestamp);
                         metricsCount += externalCounterWriter.MetricsCount;
                         bytesWritten += externalCounterWriter.TotalBytesWritten;
                     }
@@ -749,11 +751,11 @@ namespace BosunReporter
             }
         }
 
-        private static void SerializeMetricListToWriter(MetricWriter writer, List<BosunMetric> metrics, string unixTimestamp)
+        private static void SerializeMetricListToWriter(MetricWriter writer, List<BosunMetric> metrics, DateTime timestamp)
         {
             foreach (var m in metrics)
             {
-                m.SerializeInternal(writer, unixTimestamp);
+                m.SerializeInternal(writer, timestamp);
             }
         }
 

@@ -22,13 +22,13 @@ namespace BosunReporter.Metrics
         {
         }
 
-        protected override void Serialize(MetricWriter writer, string unixTimestamp)
+        protected override void Serialize(MetricWriter writer, DateTime now)
         {
             var val = GetValue();
             if (!val.HasValue)
                 return;
 
-            WriteValue(writer, val.Value, unixTimestamp);
+            WriteValue(writer, val.Value, now);
         }
 
         protected virtual long? GetValue()

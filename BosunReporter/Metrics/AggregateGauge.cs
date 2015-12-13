@@ -161,7 +161,7 @@ namespace BosunReporter.Metrics
             return ip + ending + " percentile";
         }
 
-        protected override void Serialize(MetricWriter writer, string unixTimestamp)
+        protected override void Serialize(MetricWriter writer, DateTime now)
         {
             var mode = _snapshotReportingMode;
             if (mode == SnapshotReportingMode.None)
@@ -173,7 +173,7 @@ namespace BosunReporter.Metrics
                 if (countOnly && PercentileToAggregateMode(_percentiles[i]) != AggregateMode.Count)
                     continue;
 
-                WriteValue(writer, _snapshot[i], unixTimestamp, i);
+                WriteValue(writer, _snapshot[i], now, i);
             }
         }
 
