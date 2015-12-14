@@ -280,18 +280,16 @@ namespace BosunReporter.Infrastructure
                 var exclude = type.GetCustomAttribute<ExcludeDefaultTagsAttribute>(false);
                 var restore = type.GetCustomAttribute<RestoreDefaultTagsAttribute>(false);
 
-#pragma warning disable 618 // using obsolete class IgnoreDefaultBosunTagsAttribute
                 if (restore?.Tags.Length == 0)
                 {
                     foundDefault = true;
                     includeByDefault = true;
                 }
-                else if (exclude?.Tags.Length == 0 || type.GetCustomAttribute<IgnoreDefaultBosunTagsAttribute>(false) != null)
+                else if (exclude?.Tags.Length == 0)
                 {
                     foundDefault = true;
                     includeByDefault = false;
                 }
-#pragma warning restore 618
 
                 if (restore?.Tags.Length > 0)
                 {

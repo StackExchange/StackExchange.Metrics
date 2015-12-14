@@ -16,12 +16,6 @@ namespace BosunReporter
     }
 
     [AttributeUsage(AttributeTargets.Class)]
-    [Obsolete("Use the ExcludeDefaultTags attribute instead.")]
-    public class IgnoreDefaultBosunTagsAttribute : Attribute
-    {
-    }
-
-    [AttributeUsage(AttributeTargets.Class)]
     public class ExcludeDefaultTagsAttribute : Attribute
     {
         public string[] Tags { get; }
