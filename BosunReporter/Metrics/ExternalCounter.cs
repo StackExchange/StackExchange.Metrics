@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Threading;
 using BosunReporter.Infrastructure;
 
@@ -21,13 +22,13 @@ namespace BosunReporter.Metrics
             Interlocked.Increment(ref _count);
         }
 
-        protected override IEnumerable<string> Serialize(string unixTimestamp)
+        protected override void Serialize(MetricWriter writer, DateTime now)
         {
             var increment = Interlocked.Exchange(ref _count, 0);
             if (increment == 0)
-                yield break;
+                return;
 
-            yield return ToJson("", increment, unixTimestamp);
+            WriteValue(writer, increment, now);
         }
     }
 }
