@@ -83,7 +83,7 @@ namespace BosunReporter.Infrastructure
         private void Append(byte[] bytes)
         {
             EnsureRoomFor(bytes.Length);
-            Array.Copy(bytes, _data, bytes.Length);
+            Array.Copy(bytes, 0, _data, _used, bytes.Length);
             _used += bytes.Length;
         }
 
