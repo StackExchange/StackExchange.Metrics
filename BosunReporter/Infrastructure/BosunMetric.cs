@@ -203,11 +203,19 @@ namespace BosunReporter.Infrastructure
 
             if (sb.Length == 0)
             {
-                throw new InvalidOperationException(
-                    $"At least one tag value must be specified for every metric. {GetType().FullName} was instantiated without any tag values.");
+                if (!IsExternalCounter())
+                {
+                    throw new InvalidOperationException(
+                        $"At least one tag value must be specified for every metric. {GetType().FullName} was instantiated without any tag values.");
+                }
+
+                sb.Append('{');
+            }
+            else
+            {
+                sb[0] = '{'; // replaces the first comma
             }
 
-            sb[0] = '{'; // replaces the first comma
             sb.Append('}');
             return sb.ToString();
         }
@@ -253,7 +261,7 @@ namespace BosunReporter.Infrastructure
                 }
             }
 
-            if (tags.Count == 0)
+            if (tags.Count == 0 && !IsExternalCounter())
                 throw new TypeInitializationException(type.FullName, new Exception("Type does not contain any Bosun tags. Metrics must have at least one tag to be serializable."));
 
             tags.Sort((a, b) => String.CompareOrdinal(a.Name, b.Name));

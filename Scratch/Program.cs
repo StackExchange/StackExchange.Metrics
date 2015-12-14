@@ -104,6 +104,7 @@ namespace Scratch
 
             var externalCounter = collector.GetMetricGroup<SomeEnum, TestExternalCounter>("external.test", "units", "Should aggregate externally.");
             externalCounter.PopulateFromEnum();
+//            var externalNoTags = collector.CreateMetric<ExternalNoTagsCounter>("external.no_tags", "units", "Shouldn't have any tags except relay.");
 
             var sai = 0;
             var random = new Random();
@@ -127,6 +128,8 @@ namespace Scratch
                         externalCounter[SomeEnum.Three].Increment();
                     if (sai % 4 == 0)
                         externalCounter[SomeEnum.Four].Increment();
+
+//                    externalNoTags.Increment();
 
                     converted.Increment();
                     noHost.Increment();
@@ -273,5 +276,9 @@ namespace Scratch
         {
             Something = something;
         }
+    }
+
+    public class ExternalNoTagsCounter : ExternalCounter
+    {
     }
 }
