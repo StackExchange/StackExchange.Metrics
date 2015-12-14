@@ -563,7 +563,7 @@ namespace BosunReporter
                 {
                     any = false;
                     any |= FlushPayload("/api/put", _localMetricsQueue);
-//                        any |= FlushPayload("external counter URL path", _externalCounterQueue);
+                    any |= FlushPayload("/api/count", _externalCounterQueue);
 
                 } while (any);
             }
