@@ -33,7 +33,7 @@ namespace BosunReporter.Infrastructure
         private DateTime _timestampCache = DateTime.MaxValue;
         private readonly byte[] _timestampStringCache = new byte[DIGITS_IN_TIMESTAMP];
 
-        private int BytesWrittenToCurrentPayload => _used - _payload.Used;
+        private int BytesWrittenToCurrentPayload => _payload == null ? 0 : _used - _payload.Used;
         internal int TotalBytesWritten => _bytesWrittenByPreviousPayloads + BytesWrittenToCurrentPayload;
 
         internal int MetricsCount { get; private set; }
