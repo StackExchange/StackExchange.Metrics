@@ -19,6 +19,7 @@ namespace Scratch
             Func<Uri> getUrl = () =>
             {
                 return new Uri("http://192.168.99.100:8070/");
+//                return new Uri("http://127.0.0.1:1337/");
             };
 
             // for testing minimum event threshold
@@ -101,6 +102,9 @@ namespace Scratch
             var converted = collector.CreateMetric("convert_test", "units", "Checking to see if the tag value converter works.", new ConvertedTagsTestCounter("ThingsAndStuff"));
             var noHost = collector.CreateMetric<ExcludeHostCounter>("no_host", "units", "Shouldn't have a host tag.");
 
+            var externalCounter = collector.GetMetricGroup<SomeEnum, TestExternalCounter>("external.test", "units", "Should aggregate externally.");
+            externalCounter.PopulateFromEnum();
+
             var sai = 0;
             var random = new Random();
             _samplerTimer = new Timer(o => 
@@ -115,6 +119,14 @@ namespace Scratch
                     enumCounter[SomeEnum.Two].Increment(2);
                     enumCounter[SomeEnum.Three].Increment(3);
                     enumCounter[SomeEnum.Four].Increment(4);
+
+                    externalCounter[SomeEnum.One].Increment();
+                    if (sai % 2 == 0)
+                        externalCounter[SomeEnum.Two].Increment();
+                    if (sai % 3 == 0)
+                        externalCounter[SomeEnum.Three].Increment();
+                    if (sai % 4 == 0)
+                        externalCounter[SomeEnum.Four].Increment();
 
                     converted.Increment();
                     noHost.Increment();
@@ -250,6 +262,16 @@ namespace Scratch
         public ExcludeHostCounter()
         {
             Other = "true";
+        }
+    }
+
+    public class TestExternalCounter : ExternalCounter
+    {
+        [BosunTag] public readonly SomeEnum Something;
+
+        public TestExternalCounter(SomeEnum something)
+        {
+            Something = something;
         }
     }
 }
