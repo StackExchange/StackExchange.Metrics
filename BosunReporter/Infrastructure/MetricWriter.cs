@@ -169,7 +169,7 @@ namespace BosunReporter.Infrastructure
                 var oldStartOfWrite = _startOfWrite;
                 _startOfWrite = newUsed;
 
-                if (oldStartOfWrite > _used)
+                if (_used > oldStartOfWrite)
                 {
                     // We started writing a metric to the old payload, but ran out of room.
                     // Need to copy what we started to the new payload.
