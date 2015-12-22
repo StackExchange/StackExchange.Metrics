@@ -783,9 +783,11 @@ namespace BosunReporter
                     }
                 });
             }
-            catch (BosunPostException)
+            catch (BosunPostException ex)
             {
-                if (ThrowOnPostFail)
+                if (HasExceptionHandler)
+                    OnBackgroundException(ex);
+                else
                     throw;
             }
         }
