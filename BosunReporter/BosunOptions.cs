@@ -69,5 +69,11 @@ namespace BosunReporter
         /// Default tags will generally not be included in metadata.
         /// </summary>
         public Dictionary<string, string> DefaultTags;
+        /// <summary>
+        /// Enables sending metrics to the /api/count route on OpenTSDB relays which support external counters. External
+        /// counters don't reset when applications reload, and are intended for low-volume metrics. For high-volume metrics,
+        /// use normal counters.
+        /// </summary>
+        public bool EnableExternalCounters = true;
     }
 }

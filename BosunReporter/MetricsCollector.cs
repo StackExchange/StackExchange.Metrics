@@ -59,6 +59,7 @@ namespace BosunReporter
         public bool ThrowOnPostFail { get; set; }
         public bool ThrowOnQueueFull { get; set; }
         public int ReportingInterval { get; }
+        public bool EnableExternalCounters { get; set; }
         public Func<string, string> PropertyToTagName { get; }
         public TagValueConverterDelegate TagValueConverter { get; }
         public ReadOnlyDictionary<string, string> DefaultTags { get; private set; }
@@ -141,6 +142,7 @@ namespace BosunReporter
             ThrowOnPostFail = options.ThrowOnPostFail;
             ThrowOnQueueFull = options.ThrowOnQueueFull;
             ReportingInterval = options.ReportingInterval;
+            EnableExternalCounters = options.EnableExternalCounters;
             PropertyToTagName = options.PropertyToTagName;
             TagValueConverter = options.TagValueConverter;
             DefaultTags = ValidateDefaultTags(options.DefaultTags);
@@ -563,7 +565,11 @@ namespace BosunReporter
                 {
                     any = false;
                     any |= FlushPayload("/api/put", _localMetricsQueue);
-                    any |= FlushPayload("/api/count", _externalCounterQueue);
+
+                    if (EnableExternalCounters)
+                        any |= FlushPayload("/api/count", _externalCounterQueue);
+                    else
+                        _externalCounterQueue.Clear();
 
                 } while (any);
             }

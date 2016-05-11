@@ -29,6 +29,15 @@ namespace BosunReporter.Infrastructure
             return new MetricWriter(this);
         }
 
+        internal void Clear()
+        {
+            Payload p;
+            while ((p = DequeuePendingPayload()) != null)
+            {
+                ReleasePayload(p);
+            }
+        }
+
         internal Payload DequeuePendingPayload()
         {
             lock (_pendingLock)
