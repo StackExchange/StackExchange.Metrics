@@ -5,7 +5,7 @@
 
 A thread-safe C# .NET client for reporting metrics to [Bosun (Time Series Alerting Framework)](http://bosun.org). This library is more than a simple wrapper around the JSON API. It is designed to encourage best-practices while making it easy to create counters and gauges, including multi-aggregate gauges. It automatically reports metrics on an interval and handles temporary API or network outages using a re-try queue.
 
-__[VIEW CHANGES IN 3.0](](https://github.com/bretcope/BosunReporter.NET/blob/master/docs/MetricTypes.md#snapshotcounter))__
+__[VIEW CHANGES IN 3.0](https://github.com/bretcope/BosunReporter.NET/blob/master/docs/ReleaseNotes.md)__
 
 ### Basic Usage
 
