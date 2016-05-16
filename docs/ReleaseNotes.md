@@ -71,7 +71,7 @@ Remember, __these are for LOW VOLUME__ events. If you expect more than one event
 
 You can enable/disable sending external counter increments using `BosunOptions.EnableExternalCounters` during initialization, or by changing `MetricsCollector.EnableExternalCounters` at runtime.
 
-#### Usage
+##### Usage
 
 The usage of `ExternalCounter` is exactly the same as `Counter` except that you can only increment by 1.
 
