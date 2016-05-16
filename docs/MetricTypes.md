@@ -55,7 +55,16 @@ Remember, __these are for LOW VOLUME__ events. If you expect more than one event
 
 You can enable/disable sending external counter increments using `BosunOptions.EnableExternalCounters` during initialization, or by changing `MetricsCollector.EnableExternalCounters` at runtime.
 
+#### Usage
+
 The usage of `ExternalCounter` is exactly the same as `Counter` except that you can only increment by 1.
+
+```csharp
+var counter = collector.CreateMetric<ExternalCounter>("ext_counter", "units", "description");
+counter.Increment();
+```
+
+You can also inherit from `ExternalCounter` in order to add tags (like any other metric type).
 
 >  tsdbrelay will automatically add the "host" tag. This means that metrics which inherit from ExternalCounter are not required to have any tags. ExternalCounter excludes the "host" tag by default for the same reason.
 
