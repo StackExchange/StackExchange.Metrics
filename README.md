@@ -8,8 +8,8 @@ A thread-safe C# .NET client for reporting metrics to [Bosun (Time Series Alerti
 ### Basic Usage
 
 First, create a `MetricsCollector` object. This is the top-level container which will hold all of your metrics and handle sending them to the Bosun API. Therefore, you should only instantiate one, and make it a global singleton.
- 
- ```csharp
+
+```csharp
 var collector = new MetricsCollector(new BosunOptions()
 {
 	MetricsNamePrefix = "app_name.",
@@ -18,7 +18,7 @@ var collector = new MetricsCollector(new BosunOptions()
 	DefaultTags = new Dictionary<string, string> 
 		{ {"host", NameTransformers.Sanitize(Environment.MachineName.ToLower())} }
 });
- ```
+```
 
 > All of the available options are documented in the [BosunOptions class](https://github.com/bretcope/BosunReporter.NET/blob/master/BosunReporter/BosunOptions.cs).
 
@@ -58,15 +58,16 @@ There are two high-level metric types: counters and gauges.
 
 __[Counters](https://github.com/bretcope/BosunReporter.NET/blob/master/docs/MetricTypes.md#counters)__ are for _counting_ things. The most common use case is to increment a counter each time an event occurs. Bosun/OpenTSDB normalizes this data and is able to show you a rate (events per second) in the graphing interface. BosunReporter has two built-in counter types.
 
-| Name | Description |
-| ---- | ----------- |
+| Name                                     | Description                              |
+| ---------------------------------------- | ---------------------------------------- |
 | [Counter](https://github.com/bretcope/BosunReporter.NET/blob/master/docs/MetricTypes.md#counter) | A general-purpose manually incremented long-integer counter. |
 | [SnapshotCounter](https://github.com/bretcope/BosunReporter.NET/blob/master/docs/MetricTypes.md#snapshotcounter) | Calls a user-provided `Func<long?>` to get the current counter value each time metrics are going to be posted to the Bosun API. |
+| [ExternalCounter](https://github.com/bretcope/BosunReporter.NET/blob/master/docs/MetricTypes.md#externalcounter) | A persistent counter (no resets) for very low-volume events. |
 
 __[Gauges](https://github.com/bretcope/BosunReporter.NET/blob/master/docs/MetricTypes.md#gauges)__ describe a measurement at a point in time. A good example would be measuring how much RAM is being consumed by a process. BosunReporter.NET provides several different built-in types of gauges in order to support different programmatic use cases, but Bosun itself does not differentiate between these types.
 
-| Name | Description |
-| ---- | ----------- |
+| Name                                     | Description                              |
+| ---------------------------------------- | ---------------------------------------- |
 | [SnapshotGauge](https://github.com/bretcope/BosunReporter.NET/blob/master/docs/MetricTypes.md#snapshotgauge) | Similar to a SnapshotCounter, it calls a user provided `Func<double?>` to get the current gauge value each time metrics are going to be posted to the Bosun API. |
 | [EventGauge](https://github.com/bretcope/BosunReporter.NET/blob/master/docs/MetricTypes.md#eventgauge) | Every data point is sent to Bosun. Good for low-volume events. |
 | [AggregateGauge](https://github.com/bretcope/BosunReporter.NET/blob/master/docs/MetricTypes.md#aggregategauge) | Aggregates data points (min, max, avg, median, etc) before sending them to Bosun. Good for recording high-volume events. |

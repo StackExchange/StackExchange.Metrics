@@ -7,15 +7,21 @@ Every metric should map to a single set of tag names. That is to say, you should
 It turns out, a good way to enforce this behavior is simply to create classes for the list of tags you need. Let's say we want a route hit counter which, in addition to the default tags, has `route` and `result` tags.
 
 ```csharp
+public enum Result
+{
+    Success,
+    Error,
+}
+
 public class RouteCounter : Counter
 {
 	[BosunTag] public readonly string Route;
-	[BosunTag] public readonly string Result;
+	[BosunTag] public readonly Result Result;
 	
-	public RouteCounter(string route, bool ok)
+	public RouteCounter(string route, Result result)
 	{
 		Route = route;
-		Result = ok ? "ok" : "error";
+		Result = result;
 	}
 }
 ```
@@ -26,20 +32,20 @@ And then let's instantiate one.
 
 ```csharp
 var testRouteOkCounter = collector.CreateMetric(
-                                             "hits",          // metric name
-                                             "http requests", // units
-                                             "description",   // meaningful description
-                                             new RouteCounter("Test/Route", true));
+                                      "hits",          // metric name
+                                      "http requests", // units
+                                      "description",   // meaningful description
+                                      new RouteCounter("Test/Route", Result.Success));
 ```
 
 The metric name `hits` has now been bound to the `RouteCounter` type. If we try to use that metric name with any other type, the library will throw an exception. However, we can use that metric name with as many different instances of `RouteCounter` as we'd like. For example:
 
 ```csharp
 var testRouteErrorCounter = collector.CreateMetric(
-                                                "hits",
-                                                "units",
-                                                "description",
-                                                new RouteCounter("Test/Route", false));
+                                      "hits",
+                                      "units",
+                                      "description",
+                                      new RouteCounter("Test/Route", Result.Error));
 ```
 
 It is worth noting that `CreateMetric()` will throw an exception if you try to create a duplicate metric. That behavior is generally desirable since multiple attempts to create the same metric likely represent a mistake. However, there is also a `GetMetric()` method (with identical signatures) which is idempotent. It still won't allow you to create duplicate metrics, but instead of throwing an exception if an identical metric already exists, it will return the existing metric.

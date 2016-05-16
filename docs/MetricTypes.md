@@ -27,6 +27,38 @@ var count = 0;
 collector.CreateMetric("name", "unit", "desc", new SnapshotCounter(() => count++));
 ```
 
+### ExternalCounter
+
+>  This feature requires you to be using [tsdbrelay](https://github.com/bosun-monitor/bosun/tree/master/cmd/tsdbrelay) as an intermediary between your app and Bosun. You'll need to run tsdbrelay with `-redis=REDIS_SERVER_NAME` and setup an [scollector](https://github.com/bosun-monitor/bosun/tree/master/cmd/scollector) instance to scrape it with:
+>
+> ```
+> [[RedisCounters]] 
+> Server = "localhost:6379" 
+> Database = 2
+> ```
+
+External counters are intended to solve the problem of counting low-volume events.
+
+The nature of a low-volume counter is that its per-second rate is going to be zero most of the time. For example:
+
+![](https://i.stack.imgur.com/qD8Ki.png)
+
+If you could simply see the start and end values for a given time interval, you would have a better sense of how frequent the events are. But, unfortunately, a normal Bosun counter resets every time the application restarts, so you end up with a graph that might look something like this when viewed as a gauge:
+
+![](https://i.stack.imgur.com/wwGrO.png)
+
+To solve this problem, external counters are persistent (the value doesn't reset every time the app restarts). Tsdbrelay stores the value of the counter in Redis, and BosunReporter sends it increments when an event happens. Tsdbrelay then periodically reports the metric to Bosun.
+
+This means that when you graph the metric as a gauge, it will always be going up, and you can easily see start and end values for any time interval.
+
+Remember, __these are for LOW VOLUME__ events. If you expect more than one event per minute across all instances of your app, you should use a normal counter.
+
+You can enable/disable sending external counter increments using `BosunOptions.EnableExternalCounters` during initialization, or by changing `MetricsCollector.EnableExternalCounters` at runtime.
+
+The usage of `ExternalCounter` is exactly the same as `Counter` except that you can only increment by 1.
+
+>  tsdbrelay will automatically add the "host" tag. This means that metrics which inherit from ExternalCounter are not required to have any tags. ExternalCounter excludes the "host" tag by default for the same reason.
+
 ## Gauges
 
 Gauges describe a measurement at a point in time. A good example would be measuring how much RAM is being consumed by a process. BosunReporter.NET provides several different types of gauges in order to support different programmatic use cases, but Bosun itself does not differentiate between these types. 
@@ -58,15 +90,15 @@ These are useful for event-based gauges where the volume of data points makes it
 
 Aggregate gauges come with six aggregators to choose from. You must use at least one for each gauge, but you can use as many as you'd like. BosunReporter.NET automatically expands the gauge into multiple metrics when sending to Bosun by appending suffixes to the metric name based on the aggregators in use.
 
-Name       | Default Suffix | Description
------------|----------------|------------
-Average    | `_avg`         | The arithmetic mean.
-Median     | `_median`      | 50th percentile.
-Percentile | `_%%`          | Allows you to specify an arbitrary percentile (i.e. `0.95` for the 95th percentile). The default suffix is the integer representation of the percentage (i.e. `_95`).
-Max        | `_max`         | The highest recorded value.
-Min        | `_min`         | The lowest recorded value.
-Last       | (no suffix)    | The last recorded value before the reporting/snapshot interval.
-Count      | `_count`       | The number of events recorded during the reporting interval.
+| Name       | Default Suffix | Description                              |
+| ---------- | -------------- | ---------------------------------------- |
+| Average    | `_avg`         | The arithmetic mean.                     |
+| Median     | `_median`      | 50th percentile.                         |
+| Percentile | `_%%`          | Allows you to specify an arbitrary percentile (i.e. `0.95` for the 95th percentile). The default suffix is the integer representation of the percentage (i.e. `_95`). |
+| Max        | `_max`         | The highest recorded value.              |
+| Min        | `_min`         | The lowest recorded value.               |
+| Last       | (no suffix)    | The last recorded value before the reporting/snapshot interval. |
+| Count      | `_count`       | The number of events recorded during the reporting interval. |
 
 All aggregators are reset at each reporting/snapshot interval. If no data points have been recorded since the last reporting interval, then only the `Count` aggregator (if present) will be sent to Bosun.
 
@@ -90,7 +122,7 @@ public class RouteTimingGauge : AggregateGauge
 ```
 
 Then, instantiate the gauge for our route, and record timings to it.
- 
+
 ```csharp
 var testRouteTiming = collector.CreateMetric(
                                           "route_tr",
@@ -108,7 +140,7 @@ If median or percentile aggregators are used, then _all_ values passed to the `R
 ### SamplingGauge
 
 A sampling gauge simply reports the last recorded value at every reporting interval. They are similar to an aggregate gauge which only uses the "Last" aggregator. However, there are two differences:
- 
+
 1. In a sampling gauge, if no data has been recorded in the current snapshot/reporting interval, then the value from the previous interval is used. Whereas, an aggregate gauge won't report anything if no data was recorded during the interval.
 2. The sampling gauge does not use locks to achieve thread safety, so it should perform slightly better than the "Last" aggregator, especially in highly concurrent environments.
 
@@ -126,7 +158,7 @@ The built-in metric types described above should work for most use cases. Howeve
 Both of the built-in counter types use a `long` as their value type. Here's how we might implement a floating point counter:
 
 ```csharp
-public class DoubleCounter : BosunMetric, IDoubleCounter
+public class DoubleCounter : BosunMetric
 {
 	// determines whether the metric is treated as a counter or gauge
 	public override string MetricType { get { return "counter"; } }
@@ -146,18 +178,33 @@ public class DoubleCounter : BosunMetric, IDoubleCounter
 	}
 	
 	// this method is called by the collector when it's time to post to the Bosun API
-	protected override IEnumerable<string> Serialize(string unixTimestamp)
+	protected override void Serialize(MetricWriter writer, DateTime now)
 	{
-		// ToJson is a protected method on BosunMetric
-		yield return ToJson("", Value, unixTimestamp);
+		// WriteValue is a protected method on BosunMetric
+		WriteValue(writer, Value, now);
 	}
 }
 ```
 
-> Implementing the [IDoubleCounter](https://github.com/bretcope/BosunReporter.NET/blob/master/BosunReporter/Infrastructure/MetricInterfaces.cs#L18) interface is optional, but good practice.
+### Multiple Suffixes
 
-Notice how `Serialize` returns an `IEnumerable<string>` instead of a single string. This is what enables the [AggregateGauge](#aggregategauge) to serialize into multiple metrics with different suffixes. The first argument to `ToJson` is a suffix. In this example, we only have one suffix, which is an empty string.
+Most metrics don't need multiple suffixes; however, it's supported in the case that a single instance of a metric class actually needs to serialize as multiple metrics. The primary use case is `AggregateGauge` which serializes into multiple aggregates (e.g. `metric_avg`, `metric_max`, etc.).
 
-__If you choose to use any other suffix__, or multiple suffixes, you must also override the `protected virtual IEnumerable<string> GetSuffixes()` method so that it returns the suffixes in use. This method is called only once (the first time the `BosunMetric.Suffixes` property is accessed). The results are cached and remain immutable for the lifetime of the metric. BosunReporter uses this list to ensure there are no name collisions. If you attempt to call `ToJson` with a suffix not in the list, an exception will be thrown.
+The default is to have a single empty string suffix, but if your custom metric type needs to support multiple suffixes, then you'll need to override `GetImmutableSuffixesArray()`:
+
+```csharp
+protected override string[] GetImmutableSuffixesArray()
+{
+    // return array of suffixes
+}
+```
+
+As the name implies, the list of suffixes must be immutable for the lifetime of the metric.
+
+In order to serialize the value associated with each suffix, `WriteValue()` takes an optional fourth parameter which is the suffix index (defaults to zero). This value is an index into the array returned by `GetImmutableSuffixesArray()`.
+
+If you'd like to use a different metadata description per suffix, you can also override `string GetDescription(int suffixIndex)`.
+
+### Examples
 
 For more examples, simply look at how the built-in metric types are implemented. See [/BosunReporter/Metrics](https://github.com/bretcope/BosunReporter.NET/tree/master/BosunReporter/Metrics)
