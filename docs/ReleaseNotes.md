@@ -1,5 +1,11 @@
 # BosunReporter.NET Release Notes
 
+#### 3.0.1
+
+- Stop metric serialization when the queue is full so that we only throw the queue-full exception once per serialization interval.
+- `BosunOptions.ThrowOnPostFail` now only applies to 5xx response codes. So, if a 4xx is received, an exception will still be thrown since that probably indicates a problem with the library rather than Bosun being down.
+- Increased the default `BosunOptions.MaxPendingPayloads` from 120 to 240.
+
 ## 3.0.0
 
 There are several changes in version 3.0, including some new features and minor breaking changes.
@@ -47,11 +53,11 @@ public class Metric3 : Metric1
 
 >  This feature requires you to be using [tsdbrelay](https://github.com/bosun-monitor/bosun/tree/master/cmd/tsdbrelay) as an intermediary between your app and Bosun. You'll need to run tsdbrelay with `-redis=REDIS_SERVER_NAME` and setup an [scollector](https://github.com/bosun-monitor/bosun/tree/master/cmd/scollector) instance to scrape it with:
 >
-> ```
-> [[RedisCounters]] 
-> Server = "localhost:6379" 
-> Database = 2
-> ```
+>  ```
+>  [[RedisCounters]] 
+>  Server = "localhost:6379" 
+>  Database = 2
+>  ```
 
 External counters are intended to solve the problem of counting low-volume events.
 

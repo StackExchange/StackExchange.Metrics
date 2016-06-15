@@ -5,7 +5,7 @@
 #---------------------------------#
 
 environment:
-  NUGET_RELEASE_VERSION: 3.0.0
+  NUGET_RELEASE_VERSION: 3.0.1
   NUGET_FILE: BosunReporter\BosunReporter.nuspec
   ASSEMBLY_FILE: BosunReporter\Properties\AssemblyInfo.cs
 
