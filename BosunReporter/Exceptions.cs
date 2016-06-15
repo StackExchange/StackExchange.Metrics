@@ -6,10 +6,13 @@ namespace BosunReporter
 {
     public class BosunPostException : Exception
     {
+        public HttpStatusCode StatusCode { get; }
+
         internal BosunPostException(HttpStatusCode statusCode, string responseBody, Exception innerException) 
             : base("Posting to the Bosun API failed with status code " + statusCode, innerException)
         {
             Data["ResponseBody"] = responseBody;
+            StatusCode = statusCode;
         }
 
         internal BosunPostException(Exception innerException)

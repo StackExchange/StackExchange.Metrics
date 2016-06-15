@@ -32,7 +32,7 @@ namespace BosunReporter
         /// </summary>
         public int MaxPendingPayloads = 240;
         /// <summary>
-        /// If true, BosunReporter will throw an exception every time posting to the Bosun API fails.
+        /// If true, BosunReporter will throw an exception every time posting to the Bosun API fails with a server error (response code 5xx).
         /// </summary>
         public bool ThrowOnPostFail = false;
         /// <summary>

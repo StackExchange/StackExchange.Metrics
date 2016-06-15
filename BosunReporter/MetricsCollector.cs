@@ -525,15 +525,15 @@ namespace BosunReporter
                 LastSerializationInfo = info;
                 AfterSerialization?.Invoke(info);
             }
-            catch (Exception e)
+            catch (Exception ex)
             {
-                if (HasExceptionHandler)
+                if (ShouldThrowException(ex))
                 {
-                    OnBackgroundException(e);
-                    return;
+                    if (HasExceptionHandler)
+                        OnBackgroundException(ex);
+                    else
+                        throw;
                 }
-
-                throw;
             }
         }
 
@@ -573,11 +573,11 @@ namespace BosunReporter
 
                 } while (any);
             }
-            catch (BosunPostException ex)
+            catch (Exception ex)
             {
                 // there was a problem flushing - back off for the next five seconds (Bosun may simply be restarting)
                 _skipFlushes = 4;
-                if (ThrowOnPostFail)
+                if (ShouldThrowException(ex))
                 {
                     if (HasExceptionHandler)
                         OnBackgroundException(ex);
@@ -784,12 +784,15 @@ namespace BosunReporter
                     }
                 });
             }
-            catch (BosunPostException ex)
+            catch (Exception ex)
             {
-                if (HasExceptionHandler)
-                    OnBackgroundException(ex);
-                else
-                    throw;
+                if (ShouldThrowException(ex))
+                {
+                    if (HasExceptionHandler)
+                        OnBackgroundException(ex);
+                    else
+                        throw;
+                }
             }
         }
 
@@ -826,13 +829,31 @@ namespace BosunReporter
 
         private void OnPayloadDropped(BosunQueueFullException ex)
         {
-            if (ThrowOnQueueFull)
+            if (ShouldThrowException(ex))
             {
                 if (HasExceptionHandler)
                     OnBackgroundException(ex);
                 else
                     throw ex;
             }
+        }
+
+        private bool ShouldThrowException(Exception ex)
+        {
+            var post = ex as BosunPostException;
+            if (post != null)
+            {
+                if (ThrowOnPostFail)
+                    return true;
+
+                var status = (int)post.StatusCode;
+                return status < 500 || status >= 600; // always want to send the exception when it's a non-500
+            }
+
+            if (ex is BosunQueueFullException)
+                return ThrowOnQueueFull;
+
+            return true;
         }
     }
 
