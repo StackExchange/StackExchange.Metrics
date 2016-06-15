@@ -122,8 +122,8 @@ namespace BosunReporter
 
         public MetricsCollector(BosunOptions options)
         {
-            _localMetricsQueue = new PayloadQueue();
-            _externalCounterQueue = new PayloadQueue();
+            _localMetricsQueue = new PayloadQueue(QueueType.Local);
+            _externalCounterQueue = new PayloadQueue(QueueType.ExternalCounters);
 
             _localMetricsQueue.PayloadDropped += OnPayloadDropped;
             _externalCounterQueue.PayloadDropped += OnPayloadDropped;
@@ -729,39 +729,34 @@ namespace BosunReporter
 
                 metricsCount = 0;
                 bytesWritten = 0;
-                MetricWriter localWriter = null;
-                MetricWriter externalCounterWriter = null;
-                try
-                {
-                    if (_localMetrics.Count > 0)
-                    {
-                        localWriter = _localMetricsQueue.GetWriter();
-                        SerializeMetricListToWriter(localWriter, _localMetrics, timestamp);
-                        metricsCount += localWriter.MetricsCount;
-                        bytesWritten += localWriter.TotalBytesWritten;
-                    }
-
-                    if (_externalCounterMetrics.Count > 0)
-                    {
-                        externalCounterWriter = _externalCounterQueue.GetWriter();
-                        SerializeMetricListToWriter(externalCounterWriter, _externalCounterMetrics, timestamp);
-                        metricsCount += externalCounterWriter.MetricsCount;
-                        bytesWritten += externalCounterWriter.TotalBytesWritten;
-                    }
-                }
-                finally
-                {
-                    localWriter?.EndBatch();
-                    externalCounterWriter?.EndBatch();
-                }
+                SerializeMetricListToWriter(_localMetricsQueue, _localMetrics, timestamp, ref metricsCount, ref bytesWritten);
+                SerializeMetricListToWriter(_externalCounterQueue, _externalCounterMetrics, timestamp, ref metricsCount, ref bytesWritten);
             }
         }
 
-        private static void SerializeMetricListToWriter(MetricWriter writer, List<BosunMetric> metrics, DateTime timestamp)
+        private static void SerializeMetricListToWriter(PayloadQueue queue, List<BosunMetric> metrics, DateTime timestamp, ref int metricsCount, ref int bytesWritten)
         {
-            foreach (var m in metrics)
+            if (metrics.Count == 0)
+                return;
+
+            var writer = queue.GetWriter();
+
+            try
             {
-                m.SerializeInternal(writer, timestamp);
+                foreach (var m in metrics)
+                {
+                    m.SerializeInternal(writer, timestamp);
+
+                    if (queue.IsFull)
+                        break;
+                }
+
+                metricsCount += writer.MetricsCount;
+                bytesWritten += writer.TotalBytesWritten;
+            }
+            finally
+            {
+                writer.EndBatch();
             }
         }
 

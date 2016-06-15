@@ -1,10 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.IO;
-using System.Threading;
 
 namespace BosunReporter.Infrastructure
 {
+    internal enum QueueType
+    {
+        Local,
+        ExternalCounters,
+    }
+
     internal class PayloadQueue
     {
         private int _cacheLimit = 1;
@@ -17,11 +21,17 @@ namespace BosunReporter.Infrastructure
         internal int MaxPendingPayloads { get; set; }
         internal int LastBatchPayloadCount { get; private set; }
         internal int DroppedPayloads { get; private set; }
+        internal QueueType Type { get; }
 
         internal int PendingPayloadsCount => _pendingPayloads.Count;
         internal bool IsFull => PendingPayloadsCount >= MaxPendingPayloads;
 
         internal event Action<BosunQueueFullException> PayloadDropped;
+
+        internal PayloadQueue(QueueType type)
+        {
+            Type = type;
+        }
 
         internal MetricWriter GetWriter()
         {
@@ -64,7 +74,7 @@ namespace BosunReporter.Infrastructure
                 }
                 else
                 {
-                    ex = new BosunQueueFullException(payload.MetricsCount, payload.Used);
+                    ex = new BosunQueueFullException(Type, payload.MetricsCount, payload.Used);
                     DroppedPayloads++;
                     ReleasePayload(payload);
                 }
