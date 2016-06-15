@@ -30,7 +30,7 @@ namespace BosunReporter
         /// <summary>
         /// The maximum number of payloads which can be queued for sending before they start being dropped.
         /// </summary>
-        public int MaxPendingPayloads = 120;
+        public int MaxPendingPayloads = 240;
         /// <summary>
         /// If true, BosunReporter will throw an exception every time posting to the Bosun API fails.
         /// </summary>
