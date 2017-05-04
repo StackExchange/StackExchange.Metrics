@@ -1,17 +1,10 @@
-﻿
-
-
-
-
-
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Reflection;
 using BosunReporter.Infrastructure;
 
 namespace BosunReporter
 {
-
 	public partial class MetricsCollector
 	{
 		public MetricGroup<T1, TMetric> GetMetricGroup<T1, TMetric>(string name, string unit, string description, Func<T1, TMetric> metricFactory = null)
@@ -53,7 +46,6 @@ namespace BosunReporter
 		{
 			get
 			{
-
 				return _metrics[tag1];
 			}
 		}
@@ -75,7 +67,6 @@ namespace BosunReporter
 		public TMetric Add(T1 tag1, out bool isNew)
 		{
 			isNew = false;
-
 			if (_metrics.ContainsKey(tag1))
 				return _metrics[tag1];
 
@@ -98,7 +89,6 @@ namespace BosunReporter
 
 		public bool Contains(T1 tag1)
 		{
-
 			return _metrics.ContainsKey(tag1);
 		}
 
@@ -115,11 +105,11 @@ namespace BosunReporter
 			return (tag1) => (TMetric)constructor.Invoke(new object[] { tag1 });
 		}
 
-
         /// <summary>
         /// This method may only be called if T1 is an enum type. It calls Add() for every enum value of T1.
         /// </summary>
-        public void PopulateFromEnum()
+        /// <param name="excludeObsolete">If true, enum values marked as obsolete will not be added to the metric group.</param>
+        public void PopulateFromEnum(bool excludeObsolete = false)
         {
             var type = typeof(T1);
             if (!type.IsEnum)
@@ -127,13 +117,18 @@ namespace BosunReporter
                 
             foreach (var val in Enum.GetValues(type))
             {
+				if (excludeObsolete)
+				{
+					var field = type.GetField(val.ToString(), BindingFlags.Static | BindingFlags.Public);
+					if (field.GetCustomAttribute<ObsoleteAttribute>() != null)
+						continue;
+				}
+
                 Add((T1)val);
             }
         }
 
-
 	}
-
 
 	public partial class MetricsCollector
 	{
@@ -176,9 +171,7 @@ namespace BosunReporter
 		{
 			get
 			{
-
 				var key = new Tuple<T1, T2>(tag1, tag2);
-
 				return _metrics[key];
 			}
 		}
@@ -200,9 +193,7 @@ namespace BosunReporter
 		public TMetric Add(T1 tag1, T2 tag2, out bool isNew)
 		{
 			isNew = false;
-
 			var key = new Tuple<T1, T2>(tag1, tag2);
-
 			if (_metrics.ContainsKey(key))
 				return _metrics[key];
 
@@ -225,9 +216,7 @@ namespace BosunReporter
 
 		public bool Contains(T1 tag1, T2 tag2)
 		{
-
 			var key = new Tuple<T1, T2>(tag1, tag2);
-
 			return _metrics.ContainsKey(key);
 		}
 
@@ -245,9 +234,7 @@ namespace BosunReporter
 		}
 
 
-
 	}
-
 
 	public partial class MetricsCollector
 	{
@@ -290,9 +277,7 @@ namespace BosunReporter
 		{
 			get
 			{
-
 				var key = new Tuple<T1, T2, T3>(tag1, tag2, tag3);
-
 				return _metrics[key];
 			}
 		}
@@ -314,9 +299,7 @@ namespace BosunReporter
 		public TMetric Add(T1 tag1, T2 tag2, T3 tag3, out bool isNew)
 		{
 			isNew = false;
-
 			var key = new Tuple<T1, T2, T3>(tag1, tag2, tag3);
-
 			if (_metrics.ContainsKey(key))
 				return _metrics[key];
 
@@ -339,9 +322,7 @@ namespace BosunReporter
 
 		public bool Contains(T1 tag1, T2 tag2, T3 tag3)
 		{
-
 			var key = new Tuple<T1, T2, T3>(tag1, tag2, tag3);
-
 			return _metrics.ContainsKey(key);
 		}
 
@@ -359,9 +340,7 @@ namespace BosunReporter
 		}
 
 
-
 	}
-
 
 	public partial class MetricsCollector
 	{
@@ -404,9 +383,7 @@ namespace BosunReporter
 		{
 			get
 			{
-
 				var key = new Tuple<T1, T2, T3, T4>(tag1, tag2, tag3, tag4);
-
 				return _metrics[key];
 			}
 		}
@@ -428,9 +405,7 @@ namespace BosunReporter
 		public TMetric Add(T1 tag1, T2 tag2, T3 tag3, T4 tag4, out bool isNew)
 		{
 			isNew = false;
-
 			var key = new Tuple<T1, T2, T3, T4>(tag1, tag2, tag3, tag4);
-
 			if (_metrics.ContainsKey(key))
 				return _metrics[key];
 
@@ -453,9 +428,7 @@ namespace BosunReporter
 
 		public bool Contains(T1 tag1, T2 tag2, T3 tag3, T4 tag4)
 		{
-
 			var key = new Tuple<T1, T2, T3, T4>(tag1, tag2, tag3, tag4);
-
 			return _metrics.ContainsKey(key);
 		}
 
@@ -473,9 +446,7 @@ namespace BosunReporter
 		}
 
 
-
 	}
-
 
 	public partial class MetricsCollector
 	{
@@ -518,9 +489,7 @@ namespace BosunReporter
 		{
 			get
 			{
-
 				var key = new Tuple<T1, T2, T3, T4, T5>(tag1, tag2, tag3, tag4, tag5);
-
 				return _metrics[key];
 			}
 		}
@@ -542,9 +511,7 @@ namespace BosunReporter
 		public TMetric Add(T1 tag1, T2 tag2, T3 tag3, T4 tag4, T5 tag5, out bool isNew)
 		{
 			isNew = false;
-
 			var key = new Tuple<T1, T2, T3, T4, T5>(tag1, tag2, tag3, tag4, tag5);
-
 			if (_metrics.ContainsKey(key))
 				return _metrics[key];
 
@@ -567,9 +534,7 @@ namespace BosunReporter
 
 		public bool Contains(T1 tag1, T2 tag2, T3 tag3, T4 tag4, T5 tag5)
 		{
-
 			var key = new Tuple<T1, T2, T3, T4, T5>(tag1, tag2, tag3, tag4, tag5);
-
 			return _metrics.ContainsKey(key);
 		}
 
@@ -587,8 +552,6 @@ namespace BosunReporter
 		}
 
 
-
 	}
-
 
 }
