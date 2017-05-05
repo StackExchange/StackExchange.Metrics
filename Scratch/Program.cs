@@ -35,13 +35,13 @@ namespace Scratch
                 TagValueConverter = (name, value) => name == "converted" ? value.ToLowerInvariant() : value,
                 DefaultTags = new Dictionary<string, string> { {"host", NameTransformers.Sanitize(Environment.MachineName.ToLower())} }
             };
-            var collector = new MetricsCollector(options);
 
-            collector.OnBackgroundException += exception =>
+
+            var collector = new MetricsCollector(options, exception =>
             {
                 Console.WriteLine("Hey, there was an exception.");
                 Console.WriteLine(exception);
-            };
+            });
 
             collector.BeforeSerialization += () => Console.WriteLine("BosunReporter: Running metrics snapshot.");
             collector.AfterSerialization += info => Console.WriteLine($"BosunReporter: Metric Snapshot took {info.MillisecondsDuration.ToString("0.##")}ms");

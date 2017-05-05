@@ -83,8 +83,10 @@ namespace BosunReporter
         public AfterSerializationInfo LastSerializationInfo { get; private set; }
         public AfterPostInfo LastPostInfo { get; private set; }
 
-        public event Action<Exception> OnBackgroundException;
-        public bool HasExceptionHandler => OnBackgroundException != null && OnBackgroundException.GetInvocationList().Length != 0;
+        /// <summary>
+        /// Exceptions which occur on a background thread within BosunReporter will be passed to this delegate.
+        /// </summary>
+        public Action<Exception> ExceptionHandler { get; }
 
         public int MaxPendingPayloads
         {
@@ -120,8 +122,13 @@ namespace BosunReporter
 
         public IEnumerable<BosunMetric> Metrics => _rootNameAndTagsToMetric.Values.AsEnumerable();
 
-        public MetricsCollector(BosunOptions options)
+        public MetricsCollector(BosunOptions options, Action<Exception> exceptionHandler)
         {
+            if (exceptionHandler == null)
+                throw new ArgumentNullException(nameof(exceptionHandler));
+
+            ExceptionHandler = exceptionHandler;
+
             _localMetricsQueue = new PayloadQueue(QueueType.Local);
             _externalCounterQueue = new PayloadQueue(QueueType.ExternalCounters);
 
@@ -528,12 +535,7 @@ namespace BosunReporter
             catch (Exception ex)
             {
                 if (ShouldThrowException(ex))
-                {
-                    if (HasExceptionHandler)
-                        OnBackgroundException(ex);
-                    else
-                        throw;
-                }
+                    ExceptionHandler(ex);
             }
         }
 
@@ -578,12 +580,7 @@ namespace BosunReporter
                 // there was a problem flushing - back off for the next five seconds (Bosun may simply be restarting)
                 _skipFlushes = 4;
                 if (ShouldThrowException(ex))
-                {
-                    if (HasExceptionHandler)
-                        OnBackgroundException(ex);
-                    else
-                        throw;
-                }
+                    ExceptionHandler(ex);
             }
             finally
             {
@@ -787,12 +784,7 @@ namespace BosunReporter
             catch (Exception ex)
             {
                 if (ShouldThrowException(ex))
-                {
-                    if (HasExceptionHandler)
-                        OnBackgroundException(ex);
-                    else
-                        throw;
-                }
+                    ExceptionHandler(ex);
             }
         }
 
@@ -830,12 +822,7 @@ namespace BosunReporter
         private void OnPayloadDropped(BosunQueueFullException ex)
         {
             if (ShouldThrowException(ex))
-            {
-                if (HasExceptionHandler)
-                    OnBackgroundException(ex);
-                else
-                    throw ex;
-            }
+                ExceptionHandler(ex);
         }
 
         private bool ShouldThrowException(Exception ex)
