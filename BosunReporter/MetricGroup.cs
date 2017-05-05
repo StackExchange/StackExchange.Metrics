@@ -108,8 +108,8 @@ namespace BosunReporter
         /// <summary>
         /// This method may only be called if T1 is an enum type. It calls Add() for every enum value of T1.
         /// </summary>
-        /// <param name="excludeObsolete">If true, enum values marked as obsolete will not be added to the metric group.</param>
-        public void PopulateFromEnum(bool excludeObsolete = false)
+        /// <param name="excludeObsolete">If false, enum values marked as obsolete will not be added to the metric group.</param>
+        public void PopulateFromEnum(bool includeObsolete = true)
         {
             var type = typeof(T1);
             if (!type.IsEnum)
@@ -117,7 +117,7 @@ namespace BosunReporter
                 
             foreach (var val in Enum.GetValues(type))
             {
-				if (excludeObsolete)
+				if (!includeObsolete)
 				{
 					var field = type.GetField(val.ToString(), BindingFlags.Static | BindingFlags.Public);
 					if (field.GetCustomAttribute<ObsoleteAttribute>() != null)
