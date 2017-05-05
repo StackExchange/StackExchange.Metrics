@@ -239,11 +239,11 @@ namespace Scratch
 
     public class EnumCounter : Counter
     {
-        [BosunTag] public readonly SomeEnum Value;
+        [BosunTag] public readonly SomeEnum TagName;
 
         public EnumCounter(SomeEnum val)
         {
-            Value = val;
+            TagName = val;
         }
     }
 
