@@ -32,11 +32,11 @@ namespace BosunReporter
         /// </summary>
         public int MaxPendingPayloads = 240;
         /// <summary>
-        /// If true, BosunReporter will throw an exception every time posting to the Bosun API fails with a server error (response code 5xx).
+        /// If true, BosunReporter will generate an exception every time posting to the Bosun API fails with a server error (response code 5xx).
         /// </summary>
         public bool ThrowOnPostFail = false;
         /// <summary>
-        /// If true, BosunReporter will throw an exception when the metric queue is full.
+        /// If true, BosunReporter will generate an exception when the metric queue is full.
         /// This would most commonly be caused by an extended outage of the Bosun API.
         /// It is an indication that data is likely being lost.
         /// </summary>
@@ -75,5 +75,14 @@ namespace BosunReporter
         /// use normal counters.
         /// </summary>
         public bool EnableExternalCounters = true;
+        /// <summary>
+        /// If not null or empty, this string will be sent as the X-Access-Token header on all API requests to Bosun.
+        /// </summary>
+        public string AccessToken;
+        /// <summary>
+        /// If the access token can change, provide a function which will be called before each API request. This takes precedence over the
+        /// <see cref="AccessToken"/> option. If this function returns empty or null, the X-Access-Token header will be omitted.
+        /// </summary>
+        public Func<string> GetAccessToken;
     }
 }

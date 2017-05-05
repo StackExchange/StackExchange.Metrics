@@ -37,6 +37,9 @@ namespace BosunReporter
         // All of the names which have been claimed, including the metrics which may have multiple suffixes, mapped to their root metric name.
         // This is to prevent suffix collisions with other metrics.
         private readonly Dictionary<string, string> _nameAndSuffixToRootName = new Dictionary<string, string>();
+
+        private readonly string _accessToken;
+        private readonly Func<string> _getAccessToken;
         
         private readonly object _flushingLock = new object();
         private int _skipFlushes = 0;
@@ -144,6 +147,9 @@ namespace BosunReporter
 
             GetBosunUrl = options.GetBosunUrl;
             BosunUrl = GetBosunUrl == null ? options.BosunUrl : GetBosunUrl();
+
+            _accessToken = options.AccessToken;
+            _getAccessToken = options.GetAccessToken;
 
             ThrowOnPostFail = options.ThrowOnPostFail;
             ThrowOnQueueFull = options.ThrowOnQueueFull;
@@ -509,7 +515,6 @@ namespace BosunReporter
             if (GetBosunUrl != null)
                 BosunUrl = GetBosunUrl();
 
-
             try
             {
                 if (BeforeSerialization != null && BeforeSerialization.GetInvocationList().Length != 0)
@@ -665,6 +670,10 @@ namespace BosunReporter
                 var auth = "Basic " + Convert.ToBase64String(Encoding.Default.GetBytes(userInfo));
                 request.Headers["Authorization"] = auth;
             }
+
+            var accessToken = _getAccessToken != null ? _getAccessToken() : _accessToken;
+            if (!string.IsNullOrEmpty(accessToken))
+                request.Headers["X-Access-Token"] = accessToken;
 
             try
             {
