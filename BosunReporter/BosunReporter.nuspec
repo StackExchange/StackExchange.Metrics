@@ -13,7 +13,6 @@
     <copyright>Copyright 2015</copyright>
     <tags>Bosun Time Series Alerting</tags>
     <dependencies>
-      <dependency id="Jil" version="2.9.0"/>
     </dependencies>
   </metadata>
   <files>
