@@ -11,7 +11,6 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using BosunReporter.Infrastructure;
-using Jil;
 
 namespace BosunReporter
 {
@@ -801,11 +800,20 @@ namespace BosunReporter
 
                     foreach (var meta in metric.GetMetaData())
                     {
-                        json.Append(",{\"Metric\":\"" + meta.Metric +
-                            "\",\"Name\":\"" + meta.Name +
-                            "\",\"Value\":" + JSON.Serialize(meta.Value) +
-                            (meta.Tags == null ? "" : ",\"Tags\":" + meta.Tags) +
-                            "}\n");
+                        json.Append(",{\"Metric\":\"");
+                        json.Append(meta.Metric);
+                        json.Append("\",\"Name\":\"");
+                        json.Append(meta.Name);
+                        json.Append("\",\"Value\":");
+                        JsonHelper.WriteString(json, meta.Value);
+
+                        if (meta.Tags != null)
+                        {
+                            json.Append(",\"Tags\":");
+                            json.Append(meta.Tags);
+                        }
+
+                        json.Append("}\n");
                     }
                 }
             }
