@@ -13,12 +13,15 @@ namespace BosunReporter
         /// <summary>
         /// Converts CamelCaseNames to Snake_Case_Names.
         /// </summary>
-        public static Func<string, string> CamelToSnakeCase = (s) => string.Concat(s.Select((c, i) => i > 0 && char.IsUpper(c) ? "_" + c : c.ToString(CultureInfo.InvariantCulture)));
+        public static string CamelToSnakeCase(string s)
+        {
+            return string.Concat(s.Select((c, i) => i > 0 && char.IsUpper(c) ? "_" + c : c.ToString(CultureInfo.InvariantCulture)));
+        }
 
         /// <summary>
         /// Converts CamelCaseNames to snake_case_names with all lowercase letters.
         /// </summary>
-        public static Func<string, string> CamelToLowerSnakeCase = (s) =>
+        public static string CamelToLowerSnakeCase(string s)
         {
             return string.Concat(s.Select((c, i) =>
             {
@@ -27,12 +30,12 @@ namespace BosunReporter
 
                 return c.ToString(CultureInfo.InvariantCulture);
             }));
-        };
+        }
 
         /// <summary>
         /// Sanitizes a metric name or tag name/value by replacing illegal characters with an underscore.
         /// </summary>
-        public static Func<string, string> Sanitize = (s) =>
+        public static string Sanitize(string s)
         {
             return BosunValidation.InvalidChars.Replace(s, m =>
             {
@@ -41,6 +44,6 @@ namespace BosunReporter
 
                 return "_";
             });
-        };
+        }
     }
 }
