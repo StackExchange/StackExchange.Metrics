@@ -375,6 +375,9 @@ namespace BosunReporter.Metrics
 
         internal static double AggregateModeToPercentileAndSuffix(AggregateMode mode, double percentile, out string defaultSuffix)
         {
+            if (mode != AggregateMode.Percentile && !double.IsNaN(percentile))
+                throw new ArgumentOutOfRangeException(nameof(percentile), "Percentile cannot be specified for mode " + mode);
+
             switch (mode)
             {
                 case AggregateMode.Average:
