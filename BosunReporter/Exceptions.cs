@@ -12,7 +12,7 @@ namespace BosunReporter
         /// <summary>
         /// The status code returned by Bosun.
         /// </summary>
-        public HttpStatusCode StatusCode { get; }
+        public HttpStatusCode? StatusCode { get; }
 
         internal BosunPostException(HttpStatusCode statusCode, string responseBody, Exception innerException)
             : base("Posting to the Bosun API failed with status code " + statusCode, innerException)
