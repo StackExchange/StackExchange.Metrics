@@ -51,7 +51,7 @@ namespace Scratch
             var counter = collector.GetMetric<TestCounter>("my_counter", "increments", "This is meaningless.");
             counter.Increment();
             counter.Increment();
-            
+
             var gauge = collector.CreateMetric("gauge", "watts", "Some description of a gauge.", new TestAggregateGauge("1"));
             if (gauge != collector.GetMetric("gauge", "watts", null, new TestAggregateGauge("1")))
                 throw new Exception("WAT?");
@@ -108,7 +108,7 @@ namespace Scratch
 
             var sai = 0;
             var random = new Random();
-            _samplerTimer = new Timer(o => 
+            _samplerTimer = new Timer(o =>
                 {
                     sampler.Record(++sai%35);
                     eventGauge.Record(sai%35);
@@ -199,7 +199,7 @@ namespace Scratch
 //            Host = "bret-host";
         }
     }
-    
+
     public class TestSnapshotGauge : SnapshotGauge
     {
         [BosunTag] public readonly string Thing;

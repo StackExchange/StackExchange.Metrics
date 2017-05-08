@@ -544,7 +544,7 @@ namespace BosunReporter
                 var isExternal = metric.IsExternalCounter();
                 if (isExternal)
                     _externalCounterMetrics.Add(metric);
-                else 
+                else
                     _localMetrics.Add(metric);
 
                 if (metric.SerializeInitialValue)
