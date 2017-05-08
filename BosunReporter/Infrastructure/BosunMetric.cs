@@ -22,7 +22,6 @@ namespace BosunReporter.Infrastructure
         }
 
         static readonly Dictionary<Type, MetricTypeInfo> s_typeInfoCache = new Dictionary<Type, MetricTypeInfo>();
-        static readonly object _typeInfoLock = new object();
 
         static readonly string[] s_singleEmptyStringArray = {""};
 
@@ -407,7 +406,7 @@ namespace BosunReporter.Infrastructure
             if (s_typeInfoCache.TryGetValue(type, out info))
                 return info;
 
-            lock (_typeInfoLock)
+            lock (s_typeInfoCache)
             {
                 if (s_typeInfoCache.TryGetValue(type, out info))
                     return info;
