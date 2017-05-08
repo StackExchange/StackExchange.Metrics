@@ -16,40 +16,40 @@ namespace BosunReporter.Metrics
     [GaugeAggregator(AggregateMode.Last)]
     public class AggregateGauge : BosunMetric
     {
-        private enum SnapshotReportingMode
+        enum SnapshotReportingMode
         {
             None,
             CountOnly,
             All
         }
 
-        private static readonly Dictionary<Type, GaugeAggregatorStrategy> _aggregatorsByTypeCache = new Dictionary<Type, GaugeAggregatorStrategy>();
+        static readonly Dictionary<Type, GaugeAggregatorStrategy> _aggregatorsByTypeCache = new Dictionary<Type, GaugeAggregatorStrategy>();
 
         /// <summary>
         /// A delegate which backs the <see cref="MinimumEvents"/> property.
         /// </summary>
         public static Func<int> GetDefaultMinimumEvents { get; set; } = () => 1;
 
-        private readonly object _recordLock = new object();
-        private readonly double[] _percentiles;
-        private readonly string[] _suffixes;
+        readonly object _recordLock = new object();
+        readonly double[] _percentiles;
+        readonly string[] _suffixes;
 
-        private readonly bool _trackMean;
-        private readonly bool _specialCaseMax;
-        private readonly bool _specialCaseMin;
-        private readonly bool _specialCaseLast;
-        private readonly bool _reportCount;
+        readonly bool _trackMean;
+        readonly bool _specialCaseMax;
+        readonly bool _specialCaseMin;
+        readonly bool _specialCaseLast;
+        readonly bool _reportCount;
 
-        private readonly double[] _snapshot;
-        private SnapshotReportingMode _snapshotReportingMode;
+        readonly double[] _snapshot;
+        SnapshotReportingMode _snapshotReportingMode;
 
-        private List<double> _list;
-        private List<double> _warmlist;
-        private double _min = Double.PositiveInfinity;
-        private double _max = Double.NegativeInfinity;
-        private double _last;
-        private double _sum = 0;
-        private int _count = 0;
+        List<double> _list;
+        List<double> _warmlist;
+        double _min = Double.PositiveInfinity;
+        double _max = Double.NegativeInfinity;
+        double _last;
+        double _sum = 0;
+        int _count = 0;
 
         /// <summary>
         /// The type of metric (gauge, in this case).
@@ -159,7 +159,7 @@ namespace BosunReporter.Metrics
             return Description;
         }
 
-        private static string DoubleToPercentileString(double pct)
+        static string DoubleToPercentileString(double pct)
         {
             var ip = (int)(pct * 100.0);
             var lastDigit = ip % 10;
@@ -211,7 +211,7 @@ namespace BosunReporter.Metrics
             CaptureSnapshot();
         }
 
-        private void CaptureSnapshot()
+        void CaptureSnapshot()
         {
             List<double> list = null;
             double last;
@@ -320,7 +320,7 @@ namespace BosunReporter.Metrics
             }
         }
 
-        private GaugeAggregatorStrategy GetAggregatorStategy()
+        GaugeAggregatorStrategy GetAggregatorStategy()
         {
             var type = GetType();
             if (_aggregatorsByTypeCache.ContainsKey(type))
@@ -406,7 +406,7 @@ namespace BosunReporter.Metrics
             }
         }
 
-        private struct AggregateInfo
+        struct AggregateInfo
         {
             public double Percentile { get; }
             public string Suffix { get; }
@@ -418,7 +418,7 @@ namespace BosunReporter.Metrics
             }
         }
 
-        private class GaugeAggregatorStrategy
+        class GaugeAggregatorStrategy
         {
             public readonly double[] Percentiles;
             public readonly string[] Suffixes;

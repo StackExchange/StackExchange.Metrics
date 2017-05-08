@@ -11,13 +11,13 @@ namespace BosunReporter.Metrics
     /// </summary>
     public class EventGauge : BosunMetric
     {
-        private struct PendingMetric
+        struct PendingMetric
         {
             public double Value;
             public DateTime Time;
         }
 
-        private ConcurrentBag<PendingMetric> _pendingMetrics = new ConcurrentBag<PendingMetric>();
+        ConcurrentBag<PendingMetric> _pendingMetrics = new ConcurrentBag<PendingMetric>();
 
         /// <summary>
         /// The type of metric (gauge).

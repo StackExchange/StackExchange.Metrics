@@ -15,16 +15,16 @@ namespace BosunReporter.Infrastructure
     /// </summary>
     public abstract class BosunMetric
     {
-        private struct MetricTypeInfo
+        struct MetricTypeInfo
         {
             public bool NeedsPreSerialize;
             public bool IsExternalCounter;
         }
 
-        private static readonly Dictionary<Type, MetricTypeInfo> _typeInfoCache = new Dictionary<Type, MetricTypeInfo>();
-        private static readonly object _typeInfoLock = new object();
+        static readonly Dictionary<Type, MetricTypeInfo> _typeInfoCache = new Dictionary<Type, MetricTypeInfo>();
+        static readonly object _typeInfoLock = new object();
 
-        private static readonly string[] s_singleEmptyStringArray = {""};
+        static readonly string[] s_singleEmptyStringArray = {""};
 
         /// <summary>
         /// The type of metric. Must be one of "counter", "gauge", or "rate".
@@ -39,7 +39,7 @@ namespace BosunReporter.Infrastructure
         /// </summary>
         public bool IsAttached { get; internal set; }
 
-        private HashSet<string> _suffixSet;
+        HashSet<string> _suffixSet;
         /// <summary>
         /// An enumeration of metric name suffixes. In most cases, this will be a single-element collection where the value of the element is an empty string.
         /// However, some metric types may actually serialize as multiple time series distinguished by metric names with different suffixes. The only built-in
@@ -49,11 +49,11 @@ namespace BosunReporter.Infrastructure
         internal string[] SuffixesArray { get; private set; }
         internal int SuffixCount => SuffixesArray.Length;
 
-        private string _tagsJson;
+        string _tagsJson;
         internal string TagsJson => _tagsJson ?? (_tagsJson = GetTagsJson(Collector.DefaultTags, Collector.TagValueConverter, Collector.TagsByTypeCache));
 
-        private string _name;
-        private readonly object _nameLock = new object();
+        string _name;
+        readonly object _nameLock = new object();
 
         /// <summary>
         /// The metric name, including the global prefix (if applicable), but not including any suffixes (see <see cref="Suffixes"/>).
@@ -284,7 +284,7 @@ namespace BosunReporter.Infrastructure
             return sb.ToString();
         }
 
-        private List<BosunTag> GetTagsList(ReadOnlyDictionary<string, string> defaultTags, Dictionary<Type, List<BosunTag>> tagsByTypeCache)
+        List<BosunTag> GetTagsList(ReadOnlyDictionary<string, string> defaultTags, Dictionary<Type, List<BosunTag>> tagsByTypeCache)
         {
             var type = GetType();
             if (tagsByTypeCache.ContainsKey(type))
@@ -333,13 +333,13 @@ namespace BosunReporter.Infrastructure
             return tags;
         }
 
-        private struct TagAttributesData
+        struct TagAttributesData
         {
             public bool IncludeByDefault;
             public Dictionary<string, bool> IncludeByTag;
         }
 
-        private static TagAttributesData GetTagAttributesData(Type type)
+        static TagAttributesData GetTagAttributesData(Type type)
         {
             var foundDefault = false;
             var includeByDefault = true;
@@ -400,7 +400,7 @@ namespace BosunReporter.Infrastructure
             };
         }
 
-        private MetricTypeInfo GetMetricTypeInfo()
+        MetricTypeInfo GetMetricTypeInfo()
         {
             var type = GetType();
             MetricTypeInfo info;

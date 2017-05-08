@@ -9,34 +9,35 @@ namespace BosunReporter.Infrastructure
     /// </summary>
     public class MetricWriter
     {
-        private const int DIGITS_IN_TIMESTAMP = 13; // all dates within a reasonable range 2000-2250 generate 13 decimal digit timestamps
+        const int DIGITS_IN_TIMESTAMP = 13; // all dates within a reasonable range 2000-2250 generate 13 decimal digit timestamps
 
-        private static readonly byte[] s_openCurlyMetricColon;
-        private static readonly byte[] s_commaValueColon;
-        private static readonly byte[] s_commaTagsColon;
-        private static readonly byte[] s_commaTimestampColon;
-        private static readonly byte[] s_closeCurlyComma;
+        static readonly byte[] s_openCurlyMetricColon;
+        static readonly byte[] s_commaValueColon;
+        static readonly byte[] s_commaTagsColon;
+        static readonly byte[] s_commaTimestampColon;
+        static readonly byte[] s_closeCurlyComma;
 
-        private static readonly DateTime s_unixEpoch = new DateTime(1970, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc);
-        private static readonly DateTime s_minimumTimestamp = new DateTime(2000, 1, 1, 0, 0, 0, DateTimeKind.Utc);
-        private static readonly DateTime s_maximumTimestamp = new DateTime(2250, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+        static readonly DateTime s_unixEpoch = new DateTime(1970, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc);
+        static readonly DateTime s_minimumTimestamp = new DateTime(2000, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+        static readonly DateTime s_maximumTimestamp = new DateTime(2250, 1, 1, 0, 0, 0, DateTimeKind.Utc);
 
-        private Payload _payload;
-        private readonly PayloadQueue _queue;
+        Payload _payload;
+        readonly PayloadQueue _queue;
 
         // Denormalized references to the payload data just to remove an extra layer of indirection.
         // It's also useful to keep _payload.Used in its original state until we finalize the payload.
-        private int _used;
-        private byte[] _data;
+        int _used;
 
-        private int _startOfWrite;
-        private int _payloadsCount;
-        private int _bytesWrittenByPreviousPayloads;
+        byte[] _data;
 
-        private DateTime _timestampCache = DateTime.MaxValue;
-        private readonly byte[] _timestampStringCache = new byte[DIGITS_IN_TIMESTAMP];
+        int _startOfWrite;
+        int _payloadsCount;
+        int _bytesWrittenByPreviousPayloads;
 
-        private int BytesWrittenToCurrentPayload => _payload == null ? 0 : _used - _payload.Used;
+        DateTime _timestampCache = DateTime.MaxValue;
+        readonly byte[] _timestampStringCache = new byte[DIGITS_IN_TIMESTAMP];
+
+        int BytesWrittenToCurrentPayload => _payload == null ? 0 : _used - _payload.Used;
         internal int TotalBytesWritten => _bytesWrittenByPreviousPayloads + BytesWrittenToCurrentPayload;
 
         internal int MetricsCount { get; private set; }
@@ -83,14 +84,14 @@ namespace BosunReporter.Infrastructure
             EndOfWrite();
         }
 
-        private void Append(byte[] bytes)
+        void Append(byte[] bytes)
         {
             EnsureRoomFor(bytes.Length);
             Array.Copy(bytes, 0, _data, _used, bytes.Length);
             _used += bytes.Length;
         }
 
-        private void Append(string s)
+        void Append(string s)
         {
             var len = s.Length;
             EnsureRoomFor(len);
@@ -105,12 +106,12 @@ namespace BosunReporter.Infrastructure
             _used = used;
         }
 
-        private void Append(double d)
+        void Append(double d)
         {
             Append(d.ToString("R")); // todo - use Grisu
         }
 
-        private void Append(DateTime timestamp)
+        void Append(DateTime timestamp)
         {
             if (timestamp != _timestampCache)
                 SetTimestampCache(timestamp);
@@ -119,13 +120,13 @@ namespace BosunReporter.Infrastructure
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private void MarkStartOfWrite()
+        void MarkStartOfWrite()
         {
             _startOfWrite = _used;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private void EndOfWrite()
+        void EndOfWrite()
         {
             MetricsCount++;
 
@@ -139,7 +140,7 @@ namespace BosunReporter.Infrastructure
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private void EnsureRoomFor(int length)
+        void EnsureRoomFor(int length)
         {
             if (_data == null || _used + length > _data.Length)
             {
@@ -148,7 +149,7 @@ namespace BosunReporter.Infrastructure
             }
         }
 
-        private void SwapPayload()
+        void SwapPayload()
         {
             var newPayload = _queue.GetPayloadForMetricWriter();
             var newData = newPayload.Data;
@@ -193,13 +194,13 @@ namespace BosunReporter.Infrastructure
             MetricsCount = newPayload.MetricsCount;
         }
 
-        private static void AssertLength(byte[] array, int length)
+        static void AssertLength(byte[] array, int length)
         {
             if (array.Length < length)
                 throw new Exception($"BosunReporter is trying to write something way too big. This shouldn't happen. Are you using a crazy number of tags on a metric? Length {length}.");
         }
 
-        private void FinalizeAndSendPayload()
+        void FinalizeAndSendPayload()
         {
             if (_used > 1 && _data != null)
             {
@@ -223,7 +224,7 @@ namespace BosunReporter.Infrastructure
             MetricsCount = 0;
         }
 
-        private void SetTimestampCache(DateTime timestamp)
+        void SetTimestampCache(DateTime timestamp)
         {
             if (timestamp < s_minimumTimestamp)
                 throw new Exception($"BosunReporter cannot serialize metrics dated before {s_minimumTimestamp}.");

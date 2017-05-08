@@ -2,7 +2,7 @@
 
 namespace BosunReporter.Infrastructure
 {
-    internal struct MetricKey
+    struct MetricKey
     {
         // Knowing that the lengths and hash codes match should be plenty to ensure uniqueness
         // without holding onto object references.
@@ -33,7 +33,7 @@ namespace BosunReporter.Infrastructure
         }
     }
 
-    internal class MetricKeyComparer : IEqualityComparer<MetricKey>
+    class MetricKeyComparer : IEqualityComparer<MetricKey>
     {
         public bool Equals(MetricKey a, MetricKey b)
         {

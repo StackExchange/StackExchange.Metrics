@@ -9,7 +9,7 @@ namespace Scratch
 {
     class Program
     {
-        private static Timer _samplerTimer;
+        static Timer _samplerTimer;
 
         static void Main(string[] args)
         {

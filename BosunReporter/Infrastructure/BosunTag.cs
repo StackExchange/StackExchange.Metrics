@@ -3,7 +3,7 @@ using System.Reflection;
 
 namespace BosunReporter.Infrastructure
 {
-    internal class BosunTag
+    class BosunTag
     {
         public readonly string Name;
         public readonly bool IsFromDefault;

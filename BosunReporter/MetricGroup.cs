@@ -48,10 +48,10 @@ namespace BosunReporter
     /// </summary>
     public class MetricGroup<T1, TMetric> where TMetric : BosunMetric
     {
-        private readonly object _dictionaryLock = new object();
-        private readonly MetricsCollector _collector;
-        private readonly Dictionary<T1, TMetric> _metrics = new Dictionary<T1, TMetric>();
-        private readonly Func<T1, TMetric> _metricFactory;
+        readonly object _dictionaryLock = new object();
+        readonly MetricsCollector _collector;
+        readonly Dictionary<T1, TMetric> _metrics = new Dictionary<T1, TMetric>();
+        readonly Func<T1, TMetric> _metricFactory;
 
         /// <summary>
         /// The metric name shared by all time series in this group.
@@ -221,10 +221,10 @@ namespace BosunReporter
     /// </summary>
     public class MetricGroup<T1, T2, TMetric> where TMetric : BosunMetric
     {
-        private readonly object _dictionaryLock = new object();
-        private readonly MetricsCollector _collector;
-        private readonly Dictionary<Tuple<T1, T2>, TMetric> _metrics = new Dictionary<Tuple<T1, T2>, TMetric>();
-        private readonly Func<T1, T2, TMetric> _metricFactory;
+        readonly object _dictionaryLock = new object();
+        readonly MetricsCollector _collector;
+        readonly Dictionary<Tuple<T1, T2>, TMetric> _metrics = new Dictionary<Tuple<T1, T2>, TMetric>();
+        readonly Func<T1, T2, TMetric> _metricFactory;
 
         /// <summary>
         /// The metric name shared by all time series in this group.
@@ -375,10 +375,10 @@ namespace BosunReporter
     /// </summary>
     public class MetricGroup<T1, T2, T3, TMetric> where TMetric : BosunMetric
     {
-        private readonly object _dictionaryLock = new object();
-        private readonly MetricsCollector _collector;
-        private readonly Dictionary<Tuple<T1, T2, T3>, TMetric> _metrics = new Dictionary<Tuple<T1, T2, T3>, TMetric>();
-        private readonly Func<T1, T2, T3, TMetric> _metricFactory;
+        readonly object _dictionaryLock = new object();
+        readonly MetricsCollector _collector;
+        readonly Dictionary<Tuple<T1, T2, T3>, TMetric> _metrics = new Dictionary<Tuple<T1, T2, T3>, TMetric>();
+        readonly Func<T1, T2, T3, TMetric> _metricFactory;
 
         /// <summary>
         /// The metric name shared by all time series in this group.
@@ -529,10 +529,10 @@ namespace BosunReporter
     /// </summary>
     public class MetricGroup<T1, T2, T3, T4, TMetric> where TMetric : BosunMetric
     {
-        private readonly object _dictionaryLock = new object();
-        private readonly MetricsCollector _collector;
-        private readonly Dictionary<Tuple<T1, T2, T3, T4>, TMetric> _metrics = new Dictionary<Tuple<T1, T2, T3, T4>, TMetric>();
-        private readonly Func<T1, T2, T3, T4, TMetric> _metricFactory;
+        readonly object _dictionaryLock = new object();
+        readonly MetricsCollector _collector;
+        readonly Dictionary<Tuple<T1, T2, T3, T4>, TMetric> _metrics = new Dictionary<Tuple<T1, T2, T3, T4>, TMetric>();
+        readonly Func<T1, T2, T3, T4, TMetric> _metricFactory;
 
         /// <summary>
         /// The metric name shared by all time series in this group.
@@ -683,10 +683,10 @@ namespace BosunReporter
     /// </summary>
     public class MetricGroup<T1, T2, T3, T4, T5, TMetric> where TMetric : BosunMetric
     {
-        private readonly object _dictionaryLock = new object();
-        private readonly MetricsCollector _collector;
-        private readonly Dictionary<Tuple<T1, T2, T3, T4, T5>, TMetric> _metrics = new Dictionary<Tuple<T1, T2, T3, T4, T5>, TMetric>();
-        private readonly Func<T1, T2, T3, T4, T5, TMetric> _metricFactory;
+        readonly object _dictionaryLock = new object();
+        readonly MetricsCollector _collector;
+        readonly Dictionary<Tuple<T1, T2, T3, T4, T5>, TMetric> _metrics = new Dictionary<Tuple<T1, T2, T3, T4, T5>, TMetric>();
+        readonly Func<T1, T2, T3, T4, T5, TMetric> _metricFactory;
 
         /// <summary>
         /// The metric name shared by all time series in this group.

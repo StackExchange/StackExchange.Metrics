@@ -6,11 +6,11 @@ namespace BosunReporter.Infrastructure
     /// This class is definitely not thread safe. Make sure to use locks in a multi-threaded environment.
     /// </summary>
     /// <typeparam name="T"></typeparam>
-    internal class DoubleEndedQueue<T>
+    class DoubleEndedQueue<T>
     {
-        private T[] _array;
-        private int _head; // index of the oldest item in the array
-        private int _tail; // index where the next item will be written
+        T[] _array;
+        int _head; // index of the oldest item in the array
+        int _tail; // index where the next item will be written
 
         public int Count { get; private set; }
 
@@ -74,7 +74,7 @@ namespace BosunReporter.Infrastructure
             return true;
         }
 
-        private void Grow()
+        void Grow()
         {
             var oldArray = _array;
             var newArray = new T[_array.Length * 2];

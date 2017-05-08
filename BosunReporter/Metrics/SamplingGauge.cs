@@ -10,7 +10,7 @@ namespace BosunReporter.Metrics
     /// </summary>
     public class SamplingGauge : BosunMetric
     {
-        private double _value = Double.NaN;
+        double _value = Double.NaN;
 
         /// <summary>
         /// The current value of the gauge.

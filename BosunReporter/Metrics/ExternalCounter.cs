@@ -13,7 +13,7 @@ namespace BosunReporter.Metrics
     [ExcludeDefaultTags("host")]
     public class ExternalCounter : BosunMetric
     {
-        private int _count;
+        int _count;
 
         /// <summary>
         /// The current value of this counter. This will reset to zero at each reporting interval.

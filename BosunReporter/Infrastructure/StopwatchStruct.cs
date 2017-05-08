@@ -4,10 +4,10 @@ using System.Runtime.Versioning;
 
 namespace BosunReporter.Infrastructure
 {
-    internal struct StopwatchStruct
+    struct StopwatchStruct
     {
-        private long _startTimestamp;
-        private long _elapsed;
+        long _startTimestamp;
+        long _elapsed;
 
         public bool IsRunning { get; private set; }
 
@@ -57,8 +57,8 @@ namespace BosunReporter.Infrastructure
         *
         ****************************************************************************************/
 
-        private const long TicksPerMillisecond = 10000;
-        private const long TicksPerSecond = TicksPerMillisecond * 1000;
+        const long TicksPerMillisecond = 10000;
+        const long TicksPerSecond = TicksPerMillisecond * 1000;
 
         public static readonly bool IsHighResolution;
         public static readonly long Frequency;

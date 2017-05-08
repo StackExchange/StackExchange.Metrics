@@ -3,19 +3,19 @@ using System.Collections.Generic;
 
 namespace BosunReporter.Infrastructure
 {
-    internal enum QueueType
+    enum QueueType
     {
         Local,
         ExternalCounters,
     }
 
-    internal class PayloadQueue
+    class PayloadQueue
     {
-        private int _cacheLimit = 1;
-        private readonly object _warmLock = new object();
-        private readonly Stack<Payload> _warmCache = new Stack<Payload>();
-        private readonly object _pendingLock = new object();
-        private readonly DoubleEndedQueue<Payload> _pendingPayloads = new DoubleEndedQueue<Payload>();
+        int _cacheLimit = 1;
+        readonly object _warmLock = new object();
+        readonly Stack<Payload> _warmCache = new Stack<Payload>();
+        readonly object _pendingLock = new object();
+        readonly DoubleEndedQueue<Payload> _pendingPayloads = new DoubleEndedQueue<Payload>();
 
         internal int PayloadSize { get; set; }
         internal int MaxPendingPayloads { get; set; }

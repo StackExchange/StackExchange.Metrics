@@ -19,41 +19,43 @@ namespace BosunReporter
     /// </summary>
     public partial class MetricsCollector
     {
-        private class RootMetricInfo
+        class RootMetricInfo
         {
             public Type Type { get; set; }
             public string Unit { get; set; }
         }
 
-        private static readonly DateTime s_unixEpoch = new DateTime(1970, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc);
+        static readonly DateTime s_unixEpoch = new DateTime(1970, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc);
 
-        private static readonly MetricKeyComparer s_metricKeyComparer = new MetricKeyComparer();
+        static readonly MetricKeyComparer s_metricKeyComparer = new MetricKeyComparer();
 
-        private readonly object _metricsLock = new object();
+        readonly object _metricsLock = new object();
         // all of the first-class names which have been claimed (excluding suffixes in aggregate gauges)
-        private readonly Dictionary<string, RootMetricInfo> _rootNameToInfo = new Dictionary<string, RootMetricInfo>();
+        readonly Dictionary<string, RootMetricInfo> _rootNameToInfo = new Dictionary<string, RootMetricInfo>();
         // this dictionary is to avoid duplicate metrics
-        private Dictionary<MetricKey, BosunMetric> _rootNameAndTagsToMetric = new Dictionary<MetricKey, BosunMetric>(s_metricKeyComparer);
-        private readonly List<BosunMetric> _localMetrics = new List<BosunMetric>();
-        private readonly List<BosunMetric> _externalCounterMetrics = new List<BosunMetric>();
-        private readonly List<BosunMetric> _metricsNeedingPreSerialize = new List<BosunMetric>();
+        Dictionary<MetricKey, BosunMetric> _rootNameAndTagsToMetric = new Dictionary<MetricKey, BosunMetric>(s_metricKeyComparer);
+
+        readonly List<BosunMetric> _localMetrics = new List<BosunMetric>();
+        readonly List<BosunMetric> _externalCounterMetrics = new List<BosunMetric>();
+
+        readonly List<BosunMetric> _metricsNeedingPreSerialize = new List<BosunMetric>();
         // All of the names which have been claimed, including the metrics which may have multiple suffixes, mapped to their root metric name.
         // This is to prevent suffix collisions with other metrics.
-        private readonly Dictionary<string, string> _nameAndSuffixToRootName = new Dictionary<string, string>();
+        readonly Dictionary<string, string> _nameAndSuffixToRootName = new Dictionary<string, string>();
 
-        private readonly string _accessToken;
-        private readonly Func<string> _getAccessToken;
+        readonly string _accessToken;
+        readonly Func<string> _getAccessToken;
 
-        private readonly object _flushingLock = new object();
-        private int _skipFlushes = 0;
-        private readonly Timer _flushTimer;
-        private readonly Timer _reportingTimer;
-        private readonly Timer _metaDataTimer;
+        readonly object _flushingLock = new object();
+        int _skipFlushes = 0;
+        readonly Timer _flushTimer;
+        readonly Timer _reportingTimer;
+        readonly Timer _metaDataTimer;
 
-        private readonly PayloadQueue _localMetricsQueue;
-        private readonly PayloadQueue _externalCounterQueue;
+        readonly PayloadQueue _localMetricsQueue;
+        readonly PayloadQueue _externalCounterQueue;
 
-        private static readonly AsyncCallback s_asyncNoopCallback = AsyncNoopCallback;
+        static readonly AsyncCallback s_asyncNoopCallback = AsyncNoopCallback;
 
         internal Dictionary<Type, List<BosunTag>> TagsByTypeCache = new Dictionary<Type, List<BosunTag>>();
 
@@ -281,7 +283,7 @@ namespace BosunReporter
             return false;
         }
 
-        private ReadOnlyDictionary<string, string> ValidateDefaultTags(Dictionary<string, string> tags)
+        ReadOnlyDictionary<string, string> ValidateDefaultTags(Dictionary<string, string> tags)
         {
             var defaultTags = tags == null
                 ? new Dictionary<string, string>()
@@ -450,7 +452,7 @@ namespace BosunReporter
             return GetMetricInternal(name, false, unit, description, metric, false);
         }
 
-        private T GetMetricInternal<T>(string name, bool addPrefix, string unit, string description, T metric, bool mustBeNew) where T : BosunMetric
+        T GetMetricInternal<T>(string name, bool addPrefix, string unit, string description, T metric, bool mustBeNew) where T : BosunMetric
         {
             if (addPrefix)
                 name = MetricsNamePrefix + name;
@@ -643,7 +645,7 @@ namespace BosunReporter
             }
         }
 
-        private static bool AreIdenticalTags(ReadOnlyDictionary<string, string> a, ReadOnlyDictionary<string, string> b)
+        static bool AreIdenticalTags(ReadOnlyDictionary<string, string> a, ReadOnlyDictionary<string, string> b)
         {
             foreach (var kvp in a)
             {
@@ -660,7 +662,7 @@ namespace BosunReporter
             return true;
         }
 
-        private void Snapshot(object isCalledFromTimer)
+        void Snapshot(object isCalledFromTimer)
         {
             if ((bool)isCalledFromTimer && ShutdownCalled) // don't perform timer actions if we're shutting down
                 return;
@@ -696,7 +698,7 @@ namespace BosunReporter
             }
         }
 
-        private void Flush(object isCalledFromTimer)
+        void Flush(object isCalledFromTimer)
         {
             if ((bool)isCalledFromTimer && ShutdownCalled) // don't perform timer actions if we're shutting down
                 return;
@@ -746,7 +748,7 @@ namespace BosunReporter
             }
         }
 
-        private bool FlushPayload(string path, PayloadQueue queue)
+        bool FlushPayload(string path, PayloadQueue queue)
         {
             var payload = queue.DequeuePendingPayload();
             if (payload == null)
@@ -796,10 +798,11 @@ namespace BosunReporter
             }
         }
 
-        private static void AsyncNoopCallback(IAsyncResult result) { }
+        static void AsyncNoopCallback(IAsyncResult result) { }
 
-        private delegate void ApiPostWriter(Stream sw);
-        private void PostToBosun(string path, bool gzip, ApiPostWriter postWriter)
+        delegate void ApiPostWriter(Stream sw);
+
+        void PostToBosun(string path, bool gzip, ApiPostWriter postWriter)
         {
             var url = BosunUrl;
             if (url == null)
@@ -875,7 +878,7 @@ namespace BosunReporter
             return ((long)(time - s_unixEpoch).TotalMilliseconds).ToString("D");
         }
 
-        private void SerializeMetrics(out int metricsCount, out int bytesWritten)
+        void SerializeMetrics(out int metricsCount, out int bytesWritten)
         {
             lock (_metricsLock)
             {
@@ -892,7 +895,7 @@ namespace BosunReporter
             }
         }
 
-        private static void SerializeMetricListToWriter(PayloadQueue queue, List<BosunMetric> metrics, DateTime timestamp, ref int metricsCount, ref int bytesWritten)
+        static void SerializeMetricListToWriter(PayloadQueue queue, List<BosunMetric> metrics, DateTime timestamp, ref int metricsCount, ref int bytesWritten)
         {
             if (metrics.Count == 0)
                 return;
@@ -918,7 +921,7 @@ namespace BosunReporter
             }
         }
 
-        private void PostMetaData(object _)
+        void PostMetaData(object _)
         {
             if (ShutdownCalled) // don't report any more meta data if we're shutting down
                 return;
@@ -949,7 +952,7 @@ namespace BosunReporter
             }
         }
 
-        private string GatherMetaData()
+        string GatherMetaData()
         {
             var json = new StringBuilder();
 
@@ -989,13 +992,13 @@ namespace BosunReporter
             return json.ToString();
         }
 
-        private void OnPayloadDropped(BosunQueueFullException ex)
+        void OnPayloadDropped(BosunQueueFullException ex)
         {
             if (ShouldThrowException(ex))
                 ExceptionHandler(ex);
         }
 
-        private bool ShouldThrowException(Exception ex)
+        bool ShouldThrowException(Exception ex)
         {
             var post = ex as BosunPostException;
             if (post != null)

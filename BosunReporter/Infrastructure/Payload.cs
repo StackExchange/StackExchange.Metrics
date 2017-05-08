@@ -1,6 +1,6 @@
 ﻿namespace BosunReporter.Infrastructure
 {
-    internal class Payload
+    class Payload
     {
         internal int Used { get; set; }
         internal byte[] Data { get; }
