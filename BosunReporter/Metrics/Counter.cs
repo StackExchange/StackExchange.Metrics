@@ -10,7 +10,15 @@ namespace BosunReporter.Metrics
     /// </summary>
     public class Counter : BosunMetric
     {
-        public long Value = 0;
+        /// <summary>
+        /// The underlying field for <see cref="Value"/>. This allows for direct manipulation via Interlocked methods.
+        /// </summary>
+        protected long _value;
+
+        /// <summary>
+        /// The current value of the counter.
+        /// </summary>
+        public long Value => _value;
 
         /// <summary>
         /// The metric type (counter, in this case).
@@ -39,7 +47,7 @@ namespace BosunReporter.Metrics
         public void Increment(long amount = 1)
         {
             AssertAttached();
-            Interlocked.Add(ref Value, amount);
+            Interlocked.Add(ref _value, amount);
         }
     }
 }
