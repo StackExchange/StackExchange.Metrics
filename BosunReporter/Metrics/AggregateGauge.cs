@@ -521,15 +521,15 @@ namespace BosunReporter.Metrics
         /// <summary>
         /// The aggregator mode.
         /// </summary>
-        public readonly AggregateMode AggregateMode;
+        public AggregateMode AggregateMode { get; }
         /// <summary>
         /// The metric name suffix for this aggregator.
         /// </summary>
-        public readonly string Suffix;
+        public string Suffix { get; }
         /// <summary>
         /// The percentile of this aggregator, if applicable. Otherwise, NaN.
         /// </summary>
-        public readonly double Percentile;
+        public double Percentile { get; }
 
         /// <summary>
         /// Applies an <see cref="AggregateMode"/> to an <see cref="AggregateGauge"/>.
