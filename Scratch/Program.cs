@@ -204,17 +204,9 @@ namespace Scratch
     {
         [BosunTag] public readonly string Thing;
 
-        public Func<double> GetValueLambda;
-
-        public TestSnapshotGauge(Func<double> getValue)
+        public TestSnapshotGauge(Func<double> getValue) : base(() => getValue())
         {
             Thing = "nothing";
-            GetValueLambda = getValue;
-        }
-
-        protected override double? GetValue()
-        {
-            return GetValueLambda();
         }
     }
 

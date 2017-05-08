@@ -9,7 +9,7 @@ namespace BosunReporter.Metrics
     /// </summary>
     public class SnapshotGauge : BosunMetric
     {
-        public readonly Func<double?> GetValueFunc;
+        readonly Func<double?> _getValueFunc;
 
         /// <summary>
         /// The type of metric (gauge, in this case).
@@ -25,7 +25,7 @@ namespace BosunReporter.Metrics
             if (getValueFunc == null)
                 throw new ArgumentNullException("getValueFunc");
 
-            GetValueFunc = getValueFunc;
+            _getValueFunc = getValueFunc;
         }
 
         /// <summary>
@@ -43,9 +43,9 @@ namespace BosunReporter.Metrics
         /// <summary>
         /// Returns the current value which should be reported for the gauge.
         /// </summary>
-        protected virtual double? GetValue()
+        public virtual double? GetValue()
         {
-            return GetValueFunc();
+            return _getValueFunc();
         }
     }
 }

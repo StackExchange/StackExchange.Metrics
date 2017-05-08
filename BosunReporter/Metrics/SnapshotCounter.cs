@@ -9,7 +9,7 @@ namespace BosunReporter.Metrics
     /// </summary>
     public class SnapshotCounter : BosunMetric
     {
-        public readonly Func<long?> GetCountFunc;
+        readonly Func<long?> _getCountFunc;
 
         /// <summary>
         /// The type of metric (counter, in this case).
@@ -25,7 +25,7 @@ namespace BosunReporter.Metrics
             if (getCountFunc == null)
                 throw new ArgumentNullException("getCountFunc");
 
-            GetCountFunc = getCountFunc;
+            _getCountFunc = getCountFunc;
         }
 
         /// <summary>
@@ -43,9 +43,9 @@ namespace BosunReporter.Metrics
         /// <summary>
         /// Returns the current value which should be reported for the counter.
         /// </summary>
-        protected virtual long? GetValue()
+        public virtual long? GetValue()
         {
-            return GetCountFunc();
+            return _getCountFunc();
         }
     }
 }
