@@ -6,7 +6,7 @@ namespace BosunReporter.Infrastructure
     /// This class is definitely not thread safe. Make sure to use locks in a multi-threaded environment.
     /// </summary>
     /// <typeparam name="T"></typeparam>
-    public class DoubleEndedQueue<T>
+    internal class DoubleEndedQueue<T>
     {
         private T[] _array;
         private int _head; // index of the oldest item in the array
