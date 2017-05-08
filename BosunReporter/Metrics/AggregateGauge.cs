@@ -10,7 +10,7 @@ using BosunReporter.Infrastructure;
 namespace BosunReporter.Metrics
 {
     [GaugeAggregator(AggregateMode.Last)]
-    public class AggregateGauge : BosunMetric, IDoubleGauge
+    public class AggregateGauge : BosunMetric
     {
         private enum SnapshotReportingMode
         {

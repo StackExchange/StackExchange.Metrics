@@ -1,11 +1,10 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Threading;
 using BosunReporter.Infrastructure;
 
 namespace BosunReporter.Metrics
 {
-    public class Counter : BosunMetric, ILongCounter
+    public class Counter : BosunMetric
     {
         public long Value = 0;
 

@@ -7,7 +7,7 @@ using System;
 
 namespace BosunReporter.Metrics
 {
-    public class EventGauge : BosunMetric, IDoubleGauge
+    public class EventGauge : BosunMetric
     {
         private struct PendingMetric
         {

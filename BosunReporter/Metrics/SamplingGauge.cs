@@ -5,7 +5,7 @@ using BosunReporter.Infrastructure;
 
 namespace BosunReporter.Metrics
 {
-    public class SamplingGauge : BosunMetric, IDoubleGauge
+    public class SamplingGauge : BosunMetric
     {
         private double _value = Double.NaN;
 
