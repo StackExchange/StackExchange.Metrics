@@ -137,11 +137,11 @@ namespace BosunReporter.Infrastructure
                 yield return new MetaData(fullName, "rate", null, MetricType);
 
                 var desc = GetDescription(i);
-                if (!String.IsNullOrEmpty(desc))
+                if (!string.IsNullOrEmpty(desc))
                     yield return new MetaData(fullName, "desc", TagsJson, desc);
 
                 var unit = GetUnit(i);
-                if (!String.IsNullOrEmpty(unit))
+                if (!string.IsNullOrEmpty(unit))
                     yield return new MetaData(fullName, "unit", null, unit);
             }
         }
@@ -328,7 +328,7 @@ namespace BosunReporter.Infrastructure
             if (tags.Count == 0 && !IsExternalCounter())
                 throw new TypeInitializationException(type.FullName, new Exception("Type does not contain any Bosun tags. Metrics must have at least one tag to be serializable."));
 
-            tags.Sort((a, b) => String.CompareOrdinal(a.Name, b.Name));
+            tags.Sort((a, b) => string.CompareOrdinal(a.Name, b.Name));
             Collector.TagsByTypeCache[type] = tags;
             return tags;
         }

@@ -10,7 +10,7 @@ namespace BosunReporter.Metrics
     /// </summary>
     public class SamplingGauge : BosunMetric
     {
-        double _value = Double.NaN;
+        double _value = double.NaN;
 
         /// <summary>
         /// The current value of the gauge.
@@ -28,7 +28,7 @@ namespace BosunReporter.Metrics
         protected override void Serialize(MetricWriter writer, DateTime now)
         {
             var value = _value;
-            if (Double.IsNaN(value))
+            if (double.IsNaN(value))
                 return;
 
             WriteValue(writer, value, now);

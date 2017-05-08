@@ -45,8 +45,8 @@ namespace BosunReporter.Metrics
 
         List<double> _list;
         List<double> _warmlist;
-        double _min = Double.PositiveInfinity;
-        double _max = Double.NegativeInfinity;
+        double _min = double.PositiveInfinity;
+        double _max = double.NegativeInfinity;
         double _last;
         double _sum = 0;
         int _count = 0;
@@ -135,7 +135,7 @@ namespace BosunReporter.Metrics
         /// </summary>
         public override string GetDescription(int suffixIndex)
         {
-            if (!String.IsNullOrEmpty(Description))
+            if (!string.IsNullOrEmpty(Description))
             {
                 switch (PercentileToAggregateMode(_percentiles[suffixIndex]))
                 {
@@ -238,9 +238,9 @@ namespace BosunReporter.Metrics
 
                 last = _last;
                 min = _min;
-                _min = Double.PositiveInfinity;
+                _min = double.PositiveInfinity;
                 max = _max;
-                _max = Double.NegativeInfinity;
+                _max = double.NegativeInfinity;
                 sum = _sum;
                 _sum = 0;
                 count = _count;
@@ -390,7 +390,7 @@ namespace BosunReporter.Metrics
                     defaultSuffix = "_median";
                     return 0.5;
                 case AggregateMode.Percentile:
-                    if (Double.IsNaN(percentile) || percentile < 0 || percentile > 1)
+                    if (double.IsNaN(percentile) || percentile < 0 || percentile > 1)
                         throw new ArgumentOutOfRangeException(nameof(percentile), "Percentile must be specified for gauge aggregators with percentile mode. Percentile must be between 0 and 1 (inclusive)");
 
                     defaultSuffix = "_" + (int) (percentile*100);
@@ -545,7 +545,7 @@ namespace BosunReporter.Metrics
         /// Applies an <see cref="AggregateMode"/> to an <see cref="AggregateGauge"/>.
         /// </summary>
         /// <param name="mode">The aggregate mode. Don't use AggregateMode.Percentile with this constructor.</param>
-        public GaugeAggregatorAttribute(AggregateMode mode) : this(mode, null, Double.NaN)
+        public GaugeAggregatorAttribute(AggregateMode mode) : this(mode, null, double.NaN)
         {
         }
 
@@ -554,7 +554,7 @@ namespace BosunReporter.Metrics
         /// </summary>
         /// <param name="mode">The aggregate mode. Don't use AggregateMode.Percentile with this constructor.</param>
         /// <param name="suffix">Overrides the default suffix for the aggregate mode.</param>
-        public GaugeAggregatorAttribute(AggregateMode mode, string suffix) : this(mode, suffix, Double.NaN)
+        public GaugeAggregatorAttribute(AggregateMode mode, string suffix) : this(mode, suffix, double.NaN)
         {
         }
 
