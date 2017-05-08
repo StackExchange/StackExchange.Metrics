@@ -21,7 +21,7 @@ namespace BosunReporter.Infrastructure
             public bool IsExternalCounter;
         }
 
-        static readonly Dictionary<Type, MetricTypeInfo> _typeInfoCache = new Dictionary<Type, MetricTypeInfo>();
+        static readonly Dictionary<Type, MetricTypeInfo> s_typeInfoCache = new Dictionary<Type, MetricTypeInfo>();
         static readonly object _typeInfoLock = new object();
 
         static readonly string[] s_singleEmptyStringArray = {""};
@@ -404,18 +404,18 @@ namespace BosunReporter.Infrastructure
         {
             var type = GetType();
             MetricTypeInfo info;
-            if (_typeInfoCache.TryGetValue(type, out info))
+            if (s_typeInfoCache.TryGetValue(type, out info))
                 return info;
 
             lock (_typeInfoLock)
             {
-                if (_typeInfoCache.TryGetValue(type, out info))
+                if (s_typeInfoCache.TryGetValue(type, out info))
                     return info;
 
                 var needsPreSerialize = type.GetMethod(nameof(PreSerialize), BindingFlags.Instance | BindingFlags.NonPublic).DeclaringType != typeof(BosunMetric);
                 var isExternalCounter = typeof(ExternalCounter).IsAssignableFrom(type);
 
-                info = _typeInfoCache[type] = new MetricTypeInfo
+                info = s_typeInfoCache[type] = new MetricTypeInfo
                 {
                     NeedsPreSerialize = needsPreSerialize,
                     IsExternalCounter = isExternalCounter,

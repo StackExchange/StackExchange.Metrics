@@ -22,7 +22,7 @@ namespace BosunReporter.Metrics
             All
         }
 
-        static readonly Dictionary<Type, GaugeAggregatorStrategy> _aggregatorsByTypeCache = new Dictionary<Type, GaugeAggregatorStrategy>();
+        static readonly Dictionary<Type, GaugeAggregatorStrategy> s_aggregatorsByTypeCache = new Dictionary<Type, GaugeAggregatorStrategy>();
 
         /// <summary>
         /// A delegate which backs the <see cref="MinimumEvents"/> property.
@@ -322,13 +322,13 @@ namespace BosunReporter.Metrics
         GaugeAggregatorStrategy GetAggregatorStategy()
         {
             var type = GetType();
-            if (_aggregatorsByTypeCache.ContainsKey(type))
-                return _aggregatorsByTypeCache[type];
+            if (s_aggregatorsByTypeCache.ContainsKey(type))
+                return s_aggregatorsByTypeCache[type];
 
-            lock (_aggregatorsByTypeCache)
+            lock (s_aggregatorsByTypeCache)
             {
-                if (_aggregatorsByTypeCache.ContainsKey(type))
-                    return _aggregatorsByTypeCache[type];
+                if (s_aggregatorsByTypeCache.ContainsKey(type))
+                    return s_aggregatorsByTypeCache[type];
 
                 var aggregators = GetType().GetCustomAttributes<GaugeAggregatorAttribute>(false).ToList().AsReadOnly();
                 if (aggregators.Count == 0)
@@ -341,7 +341,7 @@ namespace BosunReporter.Metrics
                         throw new Exception($"{type.FullName} has more than one gauge aggregator with the name \"{r.Suffix}\".");
                 }
 
-                return _aggregatorsByTypeCache[type] = new GaugeAggregatorStrategy(aggregators);
+                return s_aggregatorsByTypeCache[type] = new GaugeAggregatorStrategy(aggregators);
             }
         }
 

@@ -9,7 +9,7 @@ namespace Scratch
 {
     class Program
     {
-        static Timer _samplerTimer;
+        static Timer s_samplerTimer;
 
         static void Main(string[] args)
         {
@@ -108,7 +108,7 @@ namespace Scratch
 
             var sai = 0;
             var random = new Random();
-            _samplerTimer = new Timer(o =>
+            s_samplerTimer = new Timer(o =>
                 {
                     sampler.Record(++sai%35);
                     eventGauge.Record(sai%35);

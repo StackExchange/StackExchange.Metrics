@@ -7,7 +7,7 @@ namespace BosunReporter
     /// </summary>
     public static class BosunValidation
     {
-        static readonly Regex _validTsdbString = new Regex(@"^[a-zA-Z0-9\-_./]+$");
+        static readonly Regex s_validTsdbString = new Regex(@"^[a-zA-Z0-9\-_./]+$");
 
         /// <summary>
         /// A regular expression which matches any character not valid for OpenTSDB names.
@@ -19,7 +19,7 @@ namespace BosunReporter
         /// </summary>
         public static bool IsValidMetricName(string name)
         {
-            return _validTsdbString.IsMatch(name);
+            return s_validTsdbString.IsMatch(name);
         }
 
         /// <summary>
@@ -27,7 +27,7 @@ namespace BosunReporter
         /// </summary>
         public static bool IsValidTagName(string name)
         {
-            return _validTsdbString.IsMatch(name);
+            return s_validTsdbString.IsMatch(name);
         }
 
         /// <summary>
@@ -35,7 +35,7 @@ namespace BosunReporter
         /// </summary>
         public static bool IsValidTagValue(string value)
         {
-            return _validTsdbString.IsMatch(value);
+            return s_validTsdbString.IsMatch(value);
         }
     }
 }
