@@ -13,8 +13,7 @@ namespace BosunReporter.Metrics
     /// Aggregates data points (min, max, avg, median, etc) before sending them to Bosun. Good for recording high-volume events. You must inherit from this
     /// class in order to use it. See https://github.com/bretcope/BosunReporter.NET/blob/master/docs/MetricTypes.md#aggregategauge
     /// </summary>
-    [GaugeAggregator(AggregateMode.Last)]
-    public class AggregateGauge : BosunMetric
+    public abstract class AggregateGauge : BosunMetric
     {
         enum SnapshotReportingMode
         {
@@ -66,7 +65,7 @@ namespace BosunReporter.Metrics
         /// <summary>
         /// Protected constructor for calling from child classes.
         /// </summary>
-        public AggregateGauge()
+        protected AggregateGauge()
         {
             var strategy = GetAggregatorStategy();
             // denormalize these for one less level of indirection
