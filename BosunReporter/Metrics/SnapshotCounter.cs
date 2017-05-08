@@ -28,10 +28,6 @@ namespace BosunReporter.Metrics
             GetCountFunc = getCountFunc;
         }
 
-        protected SnapshotCounter()
-        {
-        }
-
         /// <summary>
         /// See <see cref="BosunMetric.Serialize"/>
         /// </summary>

@@ -28,10 +28,6 @@ namespace BosunReporter.Metrics
             GetValueFunc = getValueFunc;
         }
 
-        protected SnapshotGauge()
-        {
-        }
-
         /// <summary>
         /// See <see cref="BosunMetric.Serialize"/>
         /// </summary>
