@@ -408,18 +408,6 @@ namespace BosunReporter.Metrics
             }
         }
 
-        struct AggregateInfo
-        {
-            public double Percentile { get; }
-            public string Suffix { get; }
-
-            public AggregateInfo(double percentile, string suffix)
-            {
-                Percentile = percentile;
-                Suffix = suffix;
-            }
-        }
-
         class GaugeAggregatorStrategy
         {
             public readonly double[] Percentiles;
