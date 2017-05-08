@@ -1036,7 +1036,7 @@ namespace BosunReporter
         /// </summary>
         public DateTime StartTime { get; }
 
-        public AfterSerializationInfo()
+        internal AfterSerializationInfo()
         {
             StartTime = DateTime.UtcNow;
         }
@@ -1072,7 +1072,7 @@ namespace BosunReporter
         /// </summary>
         public DateTime StartTime { get; }
 
-        public AfterPostInfo()
+        internal AfterPostInfo()
         {
             StartTime = DateTime.UtcNow;
         }
