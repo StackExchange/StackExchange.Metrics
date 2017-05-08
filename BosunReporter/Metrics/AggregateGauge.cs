@@ -9,6 +9,10 @@ using BosunReporter.Infrastructure;
 
 namespace BosunReporter.Metrics
 {
+    /// <summary>
+    /// Aggregates data points (min, max, avg, median, etc) before sending them to Bosun. Good for recording high-volume events. You must inherit from this
+    /// class in order to use it. See https://github.com/bretcope/BosunReporter.NET/blob/master/docs/MetricTypes.md#aggregategauge
+    /// </summary>
     [GaugeAggregator(AggregateMode.Last)]
     public class AggregateGauge : BosunMetric
     {
@@ -21,6 +25,9 @@ namespace BosunReporter.Metrics
 
         private static readonly Dictionary<Type, GaugeAggregatorStrategy> _aggregatorsByTypeCache = new Dictionary<Type, GaugeAggregatorStrategy>();
 
+        /// <summary>
+        /// A delegate which backs the <see cref="MinimumEvents"/> property.
+        /// </summary>
         public static Func<int> GetDefaultMinimumEvents { get; set; } = () => 1;
 
         private readonly object _recordLock = new object();
@@ -44,6 +51,9 @@ namespace BosunReporter.Metrics
         private double _sum = 0;
         private int _count = 0;
 
+        /// <summary>
+        /// The type of metric (gauge, in this case).
+        /// </summary>
         public override string MetricType => "gauge";
 
         /// <summary>
@@ -53,6 +63,9 @@ namespace BosunReporter.Metrics
         /// </summary>
         public virtual int MinimumEvents => GetDefaultMinimumEvents();
 
+        /// <summary>
+        /// Protected constructor for calling from child classes.
+        /// </summary>
         public AggregateGauge()
         {
             var strategy = GetAggregatorStategy();
@@ -73,11 +86,18 @@ namespace BosunReporter.Metrics
             _snapshotReportingMode = SnapshotReportingMode.None;
         }
 
+        /// <summary>
+        /// See <see cref="BosunMetric.GetImmutableSuffixesArray"/>
+        /// </summary>
         protected override string[] GetImmutableSuffixesArray()
         {
             return _suffixes;
         }
 
+        /// <summary>
+        /// Records a data point on the aggregate gauge. This will likely not be sent to Bosun as an individual datapoint. Instead, it will be aggregated with
+        /// other data points and sent as one or more aggregates (controlled by which AggregateModes were applied to the metric).
+        /// </summary>
         public void Record(double value)
         {
             AssertAttached();
@@ -110,6 +130,9 @@ namespace BosunReporter.Metrics
             }
         }
 
+        /// <summary>
+        /// See <see cref="BosunMetric.GetDescription"/>
+        /// </summary>
         public override string GetDescription(int suffixIndex)
         {
             if (!String.IsNullOrEmpty(Description))
@@ -161,6 +184,9 @@ namespace BosunReporter.Metrics
             return ip + ending + " percentile";
         }
 
+        /// <summary>
+        /// See <see cref="BosunMetric.Serialize"/>
+        /// </summary>
         protected override void Serialize(MetricWriter writer, DateTime now)
         {
             var mode = _snapshotReportingMode;
@@ -177,6 +203,9 @@ namespace BosunReporter.Metrics
             }
         }
 
+        /// <summary>
+        /// See <see cref="BosunMetric.PreSerialize"/>
+        /// </summary>
         protected override void PreSerialize()
         {
             CaptureSnapshot();
@@ -217,7 +246,7 @@ namespace BosunReporter.Metrics
                 count = _count;
                 _count = 0;
             }
-            
+
             if (count == 0 || count < MinimumEvents)
             {
                 _snapshotReportingMode = _reportCount ? SnapshotReportingMode.CountOnly : SnapshotReportingMode.None;
@@ -457,46 +486,114 @@ namespace BosunReporter.Metrics
         }
     }
 
+    /// <summary>
+    /// Enumeration of aggregation modes supported by <see cref="AggregateGauge"/>.
+    /// </summary>
     public enum AggregateMode : byte
     {
+        /// <summary>
+        /// The arithmetic mean of all values recorded during a given interval. Uses the suffix "_avg" by default.
+        /// </summary>
         Average,
+        /// <summary>
+        /// The median value recorded during a given interval. Uses the suffix "_median" by default.
+        /// </summary>
         Median,
+        /// <summary>
+        /// An arbitrary percentile of values recorded during a given interval. Uses the suffix "_XX" by default, where XX is the first two decimal places of
+        /// the percentile. For example, the 95% percentile would use the suffix "_95".
+        /// </summary>
         Percentile,
+        /// <summary>
+        /// The maximum value recorded during a given interval. Uses the suffix "_max" by default.
+        /// </summary>
         Max,
+        /// <summary>
+        /// The minimum value recorded during a given interval. Uses the suffix "_min" by default.
+        /// </summary>
         Min,
+        /// <summary>
+        /// The last (final) value recorded during a given interval. Uses the suffix "" (empty string) by default.
+        /// </summary>
         Last,
+        /// <summary>
+        /// The number of values recorded during a given interval. Uses the suffix "_count" by default.
+        /// </summary>
         Count,
     }
 
+    /// <summary>
+    /// Applies an <see cref="AggregateMode"/> to an <see cref="AggregateGauge"/>.
+    /// </summary>
     [AttributeUsage(AttributeTargets.Class, AllowMultiple = true)]
     public class GaugeAggregatorAttribute : Attribute
     {
+        /// <summary>
+        /// The aggregator mode.
+        /// </summary>
         public readonly AggregateMode AggregateMode;
+        /// <summary>
+        /// The metric name suffix for this aggregator.
+        /// </summary>
         public readonly string Suffix;
+        /// <summary>
+        /// The percentile of this aggregator, if applicable. Otherwise, NaN.
+        /// </summary>
         public readonly double Percentile;
 
+        /// <summary>
+        /// Applies an <see cref="AggregateMode"/> to an <see cref="AggregateGauge"/>.
+        /// </summary>
+        /// <param name="mode">The aggregate mode. Don't use AggregateMode.Percentile with this constructor.</param>
         public GaugeAggregatorAttribute(AggregateMode mode) : this(mode, null, Double.NaN)
         {
         }
 
+        /// <summary>
+        /// Applies an <see cref="AggregateMode"/> to an <see cref="AggregateGauge"/>.
+        /// </summary>
+        /// <param name="mode">The aggregate mode. Don't use AggregateMode.Percentile with this constructor.</param>
+        /// <param name="suffix">Overrides the default suffix for the aggregate mode.</param>
         public GaugeAggregatorAttribute(AggregateMode mode, string suffix) : this(mode, suffix, Double.NaN)
         {
         }
 
+        /// <summary>
+        /// Applies an <see cref="AggregateMode"/> to an <see cref="AggregateGauge"/>.
+        /// </summary>
+        /// <param name="mode">The aggregate mode. Should always be AggregateMode.Percentile for this constructor.</param>
+        /// <param name="percentile">
+        /// The percentile represented as a double. For example, 0.95 = 95th percentile. Using more than two digits is not recommended.
+        /// </param>
         public GaugeAggregatorAttribute(AggregateMode mode, double percentile) : this(mode, null, percentile)
         {
         }
 
+        /// <summary>
+        /// Applies a percentile aggregator to an <see cref="AggregateGauge"/>.
+        /// </summary>
+        /// <param name="percentile">
+        /// The percentile represented as a double. For example, 0.95 = 95th percentile. Using more than two digits is not recommended.
+        /// </param>
         public GaugeAggregatorAttribute(double percentile) : this(AggregateMode.Percentile, null, percentile)
         {
         }
 
-        public GaugeAggregatorAttribute(AggregateMode aggregateMode, string suffix, double percentile)
+        /// <summary>
+        /// Applies an <see cref="AggregateMode"/> to an <see cref="AggregateGauge"/>.
+        /// </summary>
+        /// <param name="mode">The aggregate mode. Don't use AggregateMode.Percentile with this constructor.</param>
+        /// <param name="suffix">Overrides the default suffix for the aggregate mode.</param>
+        /// <param name="percentile">
+        /// The percentile represented as a double. For example, 0.95 = 95th percentile. Using more than two digits is not recommended. In order to use this
+        /// argument, <paramref name="mode"/> must be AggregateMode.Percentile.
+        /// </param>
+        public GaugeAggregatorAttribute(AggregateMode mode, string suffix, double percentile)
         {
-            AggregateMode = aggregateMode;
+            AggregateMode = mode;
 
             string defaultSuffix;
-            Percentile = AggregateGauge.AggregateModeToPercentileAndSuffix(aggregateMode, percentile, out defaultSuffix);
+            Percentile = AggregateGauge.AggregateModeToPercentileAndSuffix(mode, percentile, out defaultSuffix);
             Suffix = suffix ?? defaultSuffix;
 
             if (Suffix.Length > 0 && !BosunValidation.IsValidMetricName(Suffix))

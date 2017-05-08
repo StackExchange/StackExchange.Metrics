@@ -4,11 +4,20 @@ using System.Linq;
 
 namespace BosunReporter
 {
+    /// <summary>
+    /// Provides a set of commonly useful metric name and tag name/value converters.
+    /// </summary>
     public static class NameTransformers
     {
         // http://stackoverflow.com/questions/18781027/regex-camel-case-to-underscore-ignore-first-occurrence
+        /// <summary>
+        /// Converts CamelCaseNames to Snake_Case_Names.
+        /// </summary>
         public static Func<string, string> CamelToSnakeCase = (s) => string.Concat(s.Select((c, i) => i > 0 && char.IsUpper(c) ? "_" + c : c.ToString(CultureInfo.InvariantCulture)));
-        
+
+        /// <summary>
+        /// Converts CamelCaseNames to snake_case_names with all lowercase letters.
+        /// </summary>
         public static Func<string, string> CamelToLowerSnakeCase = (s) =>
         {
             return string.Concat(s.Select((c, i) =>
@@ -20,6 +29,9 @@ namespace BosunReporter
             }));
         };
 
+        /// <summary>
+        /// Sanitizes a metric name or tag name/value by replacing illegal characters with an underscore.
+        /// </summary>
         public static Func<string, string> Sanitize = (s) =>
         {
             return BosunValidation.InvalidChars.Replace(s, m =>

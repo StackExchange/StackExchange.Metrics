@@ -14,6 +14,9 @@ using BosunReporter.Infrastructure;
 
 namespace BosunReporter
 {
+    /// <summary>
+    /// The primary class for BosunReporter. Use this class to create metrics for reporting to Bosun.
+    /// </summary>
     public partial class MetricsCollector
     {
         private class RootMetricInfo
@@ -25,7 +28,7 @@ namespace BosunReporter
         private static readonly DateTime s_unixEpoch = new DateTime(1970, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc);
 
         private static readonly MetricKeyComparer s_metricKeyComparer = new MetricKeyComparer();
-        
+
         private readonly object _metricsLock = new object();
         // all of the first-class names which have been claimed (excluding suffixes in aggregate gauges)
         private readonly Dictionary<string, RootMetricInfo> _rootNameToInfo = new Dictionary<string, RootMetricInfo>();
@@ -40,7 +43,7 @@ namespace BosunReporter
 
         private readonly string _accessToken;
         private readonly Func<string> _getAccessToken;
-        
+
         private readonly object _flushingLock = new object();
         private int _skipFlushes = 0;
         private readonly Timer _flushTimer;
@@ -54,18 +57,59 @@ namespace BosunReporter
 
         internal Dictionary<Type, List<BosunTag>> TagsByTypeCache = new Dictionary<Type, List<BosunTag>>();
 
-        // options
+        /// <summary>
+        /// If provided, all metric names will be prefixed with this value. This gives you the ability to keyspace your application. For example, you might
+        /// want to use something like "app1.".
+        /// </summary>
         public string MetricsNamePrefix { get; }
+        /// <summary>
+        /// The url of the Bosun API. No path is required. If this is null, metrics will be discarded instead of sent to Bosun.
+        /// </summary>
         public Uri BosunUrl { get; set; }
+        /// <summary>
+        /// If the url for the Bosun API can change, provide a function which will be called before each API request. This takes precedence over the BosunUrl
+        /// option. If this function returns null, the request will not be made, and the batch of metrics which would have been sent will be discarded.
+        /// </summary>
         public Func<Uri> GetBosunUrl { get; set; }
+        /// <summary>
+        /// If true, BosunReporter will generate an exception every time posting to the Bosun API fails with a server error (response code 5xx).
+        /// </summary>
         public bool ThrowOnPostFail { get; set; }
+        /// <summary>
+        /// If true, BosunReporter will generate an exception when the metric queue is full. This would most commonly be caused by an extended outage of the
+        /// Bosun API. It is an indication that data is likely being lost.
+        /// </summary>
         public bool ThrowOnQueueFull { get; set; }
+        /// <summary>
+        /// The number of seconds between metric reports (snapshots).
+        /// </summary>
         public int ReportingInterval { get; }
+        /// <summary>
+        /// Enables sending metrics to the /api/count route on OpenTSDB relays which support external counters. External counters don't reset when applications
+        /// reload, and are intended for low-volume metrics. For high-volume metrics, use normal counters.
+        /// </summary>
         public bool EnableExternalCounters { get; set; }
+        /// <summary>
+        /// Allows you to specify a function which takes a property name and returns a tag name. This may be useful if you want to convert PropertyName to
+        /// property_name or similar transformations. This function does not apply to any tag names which are set manually via the BosunTag attribute.
+        /// </summary>
         public Func<string, string> PropertyToTagName { get; }
+        /// <summary>
+        /// Allows you to specify a function which takes a tag name and value, and returns a possibly altered value. This could be used as a global sanitizer
+        /// or normalizer. It is applied to all tag values, including default tags. If the return value is not a valid OpenTSDB tag, an exception will be
+        /// thrown. Null values are possible for the tagValue argument, so be sure to handle nulls appropriately.
+        /// </summary>
         public TagValueConverterDelegate TagValueConverter { get; }
+        /// <summary>
+        /// A list of tag names/values which will be automatically inculuded on every metric. The IgnoreDefaultTags attribute can be used on classes inheriting
+        /// from BosunMetric to exclude default tags. If an inherited class has a conflicting BosunTag field, it will override the default tag value. Default
+        /// tags will generally not be included in metadata.
+        /// </summary>
         public ReadOnlyDictionary<string, string> DefaultTags { get; private set; }
 
+        /// <summary>
+        /// True if <see cref="Shutdown"/> has been called on this collector.
+        /// </summary>
         public bool ShutdownCalled { get; private set; }
 
         // insights
@@ -82,7 +126,13 @@ namespace BosunReporter
         /// </summary>
         public int PostFailCount { get; private set; }
 
+        /// <summary>
+        /// Information about the last time that metrics were serialized (in preparation for posting to the Bosun API).
+        /// </summary>
         public AfterSerializationInfo LastSerializationInfo { get; private set; }
+        /// <summary>
+        /// Information about the last time metrics were posted to the Bosun API.
+        /// </summary>
         public AfterPostInfo LastPostInfo { get; private set; }
 
         /// <summary>
@@ -90,6 +140,10 @@ namespace BosunReporter
         /// </summary>
         public Action<Exception> ExceptionHandler { get; }
 
+        /// <summary>
+        /// The number of payloads which can be queued for sending to Bosun. If the queue is full, additional payloads will be dropped. External counters have
+        /// their own dedicated queue of the same size. So, in theory, there could be up to (MaxPendingPayloads * 2) waiting to send.
+        /// </summary>
         public int MaxPendingPayloads
         {
             get { return _localMetricsQueue.MaxPendingPayloads; }
@@ -103,6 +157,11 @@ namespace BosunReporter
             }
         }
 
+        /// <summary>
+        /// The maximum size of a single payload to Bosun. It's best practice to set this to a size which can fit inside a single TCP packet. HTTP Headers
+        /// are not included in this size, so it's best to pick a value a bit smaller than the size of your TCP packets. However, this property cannot be set
+        /// to a size less than 1000.
+        /// </summary>
         public int MaxPayloadSize
         {
             get { return _localMetricsQueue.PayloadSize; }
@@ -116,14 +175,37 @@ namespace BosunReporter
             }
         }
 
+        /// <summary>
+        /// The number of payloads currently queued for sending to Bosun. This includes external counter payloads.
+        /// </summary>
         public int PendingPayloadCount => _localMetricsQueue.PendingPayloadsCount + _externalCounterQueue.PendingPayloadsCount;
 
+        /// <summary>
+        /// An event called immediately before metrics are serialized. If you need to take a pre-serialization action on an individual metric, you should
+        /// consider overriding <see cref="BosunMetric.PreSerialize"/> instead, which is called in parallel for all metrics. This event occurs before
+        /// PreSerialize is called.
+        /// </summary>
         public event Action BeforeSerialization;
+        /// <summary>
+        /// An event called immediately after metrics are serialized. It includes an argument with post-serialization information.
+        /// </summary>
         public event Action<AfterSerializationInfo> AfterSerialization;
+        /// <summary>
+        /// An event called immediately after metrics are posted to the Bosun API. It includes an argument with information about the POST.
+        /// </summary>
         public event Action<AfterPostInfo> AfterPost;
 
+        /// <summary>
+        /// Enumerable of all metrics managed by this collector.
+        /// </summary>
         public IEnumerable<BosunMetric> Metrics => _rootNameAndTagsToMetric.Values.AsEnumerable();
 
+        /// <summary>
+        /// Instantiates a new collector (the primary class of BosunReporter). You should typically only instantiate one collector for the lifetime of your
+        /// application. It will manage the serialization of metrics and sending data to Bosun.
+        /// </summary>
+        /// <param name="options"></param>
+        /// <param name="exceptionHandler"></param>
         public MetricsCollector(BosunOptions options, Action<Exception> exceptionHandler)
         {
             if (exceptionHandler == null)
@@ -171,11 +253,19 @@ namespace BosunReporter
                 _metaDataTimer = new Timer(PostMetaData, true, TimeSpan.FromSeconds(30), TimeSpan.FromSeconds(options.MetaDataReportingInterval));
         }
 
+        /// <summary>
+        /// Attempts to get basic information about a metric, by name. The global prefix <see cref="MetricsNamePrefix"/> is prepended to the name before
+        /// attempting to retrieve the info. Returns false if no metric by that name exists.
+        /// </summary>
         public bool TryGetMetricInfo(string name, out Type type, out string unit)
         {
             return TryGetMetricWithoutPrefixInfo(MetricsNamePrefix + name, out type, out unit);
         }
 
+        /// <summary>
+        /// Attempts to get basic information about a metric, by name. The global prefix <see cref="MetricsNamePrefix"/> is NOT applied to the name. Return
+        /// false if no metric by that name exists.
+        /// </summary>
         public bool TryGetMetricWithoutPrefixInfo(string name, out Type type, out string unit)
         {
             RootMetricInfo rmi;
@@ -212,11 +302,21 @@ namespace BosunReporter
             return new ReadOnlyDictionary<string, string>(defaultTags);
         }
 
+        /// <summary>
+        /// Binds a given metric name to a specific data model. Metrics with this name will only be allowed to use the type <paramref name="type"/>. Calling
+        /// this method is usually not necessary. A metric will be bound to the type that it is first instantiated with.
+        /// 
+        /// The global prefix <see cref="MetricsNamePrefix"/> is prepended to the name before attempting to bind the metric.
+        /// </summary>
         public void BindMetric(string name, string unit, Type type)
         {
             BindMetricWithoutPrefix(MetricsNamePrefix + name, unit, type);
         }
 
+        /// <summary>
+        /// Binds a given metric name to a specific data model. Metrics with this name will only be allowed to use the type <paramref name="type"/>. Calling
+        /// this method is usually not necessary. A metric will be bound to the type that it is first instantiated with.
+        /// </summary>
         public void BindMetricWithoutPrefix(string name, string unit, Type type)
         {
             lock (_metricsLock)
@@ -247,56 +347,104 @@ namespace BosunReporter
         }
 
         /// <summary>
-        /// Creates a metric and adds it to the collector. An exception will be thrown if a metric by the same name and tag values already exists.
-        /// The MetricsNamePrefix will be prepended to the metric name.
+        /// Creates a metric (time series) and adds it to the collector. An exception will be thrown if a metric by the same name and tag values already exists.
+        /// The <see cref="MetricsNamePrefix"/> will be prepended to the metric name.
         /// </summary>
+        /// <param name="name">The metric name. The global prefix <see cref="MetricsNamePrefix"/> will be prepended.</param>
+        /// <param name="unit">The units of the metric (e.g. "milliseconds").</param>
+        /// <param name="description">The metadata description of the metric.</param>
+        /// <param name="metricFactory">A delegate which will be called to instantiate the metric.</param>
         public T CreateMetric<T>(string name, string unit, string description, Func<T> metricFactory) where T : BosunMetric
         {
             return GetMetricInternal(name, true, unit, description, metricFactory(), true);
         }
 
+        /// <summary>
+        /// Creates a metric (time series) and adds it to the collector. An exception will be thrown if a metric by the same name and tag values already exists.
+        /// The <see cref="MetricsNamePrefix"/> will be prepended to the metric name.
+        /// </summary>
+        /// <param name="name">The metric name. The global prefix <see cref="MetricsNamePrefix"/> will be prepended.</param>
+        /// <param name="unit">The units of the metric (e.g. "milliseconds").</param>
+        /// <param name="description">The metadata description of the metric.</param>
+        /// <param name="metric">A pre-instantiated metric, or null if the metric type has a default constructor.</param>
         public T CreateMetric<T>(string name, string unit, string description, T metric = null) where T : BosunMetric
         {
             return GetMetricInternal(name, true, unit, description, metric, true);
         }
 
         /// <summary>
-        /// Creates a metric and adds it to the collector. An exception will be thrown if a metric by the same name and tag values already exists.
-        /// The MetricsNamePrefix will NOT be prepended to the metric name.
+        /// Creates a metric (time series) and adds it to the collector. An exception will be thrown if a metric by the same name and tag values already exists.
+        /// The <see cref="MetricsNamePrefix"/> will NOT be prepended to the metric name.
         /// </summary>
+        /// <param name="name">The metric name. The global prefix <see cref="MetricsNamePrefix"/> will be prepended.</param>
+        /// <param name="unit">The units of the metric (e.g. "milliseconds").</param>
+        /// <param name="description">The metadata description of the metric.</param>
+        /// <param name="metricFactory">A delegate which will be called to instantiate the metric.</param>
         public T CreateMetricWithoutPrefix<T>(string name, string unit, string description, Func<T> metricFactory) where T : BosunMetric
         {
             return GetMetricInternal(name, false, unit, description, metricFactory(), true);
         }
 
+        /// <summary>
+        /// Creates a metric (time series) and adds it to the collector. An exception will be thrown if a metric by the same name and tag values already exists.
+        /// The <see cref="MetricsNamePrefix"/> will NOT be prepended to the metric name.
+        /// </summary>
+        /// <param name="name">The metric name. The global prefix <see cref="MetricsNamePrefix"/> will be prepended.</param>
+        /// <param name="unit">The units of the metric (e.g. "milliseconds").</param>
+        /// <param name="description">The metadata description of the metric.</param>
+        /// <param name="metric">A pre-instantiated metric, or null if the metric type has a default constructor.</param>
         public T CreateMetricWithoutPrefix<T>(string name, string unit, string description, T metric = null) where T : BosunMetric
         {
             return GetMetricInternal(name, false, unit, description, metric, true);
         }
 
         /// <summary>
-        /// Creates a metric and adds it to the collector. If a metric by the same name and tag values already exists, then that metric is returned.
-        /// The MetricsNamePrefix will be prepended to the metric name.
+        /// Creates a metric (time series) and adds it to the collector. If a metric by the same name and tag values already exists, then that metric is
+        /// returned. The <see cref="MetricsNamePrefix"/> will be prepended to the metric name.
         /// </summary>
+        /// <param name="name">The metric name. The global prefix <see cref="MetricsNamePrefix"/> will be prepended.</param>
+        /// <param name="unit">The units of the metric (e.g. "milliseconds").</param>
+        /// <param name="description">The metadata description of the metric.</param>
+        /// <param name="metricFactory">A delegate which will be called to instantiate the metric.</param>
         public T GetMetric<T>(string name, string unit, string description, Func<T> metricFactory) where T : BosunMetric
         {
             return GetMetricInternal(name, true, unit, description, metricFactory(), false);
         }
 
+        /// <summary>
+        /// Creates a metric (time series) and adds it to the collector. If a metric by the same name and tag values already exists, then that metric is
+        /// returned. The <see cref="MetricsNamePrefix"/> will be prepended to the metric name.
+        /// </summary>
+        /// <param name="name">The metric name. The global prefix <see cref="MetricsNamePrefix"/> will be prepended.</param>
+        /// <param name="unit">The units of the metric (e.g. "milliseconds").</param>
+        /// <param name="description">The metadata description of the metric.</param>
+        /// <param name="metric">A pre-instantiated metric, or null if the metric type has a default constructor.</param>
         public T GetMetric<T>(string name, string unit, string description, T metric = null) where T : BosunMetric
         {
             return GetMetricInternal(name, true, unit, description, metric, false);
         }
 
         /// <summary>
-        /// Creates a metric and adds it to the collector. If a metric by the same name and tag values already exists, then that metric is returned.
-        /// The MetricsNamePrefix will NOT be prepended to the metric name.
+        /// Creates a metric (time series) and adds it to the collector. If a metric by the same name and tag values already exists, then that metric is
+        /// returned. The <see cref="MetricsNamePrefix"/> will NOT be prepended to the metric name.
         /// </summary>
+        /// <param name="name">The metric name. The global prefix <see cref="MetricsNamePrefix"/> will be prepended.</param>
+        /// <param name="unit">The units of the metric (e.g. "milliseconds").</param>
+        /// <param name="description">The metadata description of the metric.</param>
+        /// <param name="metricFactory">A delegate which will be called to instantiate the metric.</param>
         public T GetMetricWithoutPrefix<T>(string name, string unit, string description, Func<T> metricFactory) where T : BosunMetric
         {
             return GetMetricInternal(name, false, unit, description, metricFactory(), false);
         }
 
+        /// <summary>
+        /// Creates a metric (time series) and adds it to the collector. If a metric by the same name and tag values already exists, then that metric is
+        /// returned. The <see cref="MetricsNamePrefix"/> will NOT be prepended to the metric name.
+        /// </summary>
+        /// <param name="name">The metric name. The global prefix <see cref="MetricsNamePrefix"/> will be prepended.</param>
+        /// <param name="unit">The units of the metric (e.g. "milliseconds").</param>
+        /// <param name="description">The metadata description of the metric.</param>
+        /// <param name="metric">A pre-instantiated metric, or null if the metric type has a default constructor.</param>
         public T GetMetricWithoutPrefix<T>(string name, string unit, string description, T metric = null) where T : BosunMetric
         {
             return GetMetricInternal(name, false, unit, description, metric, false);
@@ -352,7 +500,7 @@ namespace BosunReporter
                 foreach (var s in metric.SuffixesArray)
                 {
                     var ns = name + s;
-                        
+
                     // verify this is a valid metric name at all (it should be, since both parts are pre-validated, but just in case).
                     if (!BosunValidation.IsValidMetricName(ns))
                         throw new Exception($"\"{ns}\" is not a valid metric name");
@@ -435,6 +583,11 @@ namespace BosunReporter
             Flush(false);
         }
 
+        /// <summary>
+        /// Updates the tag name/values which are applied to all metrics by default. This update must not cause any uniqueness violations, otherwise an
+        /// exception will be thrown.
+        /// </summary>
+        /// <param name="defaultTags"></param>
         public void UpdateDefaultTags(Dictionary<string, string> defaultTags)
         {
             // validate
@@ -547,7 +700,7 @@ namespace BosunReporter
         {
             if ((bool)isCalledFromTimer && ShutdownCalled) // don't perform timer actions if we're shutting down
                 return;
-            
+
             var lockTaken = false;
             try
             {
@@ -861,11 +1014,26 @@ namespace BosunReporter
         }
     }
 
+    /// <summary>
+    /// Information about a metrics serialization pass.
+    /// </summary>
     public class AfterSerializationInfo
     {
+        /// <summary>
+        /// The number of data points serialized. The could be less than or greater than the number of metrics managed by the collector.
+        /// </summary>
         public int Count { get; internal set; }
+        /// <summary>
+        /// The number of bytes written to payload(s).
+        /// </summary>
         public int BytesWritten { get; internal set; }
+        /// <summary>
+        /// The duration of the serialization pass, in milliseconds.
+        /// </summary>
         public double MillisecondsDuration { get; internal set; }
+        /// <summary>
+        /// The time serialization started.
+        /// </summary>
         public DateTime StartTime { get; }
 
         public AfterSerializationInfo()
@@ -874,13 +1042,34 @@ namespace BosunReporter
         }
     }
 
+    /// <summary>
+    /// Information about a POST to the Bosun API.
+    /// </summary>
     public class AfterPostInfo
     {
+        /// <summary>
+        /// The number of data points sent.
+        /// </summary>
         public int Count { get; internal set; }
+        /// <summary>
+        /// The number of bytes in the payload. This does not include HTTP header bytes.
+        /// </summary>
         public int BytesWritten { get; internal set; }
+        /// <summary>
+        /// The duration of the POST, in milliseconds.
+        /// </summary>
         public double MillisecondsDuration { get; internal set; }
+        /// <summary>
+        /// True if the POST was successful. If false, <see cref="Exception"/> will be non-null.
+        /// </summary>
         public bool Successful => Exception == null;
+        /// <summary>
+        /// Information about a POST failure, if applicable. Otherwise, null.
+        /// </summary>
         public Exception Exception { get; internal set; }
+        /// <summary>
+        /// The time the POST was initiated.
+        /// </summary>
         public DateTime StartTime { get; }
 
         public AfterPostInfo()

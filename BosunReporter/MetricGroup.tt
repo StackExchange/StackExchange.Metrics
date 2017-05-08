@@ -12,168 +12,216 @@ using BosunReporter.Infrastructure;
 namespace BosunReporter
 {
 <#
-	for (int dimensions = 1; dimensions < 6; dimensions++)
-	{
-		var typeNamesArray = new string[dimensions];
-		var thisArgsArray = new string[dimensions];
-		var tagListArray = new string[dimensions];
-		var typeOfArray = new string[dimensions];
-		for (var i = 1; i <= dimensions; i++)
-		{
-			typeNamesArray[i - 1] = "T" + i;
-			thisArgsArray[i - 1] = "T" + i + " tag" + i;
-			tagListArray[i - 1] = "tag" + i;
-			typeOfArray[i - 1] = "typeof(T" + i + ")";
-		}
+    for (int dimensions = 1; dimensions < 6; dimensions++)
+    {
+        var typeNamesArray = new string[dimensions];
+        var thisArgsArray = new string[dimensions];
+        var tagListArray = new string[dimensions];
+        var typeOfArray = new string[dimensions];
+        for (var i = 1; i <= dimensions; i++)
+        {
+            typeNamesArray[i - 1] = "T" + i;
+            thisArgsArray[i - 1] = "T" + i + " tag" + i;
+            tagListArray[i - 1] = "tag" + i;
+            typeOfArray[i - 1] = "typeof(T" + i + ")";
+        }
 
-		var typeList = String.Join(", ", typeNamesArray);
-		var thisArgs = String.Join(", ", thisArgsArray);
-		var tagList = String.Join(", ", tagListArray);
-		var typeOfList = String.Join(", ", typeOfArray);
-		var dictionaryKeyType = dimensions > 1 ? "Tuple<" + typeList + ">" : "T1";
-		var dictionaryType = "Dictionary<" + dictionaryKeyType + ", TMetric>";
-		var factoryType = "Func<" + typeList + ", TMetric>";
-		var dictionaryKeyValue = dimensions == 1 ? tagList : "key";
-		var tryGetStatement = dimensions == 1 ? "if (_metrics.TryGetValue("+ tagList +", out metric))" : "if (_metrics.TryGetValue(key, out metric))";
+        var typeList = String.Join(", ", typeNamesArray);
+        var thisArgs = String.Join(", ", thisArgsArray);
+        var tagList = String.Join(", ", tagListArray);
+        var typeOfList = String.Join(", ", typeOfArray);
+        var dictionaryKeyType = dimensions > 1 ? "Tuple<" + typeList + ">" : "T1";
+        var dictionaryType = "Dictionary<" + dictionaryKeyType + ", TMetric>";
+        var factoryType = "Func<" + typeList + ", TMetric>";
+        var dictionaryKeyValue = dimensions == 1 ? tagList : "key";
+        var tryGetStatement = dimensions == 1 ? "if (_metrics.TryGetValue("+ tagList +", out metric))" : "if (_metrics.TryGetValue(key, out metric))";
 
 #>
-	public partial class MetricsCollector
-	{
-		public MetricGroup<<#= typeList #>, TMetric> GetMetricGroup<<#= typeList #>, TMetric>(string name, string unit, string description, Func<<#= typeList #>, TMetric> metricFactory = null)
-			where TMetric : BosunMetric
-		{
-			return new MetricGroup<<#= typeList #>, TMetric>(this, name, false, unit, description, metricFactory);
-		}
+    public partial class MetricsCollector
+    {
+        /// <summary>
+        /// Creates a new metric group where each individual metric (time series) is of type <typeparamref name="TMetric"/>. The preceding type parameters
+        /// describe the keys of the group, and typically represent different tag values.
+        /// </summary>
+        /// <param name="name">The metric name for all time series in this group.</param>
+        /// <param name="unit">The units for all time series in this group (e.g. "milliseconds").</param>
+        /// <param name="description">The description for all time series in the group. This will be sent to Bosun as metadata.</param>
+        /// <param name="metricFactory">
+        /// The delegate used to instantiate new metrics (time series) within this group. This parameter may be omitted if <typeparamref name="TMetric"/> has a
+        /// constructor with the same signature as this delegate parameter.
+        /// </param>
+        public MetricGroup<<#= typeList #>, TMetric> GetMetricGroup<<#= typeList #>, TMetric>(string name, string unit, string description, Func<<#= typeList #>, TMetric> metricFactory = null)
+            where TMetric : BosunMetric
+        {
+            return new MetricGroup<<#= typeList #>, TMetric>(this, name, false, unit, description, metricFactory);
+        }
 
-		public MetricGroup<<#= typeList #>, TMetric> GetMetricGroupWithoutPrefix<<#= typeList #>, TMetric>(string name, string unit, string description, Func<<#= typeList #>, TMetric> metricFactory = null)
-			where TMetric : BosunMetric
-		{
-			return new MetricGroup<<#= typeList #>, TMetric>(this, name, true, unit, description, metricFactory);
-		}
-	}
+        /// <summary>
+        /// Creates a new metric group where each individual metric (time series) is of type <typeparamref name="TMetric"/>. The preceding type parameters
+        /// describe the keys of the group, and typically represent different tag values. The global metric name prefix
+        /// <see cref="MetricsCollector.MetricsNamePrefix"/> will not be not be prepended to the metric name.
+        /// </summary>
+        /// <param name="name">The metric name for all time series in this group.</param>
+        /// <param name="unit">The units for all time series in this group (e.g. "milliseconds").</param>
+        /// <param name="description">The description for all time series in the group. This will be sent to Bosun as metadata.</param>
+        /// <param name="metricFactory">
+        /// The delegate used to instantiate new metrics (time series) within this group. This parameter may be omitted if <typeparamref name="TMetric"/> has a
+        /// constructor with the same signature as this delegate parameter.
+        /// </param>
+        public MetricGroup<<#= typeList #>, TMetric> GetMetricGroupWithoutPrefix<<#= typeList #>, TMetric>(string name, string unit, string description, Func<<#= typeList #>, TMetric> metricFactory = null)
+            where TMetric : BosunMetric
+        {
+            return new MetricGroup<<#= typeList #>, TMetric>(this, name, true, unit, description, metricFactory);
+        }
+    }
 
-	public class MetricGroup<<#= typeList #>, TMetric> where TMetric : BosunMetric
-	{
-		private readonly object _dictionaryLock = new object();
-		private readonly MetricsCollector _collector;
-		private readonly <#= dictionaryType #> _metrics = new Dictionary<<#= dictionaryKeyType #>, TMetric>();
-		private readonly <#= factoryType #> _metricFactory;
-		
-		public string Name { get; }
-		public bool WithoutPrefix { get; }
-		public string Unit { get; }
-		public string Description { get; }
-		
-		internal MetricGroup(MetricsCollector collector, string name, bool withoutPrefix, string unit, string description, <#= factoryType #> metricFactory = null)
-		{
-			_collector = collector;
-			Name = name;
-			WithoutPrefix = withoutPrefix;
-			Unit = unit;
-			Description = description;
-			_metricFactory = metricFactory ?? GetDefaultFactory();
-		}
+    /// <summary>
+    /// A set of time series which share the same metric name, but different tag sets.
+    /// </summary>
+    public class MetricGroup<<#= typeList #>, TMetric> where TMetric : BosunMetric
+    {
+        private readonly object _dictionaryLock = new object();
+        private readonly MetricsCollector _collector;
+        private readonly <#= dictionaryType #> _metrics = new Dictionary<<#= dictionaryKeyType #>, TMetric>();
+        private readonly <#= factoryType #> _metricFactory;
 
-		public TMetric this[<#= thisArgs #>]
-		{
-			get
-			{
+        /// <summary>
+        /// The metric name shared by all time series in this group.
+        /// </summary>
+        public string Name { get; }
+        /// <summary>
+        /// If true, the metric name will not be prefixed with the global prefix.
+        /// </summary>
+        public bool WithoutPrefix { get; }
+        /// <summary>
+        /// The units for this metric group (such as "milliseconds").
+        /// </summary>
+        public string Unit { get; }
+        /// <summary>
+        /// The description for all time series in the group. This will be sent to Bosun as metadata.
+        /// </summary>
+        public string Description { get; }
+
+        internal MetricGroup(MetricsCollector collector, string name, bool withoutPrefix, string unit, string description, <#= factoryType #> metricFactory = null)
+        {
+            _collector = collector;
+            Name = name;
+            WithoutPrefix = withoutPrefix;
+            Unit = unit;
+            Description = description;
+            _metricFactory = metricFactory ?? GetDefaultFactory();
+        }
+
+        /// <summary>
+        /// Gets a metric (time series) which already exists in the group. If the metric does not exist, an exception will be thrown.
+        /// </summary>
+        public TMetric this[<#= thisArgs #>]
+        {
+            get
+            {
 <# if (dimensions > 1) { #>
-				var key = new <#= dictionaryKeyType #>(<#= tagList #>);
+                var key = new <#= dictionaryKeyType #>(<#= tagList #>);
 <# } #>
-				return _metrics[<#= dictionaryKeyValue #>];
-			}
-		}
-		
-		/// <summary>
-		/// Adds a metric to the group, if it doesn't already exist.
-		/// </summary>
-		/// <returns>The metric.</returns>
-		public TMetric Add(<#= thisArgs #>)
-		{
-			bool isNew;
-			return Add(<#= tagList #>, out isNew);
-		}
-		
-		/// <summary>
-		/// Adds a metric to the group, if it doesn't already exist.
-		/// </summary>
-		/// <returns>The metric.</returns>
-		public TMetric Add(<#= thisArgs #>, out bool isNew)
-		{
-			isNew = false;
+                return _metrics[<#= dictionaryKeyValue #>];
+            }
+        }
+
+        /// <summary>
+        /// Adds a metric to the group, if it doesn't already exist.
+        /// </summary>
+        /// <returns>The metric.</returns>
+        public TMetric Add(<#= thisArgs #>)
+        {
+            bool isNew;
+            return Add(<#= tagList #>, out isNew);
+        }
+
+        /// <summary>
+        /// Adds a metric to the group, if it doesn't already exist.
+        /// </summary>
+        /// <returns>The metric.</returns>
+        public TMetric Add(<#= thisArgs #>, out bool isNew)
+        {
+            isNew = false;
 <# if (dimensions > 1) { #>
-			var key = new <#= dictionaryKeyType #>(<#= tagList #>);
+            var key = new <#= dictionaryKeyType #>(<#= tagList #>);
 <# } #>
-			if (_metrics.ContainsKey(<#= dictionaryKeyValue #>))
-				return _metrics[<#= dictionaryKeyValue #>];
+            if (_metrics.ContainsKey(<#= dictionaryKeyValue #>))
+                return _metrics[<#= dictionaryKeyValue #>];
 
-			lock (_dictionaryLock)
-			{
-				if (_metrics.ContainsKey(<#= dictionaryKeyValue #>))
-					return _metrics[<#= dictionaryKeyValue #>];
-				
-				isNew = true;
-				TMetric metric;
-				if (WithoutPrefix)
-					metric = _collector.GetMetricWithoutPrefix(Name, Unit, Description, _metricFactory(<#= tagList #>));
-				else
-					metric = _collector.GetMetric(Name, Unit, Description, _metricFactory(<#= tagList #>));
+            lock (_dictionaryLock)
+            {
+                if (_metrics.ContainsKey(<#= dictionaryKeyValue #>))
+                    return _metrics[<#= dictionaryKeyValue #>];
 
-				_metrics[<#= dictionaryKeyValue #>] = metric;
-				return metric;
-			}
-		}
+                isNew = true;
+                TMetric metric;
+                if (WithoutPrefix)
+                    metric = _collector.GetMetricWithoutPrefix(Name, Unit, Description, _metricFactory(<#= tagList #>));
+                else
+                    metric = _collector.GetMetric(Name, Unit, Description, _metricFactory(<#= tagList #>));
 
-		public bool Contains(<#= thisArgs #>)
-		{
+                _metrics[<#= dictionaryKeyValue #>] = metric;
+                return metric;
+            }
+        }
+
+        /// <summary>
+        /// Returns true if a metric with the provided key(s) already exists in the group.
+        /// </summary>
+        public bool Contains(<#= thisArgs #>)
+        {
 <# if (dimensions > 1) { #>
-			var key = new <#= dictionaryKeyType #>(<#= tagList #>);
+            var key = new <#= dictionaryKeyType #>(<#= tagList #>);
 <# } #>
-			return _metrics.ContainsKey(<#= dictionaryKeyValue #>);
-		}
+            return _metrics.ContainsKey(<#= dictionaryKeyValue #>);
+        }
 
-		public <#= factoryType #> GetDefaultFactory()
-		{
-			var constructor = typeof(TMetric).GetConstructor(BindingFlags.Instance | BindingFlags.Public, null, new []{ <#= typeOfList #> }, null);
+        /// <summary>
+        /// Returns the default factory delegate. This is the factory that will be used if the metricFactory parameter is null when instantiating the
+        /// MetricGroup.
+        /// </summary>
+        public <#= factoryType #> GetDefaultFactory()
+        {
+            var constructor = typeof(TMetric).GetConstructor(BindingFlags.Instance | BindingFlags.Public, null, new []{ <#= typeOfList #> }, null);
             if (constructor == null)
             {
-				throw new Exception(
-						$"Cannot create a MetricGroup for Type \"{typeof(TMetric).FullName}\". It does not have a constructor which matches the signature of types provided to the metric group. " +
-						"Either add a constructor with that signature, or use the metricFactory argument to define a custom factory.");
+                throw new Exception(
+                    $"Cannot create a MetricGroup for Type \"{typeof(TMetric).FullName}\". It does not have a constructor which matches the signature of types provided to the metric group. " +
+                    "Either add a constructor with that signature, or use the metricFactory argument to define a custom factory.");
             }
 
-			return (<#= tagList #>) => (TMetric)constructor.Invoke(new object[] { <#= tagList #> });
-		}
+            return (<#= tagList #>) => (TMetric)constructor.Invoke(new object[] { <#= tagList #> });
+        }
 
 <# if (dimensions == 1) { #>
         /// <summary>
         /// This method may only be called if T1 is an enum type. It calls Add() for every enum value of T1.
         /// </summary>
-        /// <param name="excludeObsolete">If false, enum values marked as obsolete will not be added to the metric group.</param>
+        /// <param name="includeObsolete">If false, enum values marked as obsolete will not be added to the metric group.</param>
         public void PopulateFromEnum(bool includeObsolete = true)
         {
             var type = typeof(T1);
             if (!type.IsEnum)
                 throw new Exception("PopulateFromEnum can only be called when the type argument T1 is an enum type.");
-                
+
             foreach (var val in Enum.GetValues(type))
             {
-				if (!includeObsolete)
-				{
-					var field = type.GetField(val.ToString(), BindingFlags.Static | BindingFlags.Public);
-					if (field.GetCustomAttribute<ObsoleteAttribute>() != null)
-						continue;
-				}
+                if (!includeObsolete)
+                {
+                    var field = type.GetField(val.ToString(), BindingFlags.Static | BindingFlags.Public);
+                    if (field.GetCustomAttribute<ObsoleteAttribute>() != null)
+                        continue;
+                }
 
                 Add((T1)val);
             }
         }
 <# } #>
 
-	}
+    }
 
 <#
-	} // end template for loop
+    } // end template for loop
 #>
 }

@@ -4,6 +4,9 @@ using System.Text;
 
 namespace BosunReporter.Infrastructure
 {
+    /// <summary>
+    /// An opaque type which is used internally to handle the serialization of metrics.
+    /// </summary>
     public class MetricWriter
     {
         private const int DIGITS_IN_TIMESTAMP = 13; // all dates within a reasonable range 2000-2250 generate 13 decimal digit timestamps
@@ -106,7 +109,7 @@ namespace BosunReporter.Infrastructure
         {
             Append(d.ToString("R")); // todo - use Grisu
         }
-        
+
         private void Append(DateTime timestamp)
         {
             if (timestamp != _timestampCache)

@@ -16,7 +16,7 @@ namespace BosunReporter.Infrastructure
         private readonly Stack<Payload> _warmCache = new Stack<Payload>();
         private readonly object _pendingLock = new object();
         private readonly DoubleEndedQueue<Payload> _pendingPayloads = new DoubleEndedQueue<Payload>();
-        
+
         internal int PayloadSize { get; set; }
         internal int MaxPendingPayloads { get; set; }
         internal int LastBatchPayloadCount { get; private set; }

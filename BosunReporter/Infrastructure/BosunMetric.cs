@@ -9,6 +9,10 @@ using BosunReporter.Metrics;
 
 namespace BosunReporter.Infrastructure
 {
+    /// <summary>
+    /// The base class for all metrics (time series). Custom metric types may inherit from this directly. However, most users will want to inherit from a child
+    /// class, such as <see cref="Counter"/> or <see cref="AggregateGauge"/>.
+    /// </summary>
     public abstract class BosunMetric
     {
         private struct MetricTypeInfo
@@ -22,11 +26,25 @@ namespace BosunReporter.Infrastructure
 
         private static readonly string[] s_singleEmptyStringArray = {""};
 
+        /// <summary>
+        /// The type of metric. Must be one of "counter", "gauge", or "rate".
+        /// </summary>
         public abstract string MetricType { get; }
+        /// <summary>
+        /// The collector that this metric is attached to. A metric must be attached to a collector in order to be recorded on.
+        /// </summary>
         public MetricsCollector Collector { get; internal set; }
+        /// <summary>
+        /// True if this metric is attached to a collector. A metric must be attached to a collector in order to be recorded on.
+        /// </summary>
         public bool IsAttached { get; internal set; }
 
         private HashSet<string> _suffixSet;
+        /// <summary>
+        /// An enumeration of metric name suffixes. In most cases, this will be a single-element collection where the value of the element is an empty string.
+        /// However, some metric types may actually serialize as multiple time series distinguished by metric names with different suffixes. The only built-in
+        /// metric type which does this is <see cref="AggregateGauge"/> where the suffixes will be things like "_avg", "_min", "_95", etc.
+        /// </summary>
         public IReadOnlyCollection<string> Suffixes => Array.AsReadOnly(SuffixesArray);
         internal string[] SuffixesArray { get; private set; }
         internal int SuffixCount => SuffixesArray.Length;
@@ -37,6 +55,9 @@ namespace BosunReporter.Infrastructure
         private string _name;
         private readonly object _nameLock = new object();
 
+        /// <summary>
+        /// The metric name, including the global prefix (if applicable), but not including any suffixes (see <see cref="Suffixes"/>).
+        /// </summary>
         public string Name
         {
             get { return _name; }
@@ -55,11 +76,24 @@ namespace BosunReporter.Infrastructure
             }
         }
 
+        /// <summary>
+        /// Description of this metric (time series) which will be sent to Bosun as metadata.
+        /// </summary>
         public virtual string Description { get; set; }
+        /// <summary>
+        /// The units for this metric (time series) which will be sent to Bosun as metadata. (example: "milliseconds")
+        /// </summary>
         public virtual string Unit { get; internal set; }
 
+        /// <summary>
+        /// If true, the metric's value will be immediately serialized after initialization. This is useful for counters where you want a zero value to be
+        /// recorded in Bosun every time the app restarts.
+        /// </summary>
         public virtual bool SerializeInitialValue => MetricType == "counter";
 
+        /// <summary>
+        /// Instantiates the base class.
+        /// </summary>
         protected BosunMetric()
         {
         }
@@ -75,16 +109,25 @@ namespace BosunReporter.Infrastructure
             _tagsJson = tagsJson;
         }
 
+        /// <summary>
+        /// Called once per suffix in order to get a description.
+        /// </summary>
         public virtual string GetDescription(int suffixIndex)
         {
             return Description;
         }
 
+        /// <summary>
+        /// Called once per suffix in order to get the units.
+        /// </summary>
         public virtual string GetUnit(int suffixIndex)
         {
             return Unit;
         }
 
+        /// <summary>
+        /// Returns an enumerable of <see cref="MetaData"/> which which describes this metric.
+        /// </summary>
         public virtual IEnumerable<MetaData> GetMetaData()
         {
             for (var i = 0; i < SuffixesArray.Length; i++)
@@ -103,6 +146,10 @@ namespace BosunReporter.Infrastructure
             }
         }
 
+        /// <summary>
+        /// This method will be called once to get an array of suffixes applicable to this metric. The returned array must never be modified after it is
+        /// returned.
+        /// </summary>
         protected virtual string[] GetImmutableSuffixesArray()
         {
             return s_singleEmptyStringArray;
@@ -114,6 +161,17 @@ namespace BosunReporter.Infrastructure
             Serialize(writer, now);
         }
 
+        /// <summary>
+        /// Called when metrics should be serialized to a payload. You must call <see cref="WriteValue"/> in order for anything to be serialized.
+        ///  
+        /// This is called in serial with all other metrics, so DO NOT do anything computationally expensive in this method. If you need to do expensive
+        /// computations (e.g. sorting a bunch of data), do it in <see cref="PreSerialize"/> which is called in parallel prior to this method.
+        /// </summary>
+        /// <param name="writer">
+        /// A reference to an opaque object. Pass this as the first parameter to <see cref="WriteValue"/>. DO NOT retain a reference to this object or use it
+        /// in an asynchronous manner. It is only guaranteed to be in a valid state for the duration of this method call.
+        /// </param>
+        /// <param name="now">The timestamp when serialization of all metrics started.</param>
         protected abstract void Serialize(MetricWriter writer, DateTime now);
 
         internal bool NeedsPreSerializeCalled()
@@ -132,12 +190,12 @@ namespace BosunReporter.Infrastructure
             PreSerialize();
         }
 
+        /// <summary>
+        /// If this method is overriden, it will be called shortly before <see cref="Serialize"/>. Unlike Serialize, which is called on all metrics in serial,
+        /// PreSerialize is called in parallel, which makes it better place to do computationally expensive operations.
+        /// </summary>
         protected virtual void PreSerialize()
         {
-            // If this method is overriden, it will be called shortly before Serialize.
-            // Unlike Serialize, which is called on all metrics in serial, PreSerialize
-            // is called in parallel, which makes it better place to do computationally
-            // expensive operations.
         }
 
         internal void LoadSuffixes()
@@ -146,6 +204,9 @@ namespace BosunReporter.Infrastructure
             _suffixSet = new HashSet<string>(SuffixesArray);
         }
 
+        /// <summary>
+        /// Throws an exception if <see cref="IsAttached"/> is false. It is best practice for all metrics to call this method before recording any values.
+        /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         protected void AssertAttached()
         {
@@ -164,6 +225,9 @@ namespace BosunReporter.Infrastructure
             }
         }
 
+        /// <summary>
+        /// This method serializes a time series record/value. This method must only be called from within <see cref="Serialize"/>.
+        /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         protected void WriteValue(MetricWriter writer, double value, DateTime now, int suffixIndex = 0)
         {
@@ -219,7 +283,7 @@ namespace BosunReporter.Infrastructure
             sb.Append('}');
             return sb.ToString();
         }
-        
+
         private List<BosunTag> GetTagsList(ReadOnlyDictionary<string, string> defaultTags, Dictionary<Type, List<BosunTag>> tagsByTypeCache)
         {
             var type = GetType();
@@ -347,7 +411,7 @@ namespace BosunReporter.Infrastructure
             {
                 if (_typeInfoCache.TryGetValue(type, out info))
                     return info;
-                
+
                 var needsPreSerialize = type.GetMethod(nameof(PreSerialize), BindingFlags.Instance | BindingFlags.NonPublic).DeclaringType != typeof(BosunMetric);
                 var isExternalCounter = typeof(ExternalCounter).IsAssignableFrom(type);
 
