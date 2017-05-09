@@ -1,5 +1,37 @@
 # BosunReporter.NET Release Notes
 
+## 4.0.0
+
+#### Exception Handling
+
+Many BosunReporter tasks run on background threads, where an uncaught exception will crash the process. BosunReporter previously allowed you to subscribe to an "OnBackgroundException" event to handle exceptions, but if you didn't, exceptions would be thrown and take down your process.
+
+The exception handler is now required. Instead of an event, it's an `Action<Exception>` parameter on the MetricsCollector.
+
+```csharp
+var options = new BosunOptions { ... };
+var collector = new MetricsCollector(options, ex => LogException(ex));
+```
+
+#### Minor Changes
+
+-   An Access Token can be provided via `BosunOptions.AccessToken` or `BosunOptions.GetAccessToken`. If not null or empty, this will be added as an `X-Access-Token` header on all API requests.
+-   `MetricGroup<T, TMetric>.PopulateFromEnum()` now has an optional `includeObsolete` parameter (defaults to true). If false, obsolete enum values will not be used to populated the metric group.
+-   [AggregateGauge](https://github.com/bretcope/BosunReporter.NET/blob/master/docs/MetricTypes.md#aggregategauge):
+    -   Is now abstract. You must inherit from it in order to use it.
+    -   If a child class does not specify aggregators of its own (via `[GaugeAggregator]`), it will inherit its parent's aggregators. If a child class _does_ specify at least one aggregator, then it will _not_ inherit any of its parent's aggregators.
+-   [SnapshotCounter](https://github.com/bretcope/BosunReporter.NET/blob/master/docs/MetricTypes.md#snapshotcounter) and [SnapshotGauge](https://github.com/bretcope/BosunReporter.NET/blob/master/docs/MetricTypes.md#snapshotgauge):
+    -   No longer have default protected constructors
+    -   The `Func<T>` argument is always required
+    -   The `Func<T>` field is now private
+    -   `GetValue` is now public
+-   Removed all metric interfaces (IDoubleGauge, ILongGauge, IIntGauge, IDoubleCounter, ILongCounter, IIntCounter). They really weren't all that useful. You should generally know what you're recording on explicitly. Using an interface probably represents an anti-pattern. If you really need an interface, you can define your own interface and metric types which implement them.
+-   `BosunPostException.StatusCode` is now nullable, since not all POST errors will have an HTTP status code returned.
+-   Removed the [Jil](https://github.com/kevin-montrose/Jil) dependency. BosunReporter now only depends on the Framework (we should eventually migrate to .NET Standard).
+-   Added XML documentation for all public types and methods
+
+---
+
 #### 3.0.1
 
 - Stop metric serialization when the queue is full so that we only throw the queue-full exception once per serialization interval.
