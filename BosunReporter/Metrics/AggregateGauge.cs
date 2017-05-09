@@ -330,19 +330,34 @@ namespace BosunReporter.Metrics
                 if (s_aggregatorsByTypeCache.ContainsKey(type))
                     return s_aggregatorsByTypeCache[type];
 
-                var aggregators = GetType().GetCustomAttributes<GaugeAggregatorAttribute>(false).ToList().AsReadOnly();
-                if (aggregators.Count == 0)
-                    throw new Exception(GetType().FullName + " has no GaugeAggregator attributes. All gauges must have at least one.");
+                var attributes = GetGaugeAggregatorAttributes(type);
 
                 var hash = new HashSet<string>();
-                foreach (var r in aggregators)
+                foreach (var attr in attributes)
                 {
-                    if (hash.Contains(r.Suffix))
-                        throw new Exception($"{type.FullName} has more than one gauge aggregator with the name \"{r.Suffix}\".");
+                    if (hash.Contains(attr.Suffix))
+                        throw new Exception($"{type.FullName} has more than one gauge aggregator with the name \"{attr.Suffix}\".");
                 }
 
-                return s_aggregatorsByTypeCache[type] = new GaugeAggregatorStrategy(aggregators);
+                return s_aggregatorsByTypeCache[type] = new GaugeAggregatorStrategy(attributes);
             }
+        }
+
+        static GaugeAggregatorAttribute[] GetGaugeAggregatorAttributes(Type type)
+        {
+            // Each aggregate gauge needs at least one aggregator defined with the GaugeAggregator attribute. If a gauge doesn't define any aggregators of its
+            // own, it is allowed to inherit its parent's aggregators. If the gauge defines its own aggregators, then its parent's aggregators are ignored.
+            var t = type;
+            while (t != null && t != typeof(object))
+            {
+                var aggregators = t.GetCustomAttributes<GaugeAggregatorAttribute>(false).ToArray();
+                if (aggregators.Length > 0)
+                    return aggregators;
+
+                t = t.BaseType;
+            }
+
+            throw new Exception(type.FullName + " has no GaugeAggregator attributes. All gauges must have at least one.");
         }
 
         [SuppressMessage("ReSharper", "CompareOfFloatsByEqualityOperator")]
@@ -421,10 +436,10 @@ namespace BosunReporter.Metrics
             public readonly bool ReportCount;
 
             [SuppressMessage("ReSharper", "CompareOfFloatsByEqualityOperator")]
-            public GaugeAggregatorStrategy(ReadOnlyCollection<GaugeAggregatorAttribute> aggregators)
+            public GaugeAggregatorStrategy(GaugeAggregatorAttribute[] aggregators)
             {
-                Percentiles = new double[aggregators.Count];
-                Suffixes = new string[aggregators.Count];
+                Percentiles = new double[aggregators.Length];
+                Suffixes = new string[aggregators.Length];
 
                 var i = 0;
                 var arbitraryPercentagesCount = 0;
