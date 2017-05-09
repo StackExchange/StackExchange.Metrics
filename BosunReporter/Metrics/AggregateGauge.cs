@@ -337,6 +337,8 @@ namespace BosunReporter.Metrics
                 {
                     if (hash.Contains(attr.Suffix))
                         throw new Exception($"{type.FullName} has more than one gauge aggregator with the name \"{attr.Suffix}\".");
+
+                    hash.Add(attr.Suffix);
                 }
 
                 return s_aggregatorsByTypeCache[type] = new GaugeAggregatorStrategy(attributes);
