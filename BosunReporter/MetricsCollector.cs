@@ -1006,8 +1006,13 @@ namespace BosunReporter
                 if (ThrowOnPostFail)
                     return true;
 
-                var status = (int)post.StatusCode;
-                return status < 500 || status >= 600; // always want to send the exception when it's a non-500
+                if (post.StatusCode.HasValue)
+                {
+                    var status = (int)post.StatusCode;
+                    return status < 500 || status >= 600; // always want to send the exception when it's a non-500
+                }
+
+                return false;
             }
 
             if (ex is BosunQueueFullException)
