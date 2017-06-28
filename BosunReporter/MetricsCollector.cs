@@ -693,8 +693,7 @@ namespace BosunReporter
             }
             catch (Exception ex)
             {
-                if (ShouldThrowException(ex))
-                    ExceptionHandler(ex);
+                PossiblyLogException(ex);
             }
         }
 
@@ -738,8 +737,7 @@ namespace BosunReporter
             {
                 // there was a problem flushing - back off for the next five seconds (Bosun may simply be restarting)
                 _skipFlushes = 4;
-                if (ShouldThrowException(ex))
-                    ExceptionHandler(ex);
+                PossiblyLogException(ex);
             }
             finally
             {
@@ -947,8 +945,7 @@ namespace BosunReporter
             }
             catch (Exception ex)
             {
-                if (ShouldThrowException(ex))
-                    ExceptionHandler(ex);
+                PossiblyLogException(ex);
             }
         }
 
@@ -994,8 +991,19 @@ namespace BosunReporter
 
         void OnPayloadDropped(BosunQueueFullException ex)
         {
-            if (ShouldThrowException(ex))
+            PossiblyLogException(ex);
+        }
+
+        void PossiblyLogException(Exception ex)
+        {
+            if (!ShouldThrowException(ex))
+                return;
+
+            try
+            {
                 ExceptionHandler(ex);
+            }
+            catch (Exception) { } // there's nothing else we can do if the user-supplied exception handler itself throws an exception
         }
 
         bool ShouldThrowException(Exception ex)
