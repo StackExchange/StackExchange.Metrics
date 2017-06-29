@@ -69,7 +69,7 @@ namespace Scratch
 
             SKIP_EXCEPTION:
 
-            var gauge2 = collector.GetMetric<AggregateGauge>("gauge2", "newtons", "Number of newtons currently applied.");
+            var gauge2 = collector.GetMetric<CountGauge>("gauge2", "newtons", "Number of newtons currently applied.");
             for (var i = 0; i < 6; i++)
             {
                 new Thread(Run).Start(new Tuple<AggregateGauge, AggregateGauge, int>(gauge, gauge2, i));
@@ -169,6 +169,11 @@ namespace Scratch
                 Thread.Sleep(1);
             }
         }
+    }
+
+    [GaugeAggregator(AggregateMode.Count)]
+    public class CountGauge : AggregateGauge
+    {
     }
 
     [GaugeAggregator(AggregateMode.Count)]
