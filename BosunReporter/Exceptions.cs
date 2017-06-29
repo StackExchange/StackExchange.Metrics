@@ -18,6 +18,7 @@ namespace BosunReporter
             : base("Posting to the Bosun API failed with status code " + statusCode, innerException)
         {
             Data["ResponseBody"] = responseBody;
+            Data["StatusCode"] = $"{(int)statusCode} ({statusCode})";
             StatusCode = statusCode;
         }
 
