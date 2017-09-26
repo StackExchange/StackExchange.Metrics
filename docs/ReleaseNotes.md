@@ -29,6 +29,7 @@ var collector = new MetricsCollector(options, ex => LogException(ex));
 -   `BosunPostException.StatusCode` is now nullable, since not all POST errors will have an HTTP status code returned.
 -   Removed the [Jil](https://github.com/kevin-montrose/Jil) dependency. BosunReporter now only depends on the Framework (we should eventually migrate to .NET Standard).
 -   Added XML documentation for all public types and methods
+-   Fix double formatting in certain cultures.
 
 ---
 
