@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Globalization;
 using System.Runtime.CompilerServices;
 using System.Text;
 
@@ -108,7 +109,7 @@ namespace BosunReporter.Infrastructure
 
         void Append(double d)
         {
-            Append(d.ToString("R")); // todo - use Grisu
+            Append(d.ToString("R", CultureInfo.InvariantCulture)); // todo - use Grisu
         }
 
         void Append(DateTime timestamp)
