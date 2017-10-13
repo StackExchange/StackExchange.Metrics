@@ -210,10 +210,7 @@ namespace BosunReporter
         /// <param name="exceptionHandler"></param>
         public MetricsCollector(BosunOptions options, Action<Exception> exceptionHandler)
         {
-            if (exceptionHandler == null)
-                throw new ArgumentNullException(nameof(exceptionHandler));
-
-            ExceptionHandler = exceptionHandler;
+            ExceptionHandler = exceptionHandler ?? throw new ArgumentNullException(nameof(exceptionHandler));
 
             _localMetricsQueue = new PayloadQueue(QueueType.Local);
             _externalCounterQueue = new PayloadQueue(QueueType.ExternalCounters);
