@@ -215,6 +215,9 @@ namespace BosunReporter
             if (options.ReportingInterval < TimeSpan.FromSeconds(1))
                 throw new InvalidOperationException("options.ReportingInterval cannot be less than one second");
 
+            if (options.MetadataReportingDelay < TimeSpan.Zero)
+                throw new InvalidOperationException("options.MetadataReportingDelay cannot be less than TimeSpan.Zero");
+
             if (options.MetadataReportingInterval < TimeSpan.Zero)
                 throw new InvalidOperationException("options.MetadataReportingInterval cannot be less than TimeSpan.Zero");
 
@@ -254,7 +257,7 @@ namespace BosunReporter
 
             // metadata timer
             if (options.MetadataReportingInterval > TimeSpan.Zero)
-                _metaDataTimer = new Timer(PostMetaData, true, TimeSpan.FromSeconds(30), options.MetadataReportingInterval);
+                _metaDataTimer = new Timer(PostMetaData, true, options.MetadataReportingDelay, options.MetadataReportingInterval);
         }
 
         /// <summary>

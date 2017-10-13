@@ -49,6 +49,11 @@ namespace BosunReporter
         /// </summary>
         public TimeSpan ReportingInterval = TimeSpan.FromSeconds(30);
         /// <summary>
+        /// The length of time after initializing a <see cref="MetricsCollector"/> when metadata will be posted for the first time. This delay allows for most
+        /// metrics to be created before posting metadata. Defaults to 30 seconds.
+        /// </summary>
+        public TimeSpan MetadataReportingDelay = TimeSpan.FromSeconds(30);
+        /// <summary>
         /// How often to report metadata to Bosun. Defaults to once per hour. Use TimeSpan.Zero to disable metadata reporting.
         /// </summary>
         public TimeSpan MetadataReportingInterval = TimeSpan.FromHours(1);
