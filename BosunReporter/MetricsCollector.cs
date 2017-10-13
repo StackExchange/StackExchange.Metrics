@@ -257,7 +257,7 @@ namespace BosunReporter
 
             // metadata timer
             if (options.MetadataReportingInterval > TimeSpan.Zero)
-                _metaDataTimer = new Timer(PostMetaData, true, options.MetadataReportingDelay, options.MetadataReportingInterval);
+                _metaDataTimer = new Timer(PostMetadataFromTimer, true, options.MetadataReportingDelay, options.MetadataReportingInterval);
         }
 
         /// <summary>
@@ -924,7 +924,7 @@ namespace BosunReporter
             }
         }
 
-        void PostMetaData(object _)
+        void PostMetadataFromTimer(object _)
         {
             if (ShutdownCalled) // don't report any more meta data if we're shutting down
                 return;
@@ -937,21 +937,34 @@ namespace BosunReporter
 
             try
             {
-                Debug.WriteLine("BosunReporter: Gathering metadata.");
-                var metaJson = GatherMetaData();
-                Debug.WriteLine("BosunReporter: Sending metadata.");
-                PostToBosun("/api/metadata/put", false, stream =>
-                {
-                    using (var sw = new StreamWriter(stream, new UTF8Encoding(false)))
-                    {
-                        sw.Write(metaJson);
-                    }
-                });
+                PostMetadata();
             }
             catch (Exception ex)
             {
                 PossiblyLogException(ex);
             }
+        }
+
+        /// <summary>
+        /// Posts metadata to the Bosun relay endpoint. Returns the JSON which was sent to Bosun.
+        /// </summary>
+        public string PostMetadata()
+        {
+            if (BosunUrl == null)
+                throw new Exception("Cannot send metadata. BosunUrl is null");
+
+            Debug.WriteLine("BosunReporter: Gathering metadata.");
+            var metaJson = GatherMetaData();
+            Debug.WriteLine("BosunReporter: Sending metadata.");
+            PostToBosun("/api/metadata/put", false, stream =>
+            {
+                using (var sw = new StreamWriter(stream, new UTF8Encoding(false)))
+                {
+                    sw.Write(metaJson);
+                }
+            });
+
+            return metaJson;
         }
 
         string GatherMetaData()
