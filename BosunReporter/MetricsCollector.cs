@@ -83,9 +83,9 @@ namespace BosunReporter
         /// </summary>
         public bool ThrowOnQueueFull { get; set; }
         /// <summary>
-        /// The number of seconds between metric reports (snapshots).
+        /// The length of time between metric reports (snapshots).
         /// </summary>
-        public int ReportingInterval { get; }
+        public TimeSpan ReportingInterval { get; }
         /// <summary>
         /// Enables sending metrics to the /api/count route on OpenTSDB relays which support external counters. External counters don't reset when applications
         /// reload, and are intended for low-volume metrics. For high-volume metrics, use normal counters.
@@ -212,6 +212,12 @@ namespace BosunReporter
         {
             ExceptionHandler = exceptionHandler ?? throw new ArgumentNullException(nameof(exceptionHandler));
 
+            if (options.ReportingInterval < TimeSpan.FromSeconds(1))
+                throw new InvalidOperationException("options.ReportingInterval cannot be less than one second");
+
+            if (options.MetadataReportingInterval < TimeSpan.Zero)
+                throw new InvalidOperationException("options.MetadataReportingInterval cannot be less than TimeSpan.Zero");
+
             _localMetricsQueue = new PayloadQueue(QueueType.Local);
             _externalCounterQueue = new PayloadQueue(QueueType.ExternalCounters);
 
@@ -244,12 +250,11 @@ namespace BosunReporter
             _flushTimer = new Timer(Flush, true, 1000, 1000);
 
             // start reporting timer
-            var interval = TimeSpan.FromSeconds(ReportingInterval);
-            _reportingTimer = new Timer(Snapshot, true, interval, interval);
+            _reportingTimer = new Timer(Snapshot, true, ReportingInterval, ReportingInterval);
 
-            // metadata timer - wait 30 seconds to start (so there is some time for metrics to be delcared)
-            if (options.MetaDataReportingInterval > 0)
-                _metaDataTimer = new Timer(PostMetaData, true, TimeSpan.FromSeconds(30), TimeSpan.FromSeconds(options.MetaDataReportingInterval));
+            // metadata timer
+            if (options.MetadataReportingInterval > TimeSpan.Zero)
+                _metaDataTimer = new Timer(PostMetaData, true, TimeSpan.FromSeconds(30), options.MetadataReportingInterval);
         }
 
         /// <summary>
