@@ -946,7 +946,8 @@ namespace BosunReporter
         }
 
         /// <summary>
-        /// Posts metadata to the Bosun relay endpoint. Returns the JSON which was sent to Bosun.
+        /// Posts metadata to the Bosun relay endpoint. Returns the JSON which was sent to Bosun. This method typically doesn't need to be called directly.
+        /// Metadata is regularly posted on a schedule determined by <see cref="BosunOptions"/> when initializing the <see cref="MetricsCollector"/>.
         /// </summary>
         public string PostMetadata()
         {
