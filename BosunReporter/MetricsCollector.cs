@@ -757,6 +757,13 @@ namespace BosunReporter
             if (payload == null)
                 return false;
 
+            var url = BosunUrl;
+            if (url == null)
+            {
+                Debug.WriteLine("BosunReporter: BosunUrl is null. Dropping data.");
+                return true;
+            }
+
             var metricsCount = payload.MetricsCount;
             var bytes = payload.Used;
 
@@ -767,7 +774,7 @@ namespace BosunReporter
             try
             {
                 timer.Start();
-                PostToBosun(path, true, sw => sw.Write(payload.Data, 0, payload.Used));
+                PostToBosun(url, path, true, sw => sw.Write(payload.Data, 0, payload.Used));
                 timer.Stop();
 
                 queue.ReleasePayload(payload);
@@ -805,16 +812,9 @@ namespace BosunReporter
 
         delegate void ApiPostWriter(Stream sw);
 
-        void PostToBosun(string path, bool gzip, ApiPostWriter postWriter)
+        void PostToBosun(Uri bosunUrl, string path, bool gzip, ApiPostWriter postWriter)
         {
-            var url = BosunUrl;
-            if (url == null)
-            {
-                Debug.WriteLine("BosunReporter: BosunUrl is null. Dropping data.");
-                return;
-            }
-
-            url = new Uri(url, path);
+            var url = new Uri(bosunUrl, path);
 
             var request = WebRequest.Create(url);
             request.Method = "POST";
@@ -929,7 +929,8 @@ namespace BosunReporter
             if (ShutdownCalled) // don't report any more meta data if we're shutting down
                 return;
 
-            if (BosunUrl == null)
+            var url = BosunUrl;
+            if (url == null)
             {
                 Debug.WriteLine("BosunReporter: BosunUrl is null. Not sending metadata.");
                 return;
@@ -937,7 +938,7 @@ namespace BosunReporter
 
             try
             {
-                PostMetadata();
+                PostMetadataInternal(url);
             }
             catch (Exception ex)
             {
@@ -951,13 +952,19 @@ namespace BosunReporter
         /// </summary>
         public string PostMetadata()
         {
-            if (BosunUrl == null)
+            var url = BosunUrl;
+            if (url == null)
                 throw new Exception("Cannot send metadata. BosunUrl is null");
 
+            return PostMetadataInternal(url);
+        }
+
+        string PostMetadataInternal(Uri bosunUrl)
+        {
             Debug.WriteLine("BosunReporter: Gathering metadata.");
             var metaJson = GatherMetaData();
             Debug.WriteLine("BosunReporter: Sending metadata.");
-            PostToBosun("/api/metadata/put", false, stream =>
+            PostToBosun(bosunUrl, "/api/metadata/put", false, stream =>
             {
                 using (var sw = new StreamWriter(stream, new UTF8Encoding(false)))
                 {
