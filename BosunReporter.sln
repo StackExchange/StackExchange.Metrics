@@ -12,10 +12,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 		.gitattributes = .gitattributes
 		.gitignore = .gitignore
 		appveyor.yml = appveyor.yml
-		BosunReporter\BosunReporter.nuspec = BosunReporter\BosunReporter.nuspec
 		LICENSE.MIT = LICENSE.MIT
 		README.md = README.md
-		Scripts\SetNugetVersion.ps1 = Scripts\SetNugetVersion.ps1
 	EndProjectSection
 EndProject
 Global
