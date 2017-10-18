@@ -1,92 +1,59 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
-<Project ToolsVersion="12.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
   <PropertyGroup>
-    <Configuration Condition=" '$(Configuration)' == '' ">Release</Configuration>
-    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProjectGuid>{9D6C3CB4-C01A-4335-8C69-347A335F24D1}</ProjectGuid>
-    <OutputType>Library</OutputType>
-    <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>BosunReporter</RootNamespace>
-    <AssemblyName>BosunReporter</AssemblyName>
-    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
-    <FileAlignment>512</FileAlignment>
+    <TargetFrameworks>netstandard2.0;net461</TargetFrameworks>
   </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
-    <DebugSymbols>true</DebugSymbols>
-    <DebugType>full</DebugType>
-    <Optimize>false</Optimize>
-    <OutputPath>bin\Debug\</OutputPath>
-    <DefineConstants>DEBUG;TRACE</DefineConstants>
-    <ErrorReport>prompt</ErrorReport>
-    <WarningLevel>4</WarningLevel>
-    <DocumentationFile>bin\Debug\BosunReporter.xml</DocumentationFile>
+
+  <PropertyGroup>
+    <!-- Nuget Package Info -->
+    <PackageId>BosunReporter</PackageId>
+    <PackageVersion>4.0.0-alpha</PackageVersion>
+    <Authors>Bret Copeland</Authors>
+    <Description>A thread-safe C# .NET client for reporting metrics to Bosun (Time Series Alerting Framework).</Description>
+    <PackageLicenseUrl>https://github.com/bretcope/BosunReporter.NET/blob/master/LICENSE.MIT</PackageLicenseUrl>
+    <PackageProjectUrl>https://github.com/bretcope/BosunReporter.NET</PackageProjectUrl>
+    <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
+    <PackageReleaseNotes></PackageReleaseNotes>
+    <Copyright>Copyright 2014</Copyright>
+    <PackageTags>Bosun Time Series Alerting</PackageTags>
   </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
-    <DebugType>pdbonly</DebugType>
-    <Optimize>true</Optimize>
-    <OutputPath>bin\Release\</OutputPath>
-    <DefineConstants>TRACE</DefineConstants>
-    <ErrorReport>prompt</ErrorReport>
-    <WarningLevel>4</WarningLevel>
-    <DocumentationFile>bin\Release\BosunReporter.xml</DocumentationFile>
-  </PropertyGroup>
+
   <ItemGroup>
-    <Reference Include="System" />
-    <Reference Include="System.Core" />
-    <Reference Include="System.Runtime.Serialization" />
-    <Reference Include="System.Xml.Linq" />
-    <Reference Include="System.Data.DataSetExtensions" />
-    <Reference Include="Microsoft.CSharp" />
-    <Reference Include="System.Data" />
-    <Reference Include="System.Xml" />
-  </ItemGroup>
-  <ItemGroup>
-    <Compile Include="Attributes.cs" />
-    <Compile Include="Infrastructure\DoubleEndedQueue.cs" />
-    <Compile Include="Infrastructure\JsonHelper.cs" />
-    <Compile Include="Infrastructure\MetricKey.cs" />
-    <Compile Include="Infrastructure\PayloadQueue.cs" />
-    <Compile Include="Infrastructure\MetricWriter.cs" />
-    <Compile Include="Infrastructure\Payload.cs" />
-    <Compile Include="Infrastructure\StopwatchStruct.cs" />
-    <Compile Include="Metrics\AggregateGauge.cs" />
-    <Compile Include="Metrics\EventGauge.cs" />
-    <Compile Include="Infrastructure\MetaData.cs" />
-    <Compile Include="Metrics\ExternalCounter.cs" />
-    <Compile Include="Metrics\SamplingGauge.cs" />
-    <Compile Include="MetricGroup.cs">
-      <AutoGen>True</AutoGen>
-      <DesignTime>True</DesignTime>
-      <DependentUpon>MetricGroup.tt</DependentUpon>
-    </Compile>
-    <Compile Include="MetricsCollector.cs" />
-    <Compile Include="Infrastructure\BosunMetric.cs" />
-    <Compile Include="BosunOptions.cs" />
-    <Compile Include="Metrics\SnapshotCounter.cs" />
-    <Compile Include="Metrics\SnapshotGauge.cs" />
-    <Compile Include="Infrastructure\BosunTag.cs" />
-    <Compile Include="Metrics\Counter.cs" />
-    <Compile Include="Exceptions.cs" />
-    <Compile Include="NameTransformers.cs" />
-    <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="BosunValidation.cs" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="MetricGroup.tt">
+    <None Update="MetricGroup.tt">
       <Generator>TextTemplatingFileGenerator</Generator>
       <LastGenOutput>MetricGroup.cs</LastGenOutput>
     </None>
+    <Compile Update="MetricGroup.cs">
+      <DesignTime>True</DesignTime>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>MetricGroup.tt</DependentUpon>
+    </Compile>
   </ItemGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <DocumentationFile>bin\Debug\netstandard1.4\BosunReporter.xml</DocumentationFile>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
+    <DocumentationFile>bin\Release\netstandard1.4\BosunReporter.xml</DocumentationFile>
+  </PropertyGroup>
+
+  <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
+<!--    <PackageReference Include="System.Net.Requests" Version="4.3.0" />-->
+<!--    <PackageReference Include="System.Reflection.Extensions" Version="4.3.0" />-->
+<!--    <PackageReference Include="System.Reflection.TypeExtensions" Version="4.3.0" />-->
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(TargetFramework)' == 'net461'">
+    <PackageReference Remove="NETStandard.Library" />
+  </ItemGroup>
+
   <ItemGroup>
-    <Service Include="{508349B6-6B84-4DF5-91F0-309BEEBAD82D}" />
+    <PackageReference Include="JetBrains.Annotations" Version="10.4.0" PrivateAssets="All" />
   </ItemGroup>
-  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
-  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
-       Other similar extension points exist, see Microsoft.Common.targets.
-  <Target Name="BeforeBuild">
-  </Target>
-  <Target Name="AfterBuild">
-  </Target>
-  -->
+
+  <ItemGroup>
+    <Service Include="{508349b6-6b84-4df5-91f0-309beebad82d}" />
+  </ItemGroup>
+
 </Project>

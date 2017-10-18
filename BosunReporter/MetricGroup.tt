@@ -80,10 +80,10 @@ namespace BosunReporter
     /// </summary>
     public class MetricGroup<<#= typeList #>, TMetric> where TMetric : BosunMetric
     {
-        private readonly object _dictionaryLock = new object();
-        private readonly MetricsCollector _collector;
-        private readonly <#= dictionaryType #> _metrics = new Dictionary<<#= dictionaryKeyType #>, TMetric>();
-        private readonly <#= factoryType #> _metricFactory;
+        readonly object _dictionaryLock = new object();
+        readonly MetricsCollector _collector;
+        readonly <#= dictionaryType #> _metrics = new Dictionary<<#= dictionaryKeyType #>, TMetric>();
+        readonly <#= factoryType #> _metricFactory;
 
         /// <summary>
         /// The metric name shared by all time series in this group.
