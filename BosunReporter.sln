@@ -1,9 +1,9 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 14
-VisualStudioVersion = 14.0.23107.0
+# Visual Studio 15
+VisualStudioVersion = 15.0.27004.2002
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BosunReporter", "BosunReporter\BosunReporter.csproj", "{9D6C3CB4-C01A-4335-8C69-347A335F24D1}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "BosunReporter", "BosunReporter\BosunReporter.csproj", "{9D6C3CB4-C01A-4335-8C69-347A335F24D1}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Scratch", "Scratch\Scratch.csproj", "{1CE60D86-9385-41FE-AEB8-427180FEFB6D}"
 EndProject
@@ -35,5 +35,8 @@ Global
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {10BDE042-930B-4E4D-90F6-00358BAC6A52}
 	EndGlobalSection
 EndGlobal
