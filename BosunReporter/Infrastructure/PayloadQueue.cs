@@ -22,6 +22,8 @@ namespace BosunReporter.Infrastructure
         internal int LastBatchPayloadCount { get; private set; }
         internal int DroppedPayloads { get; private set; }
         internal QueueType Type { get; }
+        internal string UrlPath { get; }
+        internal DateTime SuspendFlushingUntil { get; set; }
 
         internal int PendingPayloadsCount => _pendingPayloads.Count;
         internal bool IsFull => PendingPayloadsCount >= MaxPendingPayloads;
@@ -31,6 +33,13 @@ namespace BosunReporter.Infrastructure
         internal PayloadQueue(QueueType type)
         {
             Type = type;
+
+            if (type == QueueType.Local)
+                UrlPath = "/api/put";
+            else if (type == QueueType.ExternalCounters)
+                UrlPath = "/api/count";
+            else 
+                throw new NotImplementedException($"BosunReporter Bug: UrlPath not specified for QueueType.{type}");
         }
 
         internal MetricWriter GetWriter()

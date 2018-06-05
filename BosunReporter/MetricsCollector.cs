@@ -47,7 +47,6 @@ namespace BosunReporter
         readonly Func<string> _getAccessToken;
 
         readonly object _flushingLock = new object();
-        int _skipFlushes = 0;
         readonly Timer _flushTimer;
         readonly Timer _reportingTimer;
         readonly Timer _metaDataTimer;
@@ -715,29 +714,18 @@ namespace BosunReporter
                     return;
                 }
 
-                if (!ShutdownCalled && _skipFlushes > 0)
-                {
-                    _skipFlushes--;
-                    return;
-                }
+                FlushPayloadQueue(_localMetricsQueue);
 
-                bool any;
-                do
-                {
-                    any = false;
-                    any |= FlushPayload("/api/put", _localMetricsQueue);
+                if (EnableExternalCounters)
+                    FlushPayloadQueue(_externalCounterQueue);
+                else
+                    _externalCounterQueue.Clear();
 
-                    if (EnableExternalCounters)
-                        any |= FlushPayload("/api/count", _externalCounterQueue);
-                    else
-                        _externalCounterQueue.Clear();
-
-                } while (any);
+                // todo: post metadata
             }
             catch (Exception ex)
             {
-                // there was a problem flushing - back off for the next five seconds (Bosun may simply be restarting)
-                _skipFlushes = 4;
+                // this should never actually hit, but it's a nice safeguard since an uncaught exception on a background thread will crash the process.
                 PossiblyLogException(ex);
             }
             finally
@@ -747,18 +735,33 @@ namespace BosunReporter
             }
         }
 
-        bool FlushPayload(string path, PayloadQueue queue)
+        void FlushPayloadQueue(PayloadQueue queue)
+        {
+            if (queue.PendingPayloadsCount == 0)
+                return;
+
+            if (!ShutdownCalled && queue.SuspendFlushingUntil > DateTime.UtcNow)
+                return;
+
+            var url = GetBosunUrl != null ? GetBosunUrl() : BosunUrl;
+            if (url == null)
+            {
+                Debug.WriteLine("BosunReporter: BosunUrl is null. Dropping data.");
+                return;
+            }
+
+            while (queue.PendingPayloadsCount > 0)
+            {
+                if (!FlushPayload(url, queue))
+                    break;
+            }
+        }
+
+        bool FlushPayload(Uri url, PayloadQueue queue)
         {
             var payload = queue.DequeuePendingPayload();
             if (payload == null)
                 return false;
-
-            var url = BosunUrl;
-            if (url == null)
-            {
-                Debug.WriteLine("BosunReporter: BosunUrl is null. Dropping data.");
-                return true;
-            }
 
             var metricsCount = payload.MetricsCount;
             var bytes = payload.Used;
@@ -770,14 +773,12 @@ namespace BosunReporter
             try
             {
                 timer.Start();
-                PostToBosun(url, path, true, sw => sw.Write(payload.Data, 0, payload.Used));
+                PostToBosun(url, queue.UrlPath, true, sw => sw.Write(payload.Data, 0, payload.Used));
                 timer.Stop();
-
-                queue.ReleasePayload(payload);
 
                 PostSuccessCount++;
                 TotalMetricsPosted += payload.MetricsCount;
-
+                queue.ReleasePayload(payload);
                 return true;
             }
             catch (Exception ex)
@@ -788,7 +789,9 @@ namespace BosunReporter
                 PostFailCount++;
                 info.Exception = ex;
                 queue.AddPendingPayload(payload);
-                throw;
+                queue.SuspendFlushingUntil = DateTime.UtcNow.AddSeconds(10); // back off for 10 seconds after a failed request
+                PossiblyLogException(ex);
+                return false;
             }
             finally
             {
