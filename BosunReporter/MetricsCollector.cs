@@ -132,10 +132,6 @@ namespace BosunReporter
         /// Information about the last time that metrics were serialized (in preparation for posting to the Bosun API).
         /// </summary>
         public AfterSerializationInfo LastSerializationInfo { get; private set; }
-        /// <summary>
-        /// Information about the last time metrics were posted to the Bosun API.
-        /// </summary>
-        public AfterPostInfo LastPostInfo { get; private set; }
 
         /// <summary>
         /// Exceptions which occur on a background thread within BosunReporter will be passed to this delegate.
@@ -800,7 +796,6 @@ namespace BosunReporter
                 info.Count = metricsCount;
                 info.BytesWritten = bytes;
                 info.MillisecondsDuration = timer.GetElapsedMilliseconds();
-                LastPostInfo = info;
 
                 // Use BeginInvoke here to invoke the event listeners asynchronously.
                 // We're inside a lock, so calling the listeners synchronously would put us at risk of a deadlock.
