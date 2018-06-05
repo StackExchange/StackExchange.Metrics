@@ -872,15 +872,6 @@ namespace BosunReporter
             }
         }
 
-        internal static string GetUnixTimestamp()
-        {
-            return GetUnixTimestamp(DateTime.UtcNow);
-        }
-        internal static string GetUnixTimestamp(DateTime time)
-        {
-            return ((long)(time - s_unixEpoch).TotalMilliseconds).ToString("D");
-        }
-
         void SerializeMetrics(out int metricsCount, out int bytesWritten)
         {
             lock (_metricsLock)
