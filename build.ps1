@@ -9,7 +9,7 @@ param (
     [switch] $SkipTests,
     # Creates nuget packages.
     [switch] $Pack,
-    # The MSBuild verbosity level. Options: quiet, minimal, normal, detailed, or diagnostic. Defaults to minimal.
+    # The verbosity level. Options: quiet, minimal, normal, detailed, or diagnostic. Defaults to minimal.
     [string] $Verbosity = "minimal",
     # Enables Powershell debugging output
     [switch] $PsDebug
@@ -37,26 +37,25 @@ function Main()
         $Stable = [bool]::Parse("$env:APPVEYOR_REPO_TAG")
     }
 
-    $msbuildExe = GetMsBuildExe
 
     $version = GetVersion $nugetProject $BuildNum $Stable
 
     # Restore
     Write-Host
     Write-Host -BackgroundColor "Cyan" -ForegroundColor "Black" "Restoring $buildProject"
-    ExecuteMsBuild $msbuildExe $buildProject 'restore'
+    ExecuteDotNet $buildProject 'restore'
 
     # Build
     Write-Host
     Write-Host -BackgroundColor "Cyan" -ForegroundColor "Black" "Building $buildProject"
-    ExecuteMsBuild $msbuildExe $buildProject
+    ExecuteDotNet $buildProject 'build'
 
     # Test
     if ($testProject -and $SkipTests -ne $true)
     {
          Write-Host
          Write-Host -BackgroundColor "Cyan" -ForegroundColor "Black" "Running Tests"
-         ExecuteMsBuild $msbuildExe $testProject 'Tests'
+         ExecuteDotNet $testProject 'test'
     }
 
     # Nuget Pack
@@ -65,7 +64,7 @@ function Main()
         Write-Host
         Write-Host -BackgroundColor "Cyan" -ForegroundColor "Black" "Creating NuGet Package"
         Write-Host -BackgroundColor "Cyan" -ForegroundColor "Black" "Version: $version"
-        ExecuteMsBuild $msbuildExe $nugetProject 'pack' $version
+        ExecuteDotNet $nugetProject 'pack' $version
     }
 
     Write-Host
@@ -73,49 +72,40 @@ function Main()
     Write-Host
 }
 
-function GetMsBuildExe()
+function ExecuteDotNet([string] $project, [string] $cmd, [string] $version)
 {
-    # We want to find the MSBuild associated with Visual Studio 2017 (MSBuild 15). This could probably use some improvement.
-    $regKey = 'HKLM:\SOFTWARE\WOW6432Node\Microsoft\VisualStudio\SxS\VS7'
-    $vsLocation = Get-ItemProperty $regKey -ErrorAction SilentlyContinue | Select-Object -ExpandProperty '15.0'
+    [string[]] $dotnetArgs = $cmd, "`"$project`""
 
-    if ($vsLocation -eq $null)
+    switch ($cmd)
     {
-        Write-Error 'Visual Studio 2017 is required, but does not appear to be installed.'
-        Exit 1
-    }
-
-    # combine the VS install path with the MSBuild location
-    $msbuildExe = Join-Path $vsLocation 'MSBuild\15.0\bin\MSBuild.exe'
-    Write-Debug "MSBuild location: $msbuildExe"
-    return $msbuildExe
-}
-
-function ExecuteMsBuild([string] $msbuildExe, [string] $project, [string] $target, [string] $version)
-{
-    [string[]] $msBuildArgs = "`"$project`"", "/p:Configuration=$Configuration"
-
-    if ($target -ne "")
-    {
-        $msBuildArgs += "/t:$target"
-
-        if ($target -eq 'pack')
-        {
-            $msBuildArgs += "/p:IncludeSymbols=true"
-            $msBuildArgs += "/p:PackageVersion=$version"
-            $msBuildArgs += "/p:PackageOutputPath=`"$(Join-Path $PSScriptRoot 'artifacts')`""
+        "restore" { }
+        "build" {
+            $dotnetArgs += "-c=$Configuration"
+            $dotnetArgs += "--no-restore"
+        }
+        "test" {
+            $dotnetArgs += "-c=$Configuration"
+            $dotnetArgs += "--no-restore"
+            $dotnetArgs += "--no-build"
+        }
+        "pack" {
+            $dotnetArgs += "-c=$Configuration"
+            $dotnetArgs += "--no-restore"
+            $dotnetArgs += "/p:IncludeSymbols=true"
+            $dotnetArgs += "/p:PackageVersion=$version"
+            $dotnetArgs += "/p:PackageOutputPath=`"$(Join-Path $PSScriptRoot 'artifacts')`""
         }
     }
 
     if ($AppVeyor)
     {
-        $msBuildArgs += "/logger:`"C:\Program Files\AppVeyor\BuildAgent\Appveyor.MSBuildLogger.dll`""
+        # $dotnetArgs += "/l:`"C:\Program Files\AppVeyor\BuildAgent\Appveyor.MSBuildLogger.dll`""
     }
 
-    $msBuildArgs += "/verbosity:$Verbosity"
+    $dotnetArgs += "-v=$Verbosity"
 
-    Write-Host -ForegroundColor "Cyan" "'$msbuildExe' $msBuildArgs"
-    & $msbuildExe $msBuildArgs
+    Write-Host -ForegroundColor "Cyan" "dotnet $dotnetargs"
+    & dotnet $dotnetargs
 
     if ($LASTEXITCODE -ne 0)
     {
@@ -149,16 +139,16 @@ function GetVersion([string] $nugetProject, [int] $buildNum, [bool] $stable)
 function GetPackageVersionNode ([xml] $csXml)
 {
     # find the PackageVersion element
-    $nodes = $csXml.GetElementsByTagName("PackageVersion")
+    $nodes = $csXml.GetElementsByTagName("Version")
     if ($nodes.Count -eq 0)
     {
-        Write-Error "$csproj does not contain a <PackageVersion> element."
+        Write-Error "$csproj does not contain a <Version> element."
         Exit 1
     }
 
     if ($nodes.Count -gt 1)
     {
-        Write-Error "$csproj contains more than one instance of <PackageVersion>"
+        Write-Error "$csproj contains more than one instance of <Version>"
         Exit 1
     }
 
@@ -190,7 +180,7 @@ function GeneratePrereleaseVersion ([System.Text.RegularExpressions.GroupCollect
     else
     {
         $patch = [int]::Parse($versionGroups["Patch"]) + 1
-        $version += "$patch-unStable"
+        $version += "$patch-unstable"
     }
 
     $version += "-$buildNum"
