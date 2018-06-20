@@ -598,9 +598,7 @@ namespace BosunReporter.Metrics
         public GaugeAggregatorAttribute(AggregateMode mode, string suffix, double percentile)
         {
             AggregateMode = mode;
-
-            string defaultSuffix;
-            Percentile = AggregateGauge.AggregateModeToPercentileAndSuffix(mode, percentile, out defaultSuffix);
+            Percentile = AggregateGauge.AggregateModeToPercentileAndSuffix(mode, percentile, out var defaultSuffix);
             Suffix = suffix ?? defaultSuffix;
 
             if (Suffix.Length > 0 && !BosunValidation.IsValidMetricName(Suffix))

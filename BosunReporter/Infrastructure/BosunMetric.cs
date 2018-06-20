@@ -402,8 +402,7 @@ namespace BosunReporter.Infrastructure
         MetricTypeInfo GetMetricTypeInfo()
         {
             var type = GetType();
-            MetricTypeInfo info;
-            if (s_typeInfoCache.TryGetValue(type, out info))
+            if (s_typeInfoCache.TryGetValue(type, out var info))
                 return info;
 
             lock (s_typeInfoCache)

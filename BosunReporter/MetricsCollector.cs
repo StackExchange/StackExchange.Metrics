@@ -269,8 +269,7 @@ namespace BosunReporter
         /// </summary>
         public bool TryGetMetricWithoutPrefixInfo(string name, out Type type, out string unit)
         {
-            RootMetricInfo rmi;
-            if (_rootNameToInfo.TryGetValue(name, out rmi))
+            if (_rootNameToInfo.TryGetValue(name, out var rmi))
             {
                 type = rmi.Type;
                 unit = rmi.Unit;
@@ -322,8 +321,7 @@ namespace BosunReporter
         {
             lock (_metricsLock)
             {
-                RootMetricInfo rmi;
-                if (_rootNameToInfo.TryGetValue(name, out rmi))
+                if (_rootNameToInfo.TryGetValue(name, out var rmi))
                 {
                     if (rmi.Type != type)
                     {
@@ -475,8 +473,7 @@ namespace BosunReporter
 
             lock (_metricsLock)
             {
-                RootMetricInfo rmi;
-                if (_rootNameToInfo.TryGetValue(name, out rmi))
+                if (_rootNameToInfo.TryGetValue(name, out var rmi))
                 {
                     if (rmi.Type != metricType)
                     {
@@ -676,8 +673,7 @@ namespace BosunReporter
 
                 var sw = new StopwatchStruct();
                 sw.Start();
-                int metricsCount, bytesWritten;
-                SerializeMetrics(out metricsCount, out bytesWritten);
+                SerializeMetrics(out var metricsCount, out var bytesWritten);
                 sw.Stop();
 
                 var info = new AfterSerializationInfo
