@@ -1,21 +1,19 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
+  <PropertyGroup Label="Build">
     <TargetFrameworks>netstandard2.0;net45</TargetFrameworks>
   </PropertyGroup>
 
-  <PropertyGroup>
-    <!-- Nuget Package Info -->
+  <PropertyGroup Label="Package">
     <PackageId>BosunReporter</PackageId>
-    <PackageVersion>4.0.0-alpha</PackageVersion>
+    <Version>4.0.0-alpha</Version>
     <Authors>Bret Copeland</Authors>
     <Description>A thread-safe C# .NET client for reporting metrics to Bosun (Time Series Alerting Framework).</Description>
-    <PackageLicenseUrl>https://github.com/bretcope/BosunReporter.NET/blob/master/LICENSE.MIT</PackageLicenseUrl>
     <PackageProjectUrl>https://github.com/bretcope/BosunReporter.NET</PackageProjectUrl>
-    <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
-    <PackageReleaseNotes></PackageReleaseNotes>
-    <Copyright>Copyright 2014</Copyright>
-    <PackageTags>Bosun Time Series Alerting</PackageTags>
+    <RepositoryUrl>https://github.com/bretcope/BosunReporter.NET</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <Copyright />
+    <PackageTags>Bosun Time-Series Alerting Metrics</PackageTags>
   </PropertyGroup>
 
   <ItemGroup>
