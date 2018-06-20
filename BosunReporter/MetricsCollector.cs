@@ -112,18 +112,17 @@ namespace BosunReporter
         /// True if <see cref="Shutdown"/> has been called on this collector.
         /// </summary>
         public bool ShutdownCalled { get; private set; }
-
-        // insights
+        
         /// <summary>
-        /// Total number of data points successfully sent fo Bosun.
+        /// Total number of data points successfully sent fo Bosun. This includes external counter data points.
         /// </summary>
         public long TotalMetricsPosted { get; private set; }
         /// <summary>
-        /// The number of times an HTTP POST to Bosun's /api/put endpoint has succeeded.
+        /// The number of times an HTTP POST to one of Bosun's metrics endpoints succeeded. This includes external counter POSTs.
         /// </summary>
         public int PostSuccessCount { get; private set; }
         /// <summary>
-        /// The number of times an HTTP POST to Bosun's /api/put endpoint has failed.
+        /// The number of times an HTTP POST to Bosun's metrics endpoints failed. This includes external counter POSTs.
         /// </summary>
         public int PostFailCount { get; private set; }
 
