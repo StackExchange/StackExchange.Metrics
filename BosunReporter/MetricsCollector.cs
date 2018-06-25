@@ -29,6 +29,9 @@ namespace BosunReporter
 
         static readonly MetricKeyComparer s_metricKeyComparer = new MetricKeyComparer();
 
+        Uri _fixedUrl;
+        Func<Uri> _getUrlDynamic;
+
         readonly object _metricsLock = new object();
         // all of the first-class names which have been claimed (excluding suffixes in aggregate gauges)
         readonly Dictionary<string, RootMetricInfo> _rootNameToInfo = new Dictionary<string, RootMetricInfo>();
@@ -37,6 +40,10 @@ namespace BosunReporter
 
         readonly List<BosunMetric> _localMetrics = new List<BosunMetric>();
         readonly List<BosunMetric> _externalCounterMetrics = new List<BosunMetric>();
+
+        bool _hasNewMetadata = false;
+        bool _readyToFlushMetadata = false;
+        DateTime _lastMetadataFlushTime = DateTime.MinValue;
 
         readonly List<BosunMetric> _metricsNeedingPreSerialize = new List<BosunMetric>();
         // All of the names which have been claimed, including the metrics which may have multiple suffixes, mapped to their root metric name.
@@ -49,7 +56,6 @@ namespace BosunReporter
         readonly object _flushingLock = new object();
         readonly Timer _flushTimer;
         readonly Timer _reportingTimer;
-        readonly Timer _metaDataTimer;
 
         readonly PayloadQueue _localMetricsQueue;
         readonly PayloadQueue _externalCounterQueue;
@@ -63,15 +69,6 @@ namespace BosunReporter
         /// want to use something like "app1.".
         /// </summary>
         public string MetricsNamePrefix { get; }
-        /// <summary>
-        /// The url of the Bosun API. No path is required. If this is null, metrics will be discarded instead of sent to Bosun.
-        /// </summary>
-        public Uri BosunUrl { get; set; }
-        /// <summary>
-        /// If the url for the Bosun API can change, provide a function which will be called before each API request. This takes precedence over the BosunUrl
-        /// option. If this function returns null, the request will not be made, and the batch of metrics which would have been sent will be discarded.
-        /// </summary>
-        public Func<Uri> GetBosunUrl { get; set; }
         /// <summary>
         /// If true, BosunReporter will generate an exception every time posting to the Bosun API fails with a server error (response code 5xx).
         /// </summary>
@@ -130,6 +127,11 @@ namespace BosunReporter
         /// Information about the last time that metrics were serialized (in preparation for posting to the Bosun API).
         /// </summary>
         public AfterSerializationInfo LastSerializationInfo { get; private set; }
+
+        /// <summary>
+        /// The last time metadata was sent to Bosun, or null if metadata has not been sent yet.
+        /// </summary>
+        public DateTime? LastMetadataFlushTime => _lastMetadataFlushTime == DateTime.MinValue ? (DateTime?)null : _lastMetadataFlushTime;
 
         /// <summary>
         /// Exceptions which occur on a background thread within BosunReporter will be passed to this delegate.
@@ -206,14 +208,8 @@ namespace BosunReporter
         {
             ExceptionHandler = exceptionHandler ?? throw new ArgumentNullException(nameof(exceptionHandler));
 
-            if (options.ReportingInterval < TimeSpan.FromSeconds(1))
-                throw new InvalidOperationException("options.ReportingInterval cannot be less than one second");
-
-            if (options.MetadataReportingDelay < TimeSpan.Zero)
-                throw new InvalidOperationException("options.MetadataReportingDelay cannot be less than TimeSpan.Zero");
-
-            if (options.MetadataReportingInterval < TimeSpan.Zero)
-                throw new InvalidOperationException("options.MetadataReportingInterval cannot be less than TimeSpan.Zero");
+            if (options.SnapshotInterval < TimeSpan.FromSeconds(1))
+                throw new InvalidOperationException("options.SnapshotInterval cannot be less than one second");
 
             _localMetricsQueue = new PayloadQueue(QueueType.Local);
             _externalCounterQueue = new PayloadQueue(QueueType.ExternalCounters);
@@ -229,15 +225,15 @@ namespace BosunReporter
             if (MetricsNamePrefix != "" && !BosunValidation.IsValidMetricName(MetricsNamePrefix))
                 throw new Exception("\"" + MetricsNamePrefix + "\" is not a valid metric name prefix.");
 
-            GetBosunUrl = options.GetBosunUrl;
-            BosunUrl = GetBosunUrl == null ? options.BosunUrl : GetBosunUrl();
+            _getUrlDynamic = options.GetBosunUrl;
+            _fixedUrl = options.BosunUrl;
 
             _accessToken = options.AccessToken;
             _getAccessToken = options.GetAccessToken;
 
             ThrowOnPostFail = options.ThrowOnPostFail;
             ThrowOnQueueFull = options.ThrowOnQueueFull;
-            ReportingInterval = options.ReportingInterval;
+            ReportingInterval = options.SnapshotInterval;
             EnableExternalCounters = options.EnableExternalCounters;
             PropertyToTagName = options.PropertyToTagName;
             TagValueConverter = options.TagValueConverter;
@@ -248,10 +244,51 @@ namespace BosunReporter
 
             // start reporting timer
             _reportingTimer = new Timer(Snapshot, true, ReportingInterval, ReportingInterval);
+        }
 
-            // metadata timer
-            if (options.MetadataReportingInterval > TimeSpan.Zero)
-                _metaDataTimer = new Timer(PostMetadataFromTimer, true, options.MetadataReportingDelay, options.MetadataReportingInterval);
+        /// <summary>
+        /// Gets the current Bosun URL (only the domain portion of the Uri is relevant). If this method returns false, then there is no URL set, and data points
+        /// are being discarded instead of sent.
+        /// </summary>
+        public bool TryGetBosunUrl(out Uri url)
+        {
+            var getter = _getUrlDynamic;
+            if (getter != null)
+            {
+                try
+                {
+                    url = getter();
+                }
+                catch (Exception ex)
+                {
+                    SendExceptionToHandler(ex);
+                    url = null;
+                    return false;
+                }
+            }
+            else
+            {
+                url = _fixedUrl;
+            }
+
+            return url != null;
+        }
+
+        /// <summary>
+        /// Sets the Bosun URL to a fixed URL. This clears any dynamic getter which may exist.
+        /// </summary>
+        public void SetBosunUrl(Uri url)
+        {
+            _getUrlDynamic = null;
+            _fixedUrl = url;
+        }
+
+        /// <summary>
+        /// Sets a getter function which will be called anytime the Bosun URL is needed.
+        /// </summary>
+        public void SetBosunUrl(Func<Uri> getter)
+        {
+            _getUrlDynamic = getter;
         }
 
         /// <summary>
@@ -532,6 +569,7 @@ namespace BosunReporter
                 // metric doesn't exist yet.
                 _rootNameAndTagsToMetric[key] = metric;
                 metric.IsAttached = true;
+                _hasNewMetadata = true;
 
                 var needsPreSerialize = metric.NeedsPreSerializeCalled();
                 if (needsPreSerialize)
@@ -576,7 +614,6 @@ namespace BosunReporter
             ShutdownCalled = true;
             _reportingTimer.Dispose();
             _flushTimer.Dispose();
-            _metaDataTimer.Dispose();
             Snapshot(false);
             Flush(false);
         }
@@ -663,9 +700,6 @@ namespace BosunReporter
             if ((bool)isCalledFromTimer && ShutdownCalled) // don't perform timer actions if we're shutting down
                 return;
 
-            if (GetBosunUrl != null)
-                BosunUrl = GetBosunUrl();
-
             try
             {
                 if (BeforeSerialization != null && BeforeSerialization.GetInvocationList().Length != 0)
@@ -688,13 +722,16 @@ namespace BosunReporter
             }
             catch (Exception ex)
             {
-                PossiblyLogException(ex);
+                SendExceptionToHandler(ex);
             }
         }
 
         void Flush(object isCalledFromTimer)
         {
             if ((bool)isCalledFromTimer && ShutdownCalled) // don't perform timer actions if we're shutting down
+                return;
+
+            if (!HasAnythingToFlush())
                 return;
 
             var lockTaken = false;
@@ -709,19 +746,33 @@ namespace BosunReporter
                     return;
                 }
 
-                FlushPayloadQueue(_localMetricsQueue);
+                if (!HasAnythingToFlush())
+                    return;
+
+
+                if (!TryGetBosunUrl(out var url))
+                {
+                    Debug.WriteLine("BosunReporter: BosunUrl is null. Dropping data.");
+                    _localMetricsQueue.Clear();
+                    _externalCounterQueue.Clear();
+                    _readyToFlushMetadata = false;
+                    return;
+                }
+
+                FlushPayloadQueue(_localMetricsQueue, url);
 
                 if (EnableExternalCounters)
-                    FlushPayloadQueue(_externalCounterQueue);
+                    FlushPayloadQueue(_externalCounterQueue, url);
                 else
                     _externalCounterQueue.Clear();
 
-                // todo: post metadata
+                if (_readyToFlushMetadata)
+                    PostMetadata(url);
             }
             catch (Exception ex)
             {
                 // this should never actually hit, but it's a nice safeguard since an uncaught exception on a background thread will crash the process.
-                PossiblyLogException(ex);
+                SendExceptionToHandler(ex);
             }
             finally
             {
@@ -730,20 +781,18 @@ namespace BosunReporter
             }
         }
 
-        void FlushPayloadQueue(PayloadQueue queue)
+        bool HasAnythingToFlush()
+        {
+            return _localMetricsQueue.PendingPayloadsCount > 0 || _externalCounterQueue.PendingPayloadsCount > 0 || _readyToFlushMetadata;
+        }
+
+        void FlushPayloadQueue(PayloadQueue queue, Uri url)
         {
             if (queue.PendingPayloadsCount == 0)
                 return;
 
             if (!ShutdownCalled && queue.SuspendFlushingUntil > DateTime.UtcNow)
                 return;
-
-            var url = GetBosunUrl != null ? GetBosunUrl() : BosunUrl;
-            if (url == null)
-            {
-                Debug.WriteLine("BosunReporter: BosunUrl is null. Dropping data.");
-                return;
-            }
 
             while (queue.PendingPayloadsCount > 0)
             {
@@ -785,7 +834,7 @@ namespace BosunReporter
                 info.Exception = ex;
                 queue.AddPendingPayload(payload);
                 queue.SuspendFlushingUntil = DateTime.UtcNow.AddSeconds(10); // back off for 10 seconds after a failed request
-                PossiblyLogException(ex);
+                SendExceptionToHandler(ex);
                 return false;
             }
             finally
@@ -869,6 +918,10 @@ namespace BosunReporter
         {
             lock (_metricsLock)
             {
+                // We don't want to send metadata more frequently than the snapshot interval, so this is a good place to flip to the ready-to-send state.
+                if (_hasNewMetadata || DateTime.UtcNow - _lastMetadataFlushTime >= TimeSpan.FromDays(1))
+                    _readyToFlushMetadata = true;
+
                 var timestamp = DateTime.UtcNow;
                 if (_metricsNeedingPreSerialize.Count > 0)
                 {
@@ -908,42 +961,7 @@ namespace BosunReporter
             }
         }
 
-        void PostMetadataFromTimer(object _)
-        {
-            if (ShutdownCalled) // don't report any more meta data if we're shutting down
-                return;
-
-            var url = BosunUrl;
-            if (url == null)
-            {
-                Debug.WriteLine("BosunReporter: BosunUrl is null. Not sending metadata.");
-                return;
-            }
-
-            try
-            {
-                PostMetadataInternal(url);
-            }
-            catch (Exception ex)
-            {
-                PossiblyLogException(ex);
-            }
-        }
-
-        /// <summary>
-        /// Posts metadata to the Bosun relay endpoint. Returns the JSON which was sent to Bosun. This method typically doesn't need to be called directly.
-        /// Metadata is regularly posted on a schedule determined by <see cref="BosunOptions"/> when initializing the <see cref="MetricsCollector"/>.
-        /// </summary>
-        public string PostMetadata()
-        {
-            var url = BosunUrl;
-            if (url == null)
-                throw new Exception("Cannot send metadata. BosunUrl is null");
-
-            return PostMetadataInternal(url);
-        }
-
-        string PostMetadataInternal(Uri bosunUrl)
+        void PostMetadata(Uri bosunUrl)
         {
             Debug.WriteLine("BosunReporter: Gathering metadata.");
             var metaJson = GatherMetaData();
@@ -956,7 +974,8 @@ namespace BosunReporter
                 }
             });
 
-            return metaJson;
+            _lastMetadataFlushTime = DateTime.UtcNow;
+            _readyToFlushMetadata = false;
         }
 
         string GatherMetaData()
@@ -988,6 +1007,8 @@ namespace BosunReporter
                         json.Append("}\n");
                     }
                 }
+
+                _hasNewMetadata = false;
             }
 
             if (json.Length == 0)
@@ -1001,12 +1022,12 @@ namespace BosunReporter
 
         void OnPayloadDropped(BosunQueueFullException ex)
         {
-            PossiblyLogException(ex);
+            SendExceptionToHandler(ex);
         }
 
-        void PossiblyLogException(Exception ex)
+        void SendExceptionToHandler(Exception ex)
         {
-            if (!ShouldThrowException(ex))
+            if (!ShouldSendException(ex))
                 return;
 
             try
@@ -1016,10 +1037,9 @@ namespace BosunReporter
             catch (Exception) { } // there's nothing else we can do if the user-supplied exception handler itself throws an exception
         }
 
-        bool ShouldThrowException(Exception ex)
+        bool ShouldSendException(Exception ex)
         {
-            var post = ex as BosunPostException;
-            if (post != null)
+            if (ex is BosunPostException post)
             {
                 if (ThrowOnPostFail)
                     return true;

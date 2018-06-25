@@ -30,7 +30,7 @@ namespace Scratch
                 MetricsNamePrefix = "bret.",
                 GetBosunUrl = getUrl,
                 ThrowOnPostFail = true,
-                ReportingInterval = TimeSpan.FromSeconds(5),
+                SnapshotInterval = TimeSpan.FromSeconds(5),
                 PropertyToTagName = NameTransformers.CamelToLowerSnakeCase,
                 TagValueConverter = (name, value) => name == "converted" ? value.ToLowerInvariant() : value,
                 DefaultTags = new Dictionary<string, string> { {"host", NameTransformers.Sanitize(Environment.MachineName.ToLower())} }

@@ -47,16 +47,7 @@ namespace BosunReporter
         /// <summary>
         /// The length of time between metric reports (snapshots). Defaults to 30 seconds.
         /// </summary>
-        public TimeSpan ReportingInterval { get; set; } = TimeSpan.FromSeconds(30);
-        /// <summary>
-        /// The length of time after initializing a <see cref="MetricsCollector"/> when metadata will be posted for the first time. This delay allows for most
-        /// metrics to be created before posting metadata. Defaults to 30 seconds.
-        /// </summary>
-        public TimeSpan MetadataReportingDelay { get; set; } = TimeSpan.FromSeconds(30);
-        /// <summary>
-        /// How often to report metadata to Bosun. Defaults to once per hour. Use TimeSpan.Zero to disable metadata reporting.
-        /// </summary>
-        public TimeSpan MetadataReportingInterval { get; set; } = TimeSpan.FromHours(1);
+        public TimeSpan SnapshotInterval { get; set; } = TimeSpan.FromSeconds(30);
         /// <summary>
         /// Allows you to specify a function which takes a property name and returns a tag name. This may be useful if you want to convert PropertyName to
         /// property_name or similar transformations. This function does not apply to any tag names which are set manually via the BosunTag attribute.
