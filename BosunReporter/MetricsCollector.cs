@@ -699,7 +699,7 @@ namespace BosunReporter
                 if (BeforeSerialization != null && BeforeSerialization.GetInvocationList().Length != 0)
                     BeforeSerialization();
 
-                var sw = new StopwatchStruct();
+                var sw = new Stopwatch();
                 sw.Start();
                 SerializeMetrics(out var metricsCount, out var bytesWritten);
                 sw.Stop();
@@ -708,7 +708,7 @@ namespace BosunReporter
                 {
                     Count = metricsCount,
                     BytesWritten = bytesWritten,
-                    MillisecondsDuration = sw.GetElapsedMilliseconds(),
+                    Duration = sw.Elapsed,
                 };
 
                 AfterSerialization?.Invoke(info);
@@ -806,7 +806,7 @@ namespace BosunReporter
             Debug.WriteLine($"BosunReporter: Flushing metrics batch. {metricsCount} metrics. {bytes} bytes.");
 
             var info = new AfterPostInfo();
-            var timer = new StopwatchStruct();
+            var timer = new Stopwatch();
             try
             {
                 timer.Start();
@@ -835,7 +835,7 @@ namespace BosunReporter
                 // don't use the payload variable in this block - it may have been released back to the pool by now
                 info.Count = metricsCount;
                 info.BytesWritten = bytes;
-                info.MillisecondsDuration = timer.GetElapsedMilliseconds();
+                info.Duration = timer.Elapsed;
 
                 // Use BeginInvoke here to invoke the event listeners asynchronously.
                 // We're inside a lock, so calling the listeners synchronously would put us at risk of a deadlock.
@@ -1067,9 +1067,9 @@ namespace BosunReporter
         /// </summary>
         public int BytesWritten { get; internal set; }
         /// <summary>
-        /// The duration of the serialization pass, in milliseconds.
+        /// The duration of the serialization pass.
         /// </summary>
-        public double MillisecondsDuration { get; internal set; }
+        public TimeSpan Duration { get; internal set; }
         /// <summary>
         /// The time serialization started.
         /// </summary>
@@ -1095,9 +1095,9 @@ namespace BosunReporter
         /// </summary>
         public int BytesWritten { get; internal set; }
         /// <summary>
-        /// The duration of the POST, in milliseconds.
+        /// The duration of the POST.
         /// </summary>
-        public double MillisecondsDuration { get; internal set; }
+        public TimeSpan Duration { get; internal set; }
         /// <summary>
         /// True if the POST was successful. If false, <see cref="Exception"/> will be non-null.
         /// </summary>

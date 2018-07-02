@@ -43,8 +43,8 @@ namespace Scratch
             var collector = new MetricsCollector(options);
 
             collector.BeforeSerialization += () => Console.WriteLine("BosunReporter: Running metrics snapshot.");
-            collector.AfterSerialization += info => Console.WriteLine($"BosunReporter: Metric Snapshot took {info.MillisecondsDuration.ToString("0.##")}ms");
-            collector.AfterPost += info => Console.WriteLine($"BosunReporter: {info.Count} metrics posted to Bosun in {info.MillisecondsDuration.ToString("0.##")}ms ({(info.Successful ? "SUCCESS" : "FAILED")})");
+            collector.AfterSerialization += info => Console.WriteLine($"BosunReporter: Metric Snapshot took {info.Duration.TotalMilliseconds.ToString("0.##")}ms");
+            collector.AfterPost += info => Console.WriteLine($"BosunReporter: {info.Count} metrics posted to Bosun in {info.Duration.TotalMilliseconds.ToString("0.##")}ms ({(info.Successful ? "SUCCESS" : "FAILED")})");
 
             collector.BindMetric("my_counter", "increments", typeof(TestCounter));
             var counter = collector.GetMetric<TestCounter>("my_counter", "increments", "This is meaningless.");
