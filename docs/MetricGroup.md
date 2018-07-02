@@ -111,4 +111,6 @@ Since it's very common to want one metric per enum value, there is a helper meth
 requestCounter.PopulateFromEnum();
 ```
 
+> PopulateFromEnum has an optional `includeObsolete` parameter (defaults to true) which controls whether enum values marked with the `[Obsolete]` attribute are included when populating the metric group.
+
 However, this helper method is only available when there is only one input type parameter, and that type parameter is an enum type. For example, you could use `PopulateFromEnum` on a group with the type signature `MetricGroup<SomeEnum, SomeMetric>`, but not on `MetricGroup<SomeEnum, int, SomeMetric>` because it has more than one input type parameter (`SomeEnum` and `int`).

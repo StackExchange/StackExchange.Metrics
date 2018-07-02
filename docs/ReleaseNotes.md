@@ -2,16 +2,26 @@
 
 ## 4.0.0
 
+Released for .NET Standard 2.0, and .NET Framework 4.5.
+
 #### Exception Handling
 
 Many BosunReporter tasks run on background threads, where an uncaught exception will crash the process. BosunReporter previously allowed you to subscribe to an "OnBackgroundException" event to handle exceptions, but if you didn't, exceptions would be thrown and take down your process.
 
-The exception handler is now required. Instead of an event, it's an `Action<Exception>` parameter on the MetricsCollector.
+The exception handler is now required. Instead of an event, it's an `Action<Exception>` parameter on the BosunOptions constructor. If null, an exception is thrown.
 
 ```csharp
-var options = new BosunOptions { ... };
-var collector = new MetricsCollector(options, ex => LogException(ex));
+var options = new BosunOptions(ex => LogException(ex)) { ... };
+var collector = new MetricsCollector(options);
 ```
+
+#### Snapshot Schedule
+
+`BosunOptions.ReportingInterval` was renamed to `SnapshotInterval` to better reflect what it does (it controls how frequently metrics are snapshotted - which isn't necessarily when they are reported to Bosun). Its type was also changed from `int` (seconds) to `TimeSpan`.
+
+#### Metadata Schedule
+
+`BosunOptions.MetaDataReportingInterval` was removed. Metadata is now generated and sent to Bosun anytime new metrics have been created since the last snapshot. Metadata is also regenerated and sent approximately every 24 hours when no new metrics are being created. Metadata is sent during shutdown, if new metrics were created since the last snapshot.
 
 #### Minor Changes
 
@@ -25,11 +35,21 @@ var collector = new MetricsCollector(options, ex => LogException(ex));
     -   The `Func<T>` argument is always required
     -   The `Func<T>` field is now private
     -   `GetValue` is now public
+-   [Counter](https://github.com/bretcope/BosunReporter.NET/blob/master/docs/MetricTypes.md#counter):
+    -   `Value` is now a read-only property instead of a field. Inheriting classes can still write to the protected `_value` field, if necessary.
 -   Removed all metric interfaces (IDoubleGauge, ILongGauge, IIntGauge, IDoubleCounter, ILongCounter, IIntCounter). They really weren't all that useful. You should generally know what you're recording on explicitly. Using an interface probably represents an anti-pattern. If you really need an interface, you can define your own interface and metric types which implement them.
+-   Removed `MetricsCollector.BosunUrl` and `GetBosunUrl` properties. They were confusing since it wasn't obvious what the source of truth was. Use the `TryGetBosunUrl` and `SetBosunUrl` methods if you need to get or update the Bosun endpoint URL after the MetricsCollector is created.
+-   `AfterSerializationInfo` and `AfterPostInfo`:
+    - `MillisecondsDuration` properties were changed to `Duration` of type `TimeSpan`.
+    - Constructors are internal. They were never intended to be instantiated outside of BosunReporter.
+    - Removed `MetricsCollector.LastPostInfo` and `LastSerializationInfo` properties. Use `AfterPost` and `AfterSerialization` events instead.
 -   `BosunPostException.StatusCode` is now nullable, since not all POST errors will have an HTTP status code returned.
--   Removed the [Jil](https://github.com/kevin-montrose/Jil) dependency. BosunReporter now only depends on the Framework (we should eventually migrate to .NET Standard).
--   Added XML documentation for all public types and methods
--   Fix double formatting in certain cultures.
+-   Removed the [Jil](https://github.com/kevin-montrose/Jil) dependency (there are no other NuGet dependencies).
+-   Added XML documentation for all public types and methods.
+-   Fix floating-point formatting in certain cultures.
+-   Turned all BosunOptions fields into properties.
+-   Fixed `MetricsCollector.TotalMetricsPosted` property.
+-   Wait 10 seconds to retry failed POSTs, instead of 5 seconds. This may eventually be configurable or use a more sophisticated back-off.
 
 ---
 
