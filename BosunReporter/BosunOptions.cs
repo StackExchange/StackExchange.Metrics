@@ -85,7 +85,8 @@ namespace BosunReporter
         public Func<string> GetAccessToken { get; set; }
 
         /// <summary>
-        /// Defines initialization options for <see cref="MetricsCollector"/>. The only required option is the exception handler.
+        /// Defines initialization options for <see cref="MetricsCollector"/>. An exception handler is required. All other options are optional. However,
+        /// BosunReporter will never send metrics unless <see cref="BosunUrl"/> or <see cref="GetBosunUrl"/> is set.
         /// </summary>
         /// <param name="exceptionHandler">Exceptions which occur on a background thread within BosunReporter will be passed to this delegate.</param>
         public BosunOptions(Action<Exception> exceptionHandler)
