@@ -124,11 +124,6 @@ namespace BosunReporter
         public int PostFailCount { get; private set; }
 
         /// <summary>
-        /// Information about the last time that metrics were serialized (in preparation for posting to the Bosun API).
-        /// </summary>
-        public AfterSerializationInfo LastSerializationInfo { get; private set; }
-
-        /// <summary>
         /// The last time metadata was sent to Bosun, or null if metadata has not been sent yet.
         /// </summary>
         public DateTime? LastMetadataFlushTime => _lastMetadataFlushTime == DateTime.MinValue ? (DateTime?)null : _lastMetadataFlushTime;
@@ -716,7 +711,6 @@ namespace BosunReporter
                     MillisecondsDuration = sw.GetElapsedMilliseconds(),
                 };
 
-                LastSerializationInfo = info;
                 AfterSerialization?.Invoke(info);
             }
             catch (Exception ex)
