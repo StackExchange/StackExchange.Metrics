@@ -6,7 +6,7 @@
 
   <PropertyGroup Label="Package">
     <PackageId>BosunReporter</PackageId>
-    <Version>4.0.0-alpha</Version>
+    <Version>4.0.0</Version>
     <Authors>Bret Copeland</Authors>
     <Description>A thread-safe C# .NET client for reporting metrics to Bosun (Time Series Alerting Framework).</Description>
     <PackageProjectUrl>https://github.com/bretcope/BosunReporter.NET</PackageProjectUrl>
