@@ -14,6 +14,10 @@ namespace BosunReporter
     public class BosunOptions
     {
         /// <summary>
+        /// Exceptions which occur on a background thread within BosunReporter will be passed to this delegate.
+        /// </summary>
+        public Action<Exception> ExceptionHandler { get; }
+        /// <summary>
         /// If provided, all metric names will be prefixed with this value. This gives you the ability to keyspace your application. For example, you might
         /// want to use something like "app1.".
         /// </summary>
@@ -79,5 +83,14 @@ namespace BosunReporter
         /// <see cref="AccessToken"/> option. If this function returns empty or null, the X-Access-Token header will be omitted.
         /// </summary>
         public Func<string> GetAccessToken { get; set; }
+
+        /// <summary>
+        /// Defines initialization options for <see cref="MetricsCollector"/>. The only required option is the exception handler.
+        /// </summary>
+        /// <param name="exceptionHandler">Exceptions which occur on a background thread within BosunReporter will be passed to this delegate.</param>
+        public BosunOptions(Action<Exception> exceptionHandler)
+        {
+            ExceptionHandler = exceptionHandler ?? throw new ArgumentNullException(nameof(exceptionHandler));
+        }
     }
 }

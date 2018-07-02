@@ -203,10 +203,9 @@ namespace BosunReporter
         /// application. It will manage the serialization of metrics and sending data to Bosun.
         /// </summary>
         /// <param name="options"></param>
-        /// <param name="exceptionHandler"></param>
-        public MetricsCollector(BosunOptions options, Action<Exception> exceptionHandler)
+        public MetricsCollector(BosunOptions options)
         {
-            ExceptionHandler = exceptionHandler ?? throw new ArgumentNullException(nameof(exceptionHandler));
+            ExceptionHandler = options.ExceptionHandler;
 
             if (options.SnapshotInterval < TimeSpan.FromSeconds(1))
                 throw new InvalidOperationException("options.SnapshotInterval cannot be less than one second");

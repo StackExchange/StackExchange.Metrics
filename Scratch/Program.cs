@@ -25,7 +25,11 @@ namespace Scratch
             // for testing minimum event threshold
 //            AggregateGauge.GetDefaultMinimumEvents = () => 1306000;
 
-            var options = new BosunOptions()
+            var options = new BosunOptions(exception =>
+            {
+                Console.WriteLine("Hey, there was an exception.");
+                Console.WriteLine(exception);
+            })
             {
                 MetricsNamePrefix = "bret.",
                 GetBosunUrl = getUrl,
@@ -36,12 +40,7 @@ namespace Scratch
                 DefaultTags = new Dictionary<string, string> { {"host", NameTransformers.Sanitize(Environment.MachineName.ToLower())} }
             };
 
-
-            var collector = new MetricsCollector(options, exception =>
-            {
-                Console.WriteLine("Hey, there was an exception.");
-                Console.WriteLine(exception);
-            });
+            var collector = new MetricsCollector(options);
 
             collector.BeforeSerialization += () => Console.WriteLine("BosunReporter: Running metrics snapshot.");
             collector.AfterSerialization += info => Console.WriteLine($"BosunReporter: Metric Snapshot took {info.MillisecondsDuration.ToString("0.##")}ms");
