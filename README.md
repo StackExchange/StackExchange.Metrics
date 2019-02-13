@@ -15,7 +15,7 @@ First, create a `MetricsCollector` object. This is the top-level container which
 var collector = new MetricsCollector(new BosunOptions(ex => HandleException(ex))
 {
 	MetricsNamePrefix = "app_name.",
-	BosunUrl = "http://bosun.mydomain.com:8070",
+	BosunUrl = new Uri("http://bosun.mydomain.com:8070"),
 	PropertyToTagName = NameTransformers.CamelToLowerSnakeCase,
 	DefaultTags = new Dictionary<string, string> 
 		{ {"host", NameTransformers.Sanitize(Environment.MachineName.ToLower())} }
