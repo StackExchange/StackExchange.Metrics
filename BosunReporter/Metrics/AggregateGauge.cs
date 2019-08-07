@@ -53,7 +53,7 @@ namespace BosunReporter.Metrics
         /// <summary>
         /// The type of metric (gauge, in this case).
         /// </summary>
-        public override string MetricType => "gauge";
+        public override MetricType MetricType => MetricType.Gauge;
 
         /// <summary>
         /// Determines the minimum number of events which need to be recorded in any given reporting interval
@@ -186,7 +186,7 @@ namespace BosunReporter.Metrics
         /// <summary>
         /// See <see cref="BosunMetric.Serialize"/>
         /// </summary>
-        protected override void Serialize(MetricWriter writer, DateTime now)
+        protected override void Serialize(IMetricBatch writer, DateTime now)
         {
             var mode = _snapshotReportingMode;
             if (mode == SnapshotReportingMode.None)

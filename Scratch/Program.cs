@@ -1,38 +1,45 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Net;
+using System.Net.Http;
 using System.Threading;
+using System.Threading.Tasks;
 using BosunReporter;
+using BosunReporter.Handlers;
+using BosunReporter.Infrastructure;
 using BosunReporter.Metrics;
 
 namespace Scratch
 {
     class Program
     {
-        static Timer s_samplerTimer;
+        static Task s_samplerTask;
+        static CancellationTokenSource s_cancellationTokenSource;
 
-        static void Main(string[] args)
+        static async Task Main(string[] args)
         {
-            Debug.Listeners.Add(new TextWriterTraceListener(Console.Out));
             Debug.AutoFlush = true;
 
-            Func<Uri> getUrl = () =>
-            {
-                return new Uri("http://192.168.99.100:8070/");
-//                return new Uri("http://127.0.0.1:1337/");
-            };
+            const string LocalEndpointKey = "Local";
 
-            // for testing minimum event threshold
-//            AggregateGauge.GetDefaultMinimumEvents = () => 1306000;
-
+            var localHandler = new LocalMetricHandler();
             var options = new BosunOptions(exception =>
             {
                 Console.WriteLine("Hey, there was an exception.");
                 Console.WriteLine(exception);
             })
             {
-                MetricsNamePrefix = "bret.",
-                GetBosunUrl = getUrl,
+                Endpoints = new[] {
+                    //new MetricEndpoint("DataDog Cloud", new DataDogMetricHandler("https://api.datadoghq.com/", "{API_KEY}", "{APP_KEY}")),
+                    //new MetricEndpoint("Bosun", new BosunMetricHandler("http://devbosun.ds.stackexchange.com/")),
+                    //new MetricEndpoint("Test", new TestMetricsHandler("http://127.0.0.1/")),
+                    //new MetricEndpoint("DataDog Agent", new DataDogStatsdMetricHandler("dogstatsd.datadog.svc.ny-intkube.k8s", 8125)),
+                    //new MetricEndpoint("SignalFx Cloud", new SignalFxMetricHandler("https://ingest.us1.signalfx.com/", "{API_KEY}")),
+                    new MetricEndpoint("SignalFx Agent", new SignalFxMetricHandler("http://sfxgateway.signalfx.svc.ny-intkube.k8s:18080")),
+                    //new MetricEndpoint(LocalEndpointKey, localHandler)
+                },
+                MetricsNamePrefix = "scratch3.",
                 ThrowOnPostFail = true,
                 SnapshotInterval = TimeSpan.FromSeconds(5),
                 PropertyToTagName = NameTransformers.CamelToLowerSnakeCase,
@@ -44,7 +51,17 @@ namespace Scratch
 
             collector.BeforeSerialization += () => Console.WriteLine("BosunReporter: Running metrics snapshot.");
             collector.AfterSerialization += info => Console.WriteLine($"BosunReporter: Metric Snapshot took {info.Duration.TotalMilliseconds.ToString("0.##")}ms");
-            collector.AfterPost += info => Console.WriteLine($"BosunReporter: {info.Count} metrics posted to Bosun in {info.Duration.TotalMilliseconds.ToString("0.##")}ms ({(info.Successful ? "SUCCESS" : "FAILED")})");
+            collector.AfterSend += info =>
+            {
+                if (info.Endpoint == LocalEndpointKey)
+                {
+                    foreach (var reading in localHandler.GetReadings())
+                    {
+                        Console.WriteLine($"{reading.Name}{reading.Suffix}@{reading.Timestamp:s} {reading.Value}");
+                    }
+                }
+                Console.WriteLine($"BosunReporter: {info.BytesWritten} bytes posted to endpoint {info.Endpoint} in {info.Duration.TotalMilliseconds.ToString("0.##")}ms ({(info.Successful ? "SUCCESS" : "FAILED")})");
+            };
 
             collector.BindMetric("my_counter", "increments", typeof(TestCounter));
             var counter = collector.GetMetric<TestCounter>("my_counter", "increments", "This is meaningless.");
@@ -107,10 +124,16 @@ namespace Scratch
 
             var sai = 0;
             var random = new Random();
-            s_samplerTimer = new Timer(o =>
+
+            s_cancellationTokenSource = new CancellationTokenSource();
+            s_samplerTask = Task.Run(async () =>
+            {
+                while (true)
                 {
-                    sampler.Record(++sai%35);
-                    eventGauge.Record(sai%35);
+                    await Task.Delay(1000);
+
+                    sampler.Record(++sai % 35);
+                    eventGauge.Record(sai % 35);
                     group["low"].Record(random.Next(0, 10));
                     group["medium"].Record(random.Next(10, 20));
                     group["high"].Record(random.Next(20, 30));
@@ -128,23 +151,25 @@ namespace Scratch
                     if (sai % 4 == 0)
                         externalCounter[SomeEnum.Four].Increment();
 
-//                    externalNoTags.Increment();
+                    //                    externalNoTags.Increment();
 
                     converted.Increment();
                     noHost.Increment();
 
-                    if (sai == 40)
+                    if (sai == 100 || s_cancellationTokenSource.IsCancellationRequested)
                     {
-                        collector.Shutdown();
-                        Environment.Exit(0);
+                        await collector.ShutdownAsync();
+                        break;
                     }
+                }
+            });
 
-                }, null, 1000, 1000);
+            Console.CancelKeyPress += (object sender, ConsoleCancelEventArgs e) =>
+            {
+                s_cancellationTokenSource.Cancel();
+            };
 
-            Thread.Sleep(4000);
-            collector.UpdateDefaultTags(new Dictionary<string, string> { { "host", NameTransformers.Sanitize(Environment.MachineName.ToLower()) } });
-//            Thread.Sleep(4000);
-//            collector.UpdateDefaultTags(new Dictionary<string, string>() { { "host", "test_env" } });
+            await s_samplerTask;
         }
 
         static void Run(object obj)
@@ -168,6 +193,29 @@ namespace Scratch
                 Thread.Sleep(1);
             }
         }
+    }
+
+
+    class TestHttpHandler : HttpMessageHandler
+    {
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            var json = await request.Content.ReadAsStringAsync();
+            Console.WriteLine($"Sending metrics to {request.RequestUri}. JSON = {json}");
+            return new HttpResponseMessage
+            {
+                StatusCode = HttpStatusCode.OK
+            };
+        }
+    }
+
+    class TestMetricsHandler : BosunMetricHandler
+    {
+        public TestMetricsHandler(string url) : base(url)
+        {
+        }
+
+        protected override HttpClient CreateHttpClient() => new HttpClient(new TestHttpHandler());
     }
 
     [GaugeAggregator(AggregateMode.Count)]

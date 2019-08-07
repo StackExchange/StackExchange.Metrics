@@ -37,19 +37,13 @@ namespace BosunReporter
         /// The number of data points which were lost.
         /// </summary>
         public int MetricsCount { get; }
-        /// <summary>
-        /// The number of bytes in the dropped payload.
-        /// </summary>
-        public int Bytes { get; }
 
-        internal BosunQueueFullException(QueueType queueType, int metricsCount, int bytes)
-            : base($"Bosun {queueType} metric queue is full. Metric data is likely being lost due to repeated failures in posting to the Bosun API.")
+        internal BosunQueueFullException(PayloadType payloadType, int metricsCount)
+            : base($"{payloadType} metric queue is full. Metric data is likely being lost due to repeated failures in posting to the endpoint API.")
         {
             MetricsCount = metricsCount;
-            Bytes = bytes;
 
             Data["MetricsCount"] = metricsCount;
-            Data["Bytes"] = bytes;
         }
     }
 }

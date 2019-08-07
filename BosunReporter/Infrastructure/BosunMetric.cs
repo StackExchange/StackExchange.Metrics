@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
@@ -18,7 +19,6 @@ namespace BosunReporter.Infrastructure
         struct MetricTypeInfo
         {
             public bool NeedsPreSerialize;
-            public bool IsExternalCounter;
         }
 
         static readonly Dictionary<Type, MetricTypeInfo> s_typeInfoCache = new Dictionary<Type, MetricTypeInfo>();
@@ -26,9 +26,9 @@ namespace BosunReporter.Infrastructure
         static readonly string[] s_singleEmptyStringArray = {""};
 
         /// <summary>
-        /// The type of metric. Must be one of "counter", "gauge", or "rate".
+        /// <see cref="MetricType" /> value indicating the type of metric.
         /// </summary>
-        public abstract string MetricType { get; }
+        public abstract MetricType MetricType { get; }
         /// <summary>
         /// The collector that this metric is attached to. A metric must be attached to a collector in order to be recorded on.
         /// </summary>
@@ -48,8 +48,8 @@ namespace BosunReporter.Infrastructure
         internal string[] SuffixesArray { get; private set; }
         internal int SuffixCount => SuffixesArray.Length;
 
-        string _tagsJson;
-        internal string TagsJson => _tagsJson ?? (_tagsJson = GetTagsJson(Collector.DefaultTags, Collector.TagValueConverter, Collector.TagsByTypeCache));
+        IReadOnlyDictionary<string, string> _tags;
+        internal IReadOnlyDictionary<string, string> Tags => _tags ?? (_tags = GetTags(Collector.DefaultTags, Collector.TagValueConverter, Collector.TagsByTypeCache));
 
         string _name;
         readonly object _nameLock = new object();
@@ -88,7 +88,7 @@ namespace BosunReporter.Infrastructure
         /// If true, the metric's value will be immediately serialized after initialization. This is useful for counters where you want a zero value to be
         /// recorded in Bosun every time the app restarts.
         /// </summary>
-        public virtual bool SerializeInitialValue => MetricType == "counter";
+        public virtual bool SerializeInitialValue => MetricType == MetricType.Counter || MetricType == MetricType.CumulativeCounter;
 
         /// <summary>
         /// Instantiates the base class.
@@ -97,15 +97,9 @@ namespace BosunReporter.Infrastructure
         {
         }
 
-        internal MetricKey GetMetricKey(string tagsJson = null)
+        internal MetricKey GetMetricKey(IReadOnlyDictionary<string, string> tags = null)
         {
-            return new MetricKey(_name, tagsJson ?? TagsJson);
-        }
-
-        // this method is only used when default tags are updated
-        internal void SwapTagsJson(string tagsJson)
-        {
-            _tagsJson = tagsJson;
+            return new MetricKey(_name, tags ?? Tags);
         }
 
         /// <summary>
@@ -133,15 +127,15 @@ namespace BosunReporter.Infrastructure
             {
                 var fullName = Name + SuffixesArray[i];
 
-                yield return new MetaData(fullName, "rate", null, MetricType);
+                yield return new MetaData(fullName, MetadataNames.Rate, null, MetricType.ToString());
 
                 var desc = GetDescription(i);
                 if (!string.IsNullOrEmpty(desc))
-                    yield return new MetaData(fullName, "desc", TagsJson, desc);
+                    yield return new MetaData(fullName, MetadataNames.Description, Tags, desc);
 
                 var unit = GetUnit(i);
                 if (!string.IsNullOrEmpty(unit))
-                    yield return new MetaData(fullName, "unit", null, unit);
+                    yield return new MetaData(fullName, MetadataNames.Unit, null, unit);
             }
         }
 
@@ -155,10 +149,7 @@ namespace BosunReporter.Infrastructure
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal void SerializeInternal(MetricWriter writer, DateTime now)
-        {
-            Serialize(writer, now);
-        }
+        internal void SerializeInternal(IMetricBatch writer, DateTime now) => Serialize(writer, now);
 
         /// <summary>
         /// Called when metrics should be serialized to a payload. You must call <see cref="WriteValue"/> in order for anything to be serialized.
@@ -171,16 +162,11 @@ namespace BosunReporter.Infrastructure
         /// in an asynchronous manner. It is only guaranteed to be in a valid state for the duration of this method call.
         /// </param>
         /// <param name="now">The timestamp when serialization of all metrics started.</param>
-        protected abstract void Serialize(MetricWriter writer, DateTime now);
+        protected abstract void Serialize(IMetricBatch writer, DateTime now);
 
         internal bool NeedsPreSerializeCalled()
         {
             return GetMetricTypeInfo().NeedsPreSerialize;
-        }
-
-        internal bool IsExternalCounter()
-        {
-            return GetMetricTypeInfo().IsExternalCounter;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -215,7 +201,7 @@ namespace BosunReporter.Infrastructure
                 try
                 {
                     ex.Data["Metric"] = Name;
-                    ex.Data["Tags"] = TagsJson;
+                    ex.Data["Tags"] = string.Join(",", Tags);
                 }
                 finally
                 {
@@ -228,17 +214,19 @@ namespace BosunReporter.Infrastructure
         /// This method serializes a time series record/value. This method must only be called from within <see cref="Serialize"/>.
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        protected void WriteValue(MetricWriter writer, double value, DateTime now, int suffixIndex = 0)
+        protected void WriteValue(IMetricBatch writer, double value, DateTime now, int suffixIndex = 0)
         {
-            writer.AddMetric(Name, SuffixesArray[suffixIndex], value, TagsJson, now);
+            writer.SerializeMetric(
+                new MetricReading(Name, MetricType, SuffixesArray[suffixIndex], value, Tags, now)
+            );
         }
 
-        internal string GetTagsJson(
+        internal IReadOnlyDictionary<string, string> GetTags(
             ReadOnlyDictionary<string, string> defaultTags,
             TagValueConverterDelegate tagValueConverter,
             Dictionary<Type, List<BosunTag>> tagsByTypeCache)
         {
-            var sb = new StringBuilder();
+            var tags = new Dictionary<string, string>();
             foreach (var tag in GetTagsList(defaultTags, tagsByTypeCache))
             {
                 var value = tag.IsFromDefault ? defaultTags[tag.Name] : tag.FieldInfo.GetValue(this)?.ToString();
@@ -260,27 +248,16 @@ namespace BosunReporter.Infrastructure
                         $"Only characters in the regex class [a-zA-Z0-9\\-_./] are allowed.");
                 }
 
-                // everything is already validated, so we can skip a more formal JSON parser which would handle escaping
-                sb.Append(",\"" + tag.Name + "\":\"" + value + "\"");
+                tags.Add(tag.Name, value);
             }
 
-            if (sb.Length == 0)
+            if (tags.Count == 0)
             {
-                if (!IsExternalCounter())
-                {
-                    throw new InvalidOperationException(
-                        $"At least one tag value must be specified for every metric. {GetType().FullName} was instantiated without any tag values.");
-                }
-
-                sb.Append('{');
-            }
-            else
-            {
-                sb[0] = '{'; // replaces the first comma
+                throw new InvalidOperationException(
+                    $"At least one tag value must be specified for every metric. {GetType().FullName} was instantiated without any tag values.");
             }
 
-            sb.Append('}');
-            return sb.ToString();
+            return tags;
         }
 
         List<BosunTag> GetTagsList(ReadOnlyDictionary<string, string> defaultTags, Dictionary<Type, List<BosunTag>> tagsByTypeCache)
@@ -324,11 +301,11 @@ namespace BosunReporter.Infrastructure
                 }
             }
 
-            if (tags.Count == 0 && !IsExternalCounter())
+            if (tags.Count == 0)
                 throw new TypeInitializationException(type.FullName, new Exception("Type does not contain any Bosun tags. Metrics must have at least one tag to be serializable."));
 
             tags.Sort((a, b) => string.CompareOrdinal(a.Name, b.Name));
-            Collector.TagsByTypeCache[type] = tags;
+            tagsByTypeCache[type] = tags;
             return tags;
         }
 
@@ -411,12 +388,10 @@ namespace BosunReporter.Infrastructure
                     return info;
 
                 var needsPreSerialize = type.GetMethod(nameof(PreSerialize), BindingFlags.Instance | BindingFlags.NonPublic).DeclaringType != typeof(BosunMetric);
-                var isExternalCounter = typeof(ExternalCounter).IsAssignableFrom(type);
 
                 info = s_typeInfoCache[type] = new MetricTypeInfo
                 {
                     NeedsPreSerialize = needsPreSerialize,
-                    IsExternalCounter = isExternalCounter,
                 };
 
                 return info;

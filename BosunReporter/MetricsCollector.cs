@@ -2,12 +2,8 @@
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
-using System.IO;
-using System.IO.Compression;
 using System.Linq;
-using System.Net;
 using System.Reflection;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using BosunReporter.Infrastructure;
@@ -25,24 +21,19 @@ namespace BosunReporter
             public string Unit { get; set; }
         }
 
-        static readonly DateTime s_unixEpoch = new DateTime(1970, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc);
-
         static readonly MetricKeyComparer s_metricKeyComparer = new MetricKeyComparer();
-
-        Uri _fixedUrl;
-        Func<Uri> _getUrlDynamic;
 
         readonly object _metricsLock = new object();
         // all of the first-class names which have been claimed (excluding suffixes in aggregate gauges)
         readonly Dictionary<string, RootMetricInfo> _rootNameToInfo = new Dictionary<string, RootMetricInfo>();
+        readonly MetricEndpoint[] _endpoints;
         // this dictionary is to avoid duplicate metrics
         Dictionary<MetricKey, BosunMetric> _rootNameAndTagsToMetric = new Dictionary<MetricKey, BosunMetric>(s_metricKeyComparer);
 
-        readonly List<BosunMetric> _localMetrics = new List<BosunMetric>();
+        readonly List<BosunMetric> _metrics = new List<BosunMetric>();
         readonly List<BosunMetric> _externalCounterMetrics = new List<BosunMetric>();
 
         bool _hasNewMetadata = false;
-        bool _readyToFlushMetadata = false;
         DateTime _lastMetadataFlushTime = DateTime.MinValue;
 
         readonly List<BosunMetric> _metricsNeedingPreSerialize = new List<BosunMetric>();
@@ -50,17 +41,11 @@ namespace BosunReporter
         // This is to prevent suffix collisions with other metrics.
         readonly Dictionary<string, string> _nameAndSuffixToRootName = new Dictionary<string, string>();
 
-        readonly string _accessToken;
-        readonly Func<string> _getAccessToken;
-
-        readonly object _flushingLock = new object();
-        readonly Timer _flushTimer;
-        readonly Timer _reportingTimer;
-
-        readonly PayloadQueue _localMetricsQueue;
-        readonly PayloadQueue _externalCounterQueue;
-
-        static readonly AsyncCallback s_asyncNoopCallback = AsyncNoopCallback;
+        readonly Task _flushTask;
+        readonly Task _reportingTask;
+        readonly CancellationTokenSource _shutdownTokenSource;
+        readonly TimeSpan _delayBetweenRetries;
+        readonly int _maxRetries;
 
         internal Dictionary<Type, List<BosunTag>> TagsByTypeCache = new Dictionary<Type, List<BosunTag>>();
 
@@ -83,11 +68,6 @@ namespace BosunReporter
         /// </summary>
         public TimeSpan ReportingInterval { get; }
         /// <summary>
-        /// Enables sending metrics to the /api/count route on OpenTSDB relays which support external counters. External counters don't reset when applications
-        /// reload, and are intended for low-volume metrics. For high-volume metrics, use normal counters.
-        /// </summary>
-        public bool EnableExternalCounters { get; set; }
-        /// <summary>
         /// Allows you to specify a function which takes a property name and returns a tag name. This may be useful if you want to convert PropertyName to
         /// property_name or similar transformations. This function does not apply to any tag names which are set manually via the BosunTag attribute.
         /// </summary>
@@ -106,9 +86,9 @@ namespace BosunReporter
         public ReadOnlyDictionary<string, string> DefaultTags { get; private set; }
 
         /// <summary>
-        /// True if <see cref="Shutdown"/> has been called on this collector.
+        /// True if <see cref="ShutdownAsync"/> has been called on this collector.
         /// </summary>
-        public bool ShutdownCalled { get; private set; }
+        public bool ShutdownCalled => _shutdownTokenSource.IsCancellationRequested;
         
         /// <summary>
         /// Total number of data points successfully sent fo Bosun. This includes external counter data points.
@@ -134,46 +114,6 @@ namespace BosunReporter
         public Action<Exception> ExceptionHandler { get; }
 
         /// <summary>
-        /// The number of payloads which can be queued for sending to Bosun. If the queue is full, additional payloads will be dropped. External counters have
-        /// their own dedicated queue of the same size. So, in theory, there could be up to (MaxPendingPayloads * 2) waiting to send.
-        /// </summary>
-        public int MaxPendingPayloads
-        {
-            get { return _localMetricsQueue.MaxPendingPayloads; }
-            set
-            {
-                if (value < 1)
-                    throw new Exception("Cannot set MaxPendingPayloads to less than 1.");
-
-                _localMetricsQueue.MaxPendingPayloads = value;
-                _externalCounterQueue.MaxPendingPayloads = value;
-            }
-        }
-
-        /// <summary>
-        /// The maximum size of a single payload to Bosun. It's best practice to set this to a size which can fit inside a single TCP packet. HTTP Headers
-        /// are not included in this size, so it's best to pick a value a bit smaller than the size of your TCP packets. However, this property cannot be set
-        /// to a size less than 1000.
-        /// </summary>
-        public int MaxPayloadSize
-        {
-            get { return _localMetricsQueue.PayloadSize; }
-            set
-            {
-                if (value < 1000)
-                    throw new Exception("Cannot set a MaxPayloadSize less than 1000 bytes.");
-
-                _localMetricsQueue.PayloadSize = value;
-                _externalCounterQueue.PayloadSize = value;
-            }
-        }
-
-        /// <summary>
-        /// The number of payloads currently queued for sending to Bosun. This includes external counter payloads.
-        /// </summary>
-        public int PendingPayloadCount => _localMetricsQueue.PendingPayloadsCount + _externalCounterQueue.PendingPayloadsCount;
-
-        /// <summary>
         /// An event called immediately before metrics are serialized. If you need to take a pre-serialization action on an individual metric, you should
         /// consider overriding <see cref="BosunMetric.PreSerialize"/> instead, which is called in parallel for all metrics. This event occurs before
         /// PreSerialize is called.
@@ -186,7 +126,7 @@ namespace BosunReporter
         /// <summary>
         /// An event called immediately after metrics are posted to the Bosun API. It includes an argument with information about the POST.
         /// </summary>
-        public event Action<AfterPostInfo> AfterPost;
+        public event Action<AfterSendInfo> AfterSend;
 
         /// <summary>
         /// Enumerable of all metrics managed by this collector.
@@ -205,84 +145,60 @@ namespace BosunReporter
             if (options.SnapshotInterval < TimeSpan.FromSeconds(1))
                 throw new InvalidOperationException("options.SnapshotInterval cannot be less than one second");
 
-            _localMetricsQueue = new PayloadQueue(QueueType.Local);
-            _externalCounterQueue = new PayloadQueue(QueueType.ExternalCounters);
-
-            _localMetricsQueue.PayloadDropped += OnPayloadDropped;
-            _externalCounterQueue.PayloadDropped += OnPayloadDropped;
-
-            // these two setters actually update the queues themselves
-            MaxPayloadSize = options.MaxPayloadSize;
-            MaxPendingPayloads = options.MaxPendingPayloads;
-
             MetricsNamePrefix = options.MetricsNamePrefix ?? "";
             if (MetricsNamePrefix != "" && !BosunValidation.IsValidMetricName(MetricsNamePrefix))
                 throw new Exception("\"" + MetricsNamePrefix + "\" is not a valid metric name prefix.");
 
-            _getUrlDynamic = options.GetBosunUrl;
-            _fixedUrl = options.BosunUrl;
-
-            _accessToken = options.AccessToken;
-            _getAccessToken = options.GetAccessToken;
+            _endpoints = options.Endpoints?.ToArray() ?? Array.Empty<MetricEndpoint>();
 
             ThrowOnPostFail = options.ThrowOnPostFail;
             ThrowOnQueueFull = options.ThrowOnQueueFull;
             ReportingInterval = options.SnapshotInterval;
-            EnableExternalCounters = options.EnableExternalCounters;
             PropertyToTagName = options.PropertyToTagName;
             TagValueConverter = options.TagValueConverter;
             DefaultTags = ValidateDefaultTags(options.DefaultTags);
 
+            _delayBetweenRetries = TimeSpan.FromSeconds(10);
+            _maxRetries = 3;
+            _shutdownTokenSource = new CancellationTokenSource();
+
             // start continuous queue-flushing
-            _flushTimer = new Timer(Flush, true, 1000, 1000);
+            _flushTask = Task.Run(
+                async () =>
+                {
+                    while (!_shutdownTokenSource.IsCancellationRequested)
+                    {
+                        await Task.Delay(1000, _shutdownTokenSource.Token);
+
+                        try
+                        {
+                            await FlushAsync(true);
+                        }
+                        catch (Exception ex)
+                        {
+                            SendExceptionToHandler(ex);
+                        }
+                    }
+                });
 
             // start reporting timer
-            _reportingTimer = new Timer(Snapshot, true, ReportingInterval, ReportingInterval);
-        }
-
-        /// <summary>
-        /// Gets the current Bosun URL (only the domain portion of the Uri is relevant). If this method returns false, then there is no URL set, and data points
-        /// are being discarded instead of sent.
-        /// </summary>
-        public bool TryGetBosunUrl(out Uri url)
-        {
-            var getter = _getUrlDynamic;
-            if (getter != null)
-            {
-                try
+            _reportingTask = Task.Run(
+                async () =>
                 {
-                    url = getter();
-                }
-                catch (Exception ex)
-                {
-                    SendExceptionToHandler(ex);
-                    url = null;
-                    return false;
-                }
-            }
-            else
-            {
-                url = _fixedUrl;
-            }
+                    while (!_shutdownTokenSource.IsCancellationRequested)
+                    {
+                        await Task.Delay(ReportingInterval);
 
-            return url != null;
-        }
-
-        /// <summary>
-        /// Sets the Bosun URL to a fixed URL. This clears any dynamic getter which may exist.
-        /// </summary>
-        public void SetBosunUrl(Uri url)
-        {
-            _getUrlDynamic = null;
-            _fixedUrl = url;
-        }
-
-        /// <summary>
-        /// Sets a getter function which will be called anytime the Bosun URL is needed.
-        /// </summary>
-        public void SetBosunUrl(Func<Uri> getter)
-        {
-            _getUrlDynamic = getter;
+                        try
+                        {
+                            await SnapshotAsync(true);
+                        }
+                        catch (Exception ex)
+                        {
+                            SendExceptionToHandler(ex);
+                        }
+                    }
+                });
         }
 
         /// <summary>
@@ -555,7 +471,7 @@ namespace BosunReporter
                 if (_rootNameAndTagsToMetric.ContainsKey(key))
                 {
                     if (mustBeNew)
-                        throw new Exception($"Attempted to create duplicate metric with name \"{name}\" and tags {metric.TagsJson}.");
+                        throw new Exception($"Attempted to create duplicate metric with name \"{name}\" and tags {string.Join(", ", metric.Tags.Keys)}.");
 
                     return (T) _rootNameAndTagsToMetric[key];
                 }
@@ -569,28 +485,26 @@ namespace BosunReporter
                 if (needsPreSerialize)
                     _metricsNeedingPreSerialize.Add(metric);
 
-                var isExternal = metric.IsExternalCounter();
-                if (isExternal)
-                    _externalCounterMetrics.Add(metric);
-                else
-                    _localMetrics.Add(metric);
+                _metrics.Add(metric);
 
                 if (metric.SerializeInitialValue)
                 {
-                    MetricWriter writer = null;
-                    try
-                    {
-                        var queue = isExternal ? _externalCounterQueue : _localMetricsQueue;
-                        writer = queue.GetWriter();
+                    if (needsPreSerialize)
+                        metric.PreSerializeInternal();
 
-                        if (needsPreSerialize)
-                            metric.PreSerializeInternal();
-
-                        metric.SerializeInternal(writer, DateTime.UtcNow);
-                    }
-                    finally
+                    foreach (var endpoint in _endpoints)
                     {
-                        writer?.EndBatch();
+                        using (var batch = endpoint.Handler.BeginBatch())
+                        {
+                            try
+                            {
+                                metric.SerializeInternal(batch, DateTime.UtcNow);
+                            }
+                            catch (Exception ex)
+                            {
+                                SendExceptionToHandler(ex);
+                            }
+                        }
                     }
                 }
 
@@ -602,319 +516,112 @@ namespace BosunReporter
         /// This method should only be called on application shutdown, and should not be called more than once.
         /// When called, it runs one final metric snapshot and makes a single attempt to flush all metrics in the queue.
         /// </summary>
-        public void Shutdown()
+        public async Task ShutdownAsync()
         {
             Debug.WriteLine("BosunReporter: Shutting down MetricsCollector.");
-            ShutdownCalled = true;
-            _reportingTimer.Dispose();
-            _flushTimer.Dispose();
-            Snapshot(false);
-            Flush(false);
+            _shutdownTokenSource.Cancel();
+            _shutdownTokenSource.Dispose();
+            await Task.WhenAll(_flushTask, _reportingTask);
+            await SnapshotAsync(false);
+            await FlushAsync(false);
         }
 
-        /// <summary>
-        /// Updates the tag name/values which are applied to all metrics by default. This update must not cause any uniqueness violations, otherwise an
-        /// exception will be thrown.
-        /// </summary>
-        /// <param name="defaultTags"></param>
-        public void UpdateDefaultTags(Dictionary<string, string> defaultTags)
+        Task SnapshotAsync(bool isCalledFromTimer)
         {
-            // validate
-            var validated = ValidateDefaultTags(defaultTags);
-
-            // don't want any new metrics to be created while we're figuring things out
-            lock (_metricsLock)
-            {
-                // first, check if anything actually changed
-                if (AreIdenticalTags(DefaultTags, validated))
-                {
-                    Debug.WriteLine("Not updating default tags. The new defaults are the same as the previous defaults.");
-                    return;
-                }
-
-                // there are differences, now make sure we can apply the new defaults without collisions
-                var rootNameAndTagsToMetric = new Dictionary<MetricKey, BosunMetric>(s_metricKeyComparer);
-                var tagsByTypeCache = new Dictionary<Type, List<BosunTag>>();
-                var tagsJsonByKey = new Dictionary<MetricKey, string>(s_metricKeyComparer);
-                foreach (var m in Metrics)
-                {
-                    var tagsJson = m.GetTagsJson(validated, TagValueConverter, tagsByTypeCache);
-                    var key = m.GetMetricKey(tagsJson);
-
-                    if (rootNameAndTagsToMetric.ContainsKey(key))
-                    {
-                        throw new InvalidOperationException("Cannot update default tags. Doing so would cause collisions.");
-                    }
-
-                    rootNameAndTagsToMetric.Add(key, m);
-                    tagsJsonByKey.Add(key, tagsJson);
-                }
-
-#if DEBUG
-                Debug.WriteLine("Updating default tags:");
-                foreach (var kvp in validated)
-                {
-                    Debug.WriteLine("  " + kvp.Key + ": " + kvp.Value);
-                }
-#endif
-
-                // looks like we can successfully swap in the new default tags
-                foreach (var kvp in rootNameAndTagsToMetric)
-                {
-                    var key = kvp.Key;
-                    var m = kvp.Value;
-                    m.SwapTagsJson(tagsJsonByKey[key]);
-                }
-
-                TagsByTypeCache = tagsByTypeCache;
-                _rootNameAndTagsToMetric = rootNameAndTagsToMetric;
-                DefaultTags = validated;
-            }
-        }
-
-        static bool AreIdenticalTags(ReadOnlyDictionary<string, string> a, ReadOnlyDictionary<string, string> b)
-        {
-            foreach (var kvp in a)
-            {
-                if (!b.ContainsKey(kvp.Key) || b[kvp.Key] != kvp.Value)
-                    return false;
-            }
-
-            foreach (var kvp in b)
-            {
-                if (!a.ContainsKey(kvp.Key) || a[kvp.Key] != kvp.Value)
-                    return false;
-            }
-
-            return true;
-        }
-
-        void Snapshot(object isCalledFromTimer)
-        {
-            if ((bool)isCalledFromTimer && ShutdownCalled) // don't perform timer actions if we're shutting down
-                return;
+            if (isCalledFromTimer && ShutdownCalled) // don't perform timer actions if we're shutting down
+                return Task.CompletedTask;
 
             try
             {
                 if (BeforeSerialization != null && BeforeSerialization.GetInvocationList().Length != 0)
                     BeforeSerialization();
 
-                var sw = new Stopwatch();
-                sw.Start();
-                SerializeMetrics(out var metricsCount, out var bytesWritten);
-                sw.Stop();
-
-                var info = new AfterSerializationInfo
+                IReadOnlyList<MetaData> metadata = Array.Empty<MetaData>();
+                if (_hasNewMetadata || DateTime.UtcNow - _lastMetadataFlushTime >= TimeSpan.FromDays(1))
                 {
-                    Count = metricsCount,
-                    BytesWritten = bytesWritten,
-                    Duration = sw.Elapsed,
-                };
+                    metadata = GatherMetaData();
+                }
+                var sw = new Stopwatch();
+                foreach (var endpoint in _endpoints)
+                {
+                    sw.Restart();
+                    SerializeMetrics(endpoint, out var metricsCount, out var bytesWritten);
+                    // We don't want to send metadata more frequently than the snapshot interval, so serialize it out if we need to
+                    if (metadata.Count > 0)
+                    {
+                        SerializeMetadata(endpoint, metadata);
+                    }
+                    sw.Stop();
 
-                AfterSerialization?.Invoke(info);
+                    var info = new AfterSerializationInfo
+                    {
+                        Count = metricsCount,
+                        BytesWritten = bytesWritten,
+                        Duration = sw.Elapsed,
+                    };
+
+                    AfterSerialization?.Invoke(info);
+                }
             }
             catch (Exception ex)
             {
                 SendExceptionToHandler(ex);
             }
+
+            return Task.CompletedTask;
         }
 
-        void Flush(object isCalledFromTimer)
+        async Task FlushAsync(bool isCalledFromTimer)
         {
-            if ((bool)isCalledFromTimer && ShutdownCalled) // don't perform timer actions if we're shutting down
+            if (isCalledFromTimer && ShutdownCalled) // don't perform timer actions if we're shutting down
                 return;
 
-            if (!HasAnythingToFlush())
-                return;
-
-            var lockTaken = false;
             try
             {
-                lockTaken = Monitor.TryEnter(_flushingLock);
-
-                // the lock prevents calls to Flush from stacking up, but we skip this check if we're in draining mode
-                if (!lockTaken && !ShutdownCalled)
-                {
-                    Debug.WriteLine("BosunReporter: Flush already in progress (skipping).");
-                    return;
-                }
-
-                if (!HasAnythingToFlush())
-                    return;
-
-
-                if (!TryGetBosunUrl(out var url))
+                if (_endpoints.Length == 0)
                 {
                     Debug.WriteLine("BosunReporter: BosunUrl is null. Dropping data.");
-                    _localMetricsQueue.Clear();
-                    _externalCounterQueue.Clear();
-                    _readyToFlushMetadata = false;
                     return;
                 }
 
-                FlushPayloadQueue(_localMetricsQueue, url);
+                foreach (var endpoint in _endpoints)
+                {
+                    Debug.WriteLine($"BosunReporter: Flushing metrics for {endpoint.Name}");
 
-                if (EnableExternalCounters)
-                    FlushPayloadQueue(_externalCounterQueue, url);
-                else
-                    _externalCounterQueue.Clear();
-
-                if (_readyToFlushMetadata)
-                    PostMetadata(url);
+                    await endpoint.Handler.FlushAsync(
+                        _delayBetweenRetries,
+                        _maxRetries,
+                        // Use Task.Run here to invoke the event listeners asynchronously.
+                        // We're inside a lock, so calling the listeners synchronously would put us at risk of a deadlock.
+                        info => Task.Run(
+                            () =>
+                            {
+                                info.Endpoint = endpoint.Name;
+                                try
+                                {
+                                    AfterSend?.Invoke(info);
+                                }
+                                catch (Exception ex)
+                                {
+                                    SendExceptionToHandler(ex);
+                                }
+                            }
+                        ),
+                        ex => SendExceptionToHandler(ex)
+                    );
+                }
             }
             catch (Exception ex)
             {
                 // this should never actually hit, but it's a nice safeguard since an uncaught exception on a background thread will crash the process.
                 SendExceptionToHandler(ex);
             }
-            finally
-            {
-                if (lockTaken)
-                    Monitor.Exit(_flushingLock);
-            }
         }
 
-        bool HasAnythingToFlush()
-        {
-            return _localMetricsQueue.PendingPayloadsCount > 0 || _externalCounterQueue.PendingPayloadsCount > 0 || _readyToFlushMetadata;
-        }
-
-        void FlushPayloadQueue(PayloadQueue queue, Uri url)
-        {
-            if (queue.PendingPayloadsCount == 0)
-                return;
-
-            if (!ShutdownCalled && queue.SuspendFlushingUntil > DateTime.UtcNow)
-                return;
-
-            while (queue.PendingPayloadsCount > 0)
-            {
-                if (!FlushPayload(url, queue))
-                    break;
-            }
-        }
-
-        bool FlushPayload(Uri url, PayloadQueue queue)
-        {
-            var payload = queue.DequeuePendingPayload();
-            if (payload == null)
-                return false;
-
-            var metricsCount = payload.MetricsCount;
-            var bytes = payload.Used;
-
-            Debug.WriteLine($"BosunReporter: Flushing metrics batch. {metricsCount} metrics. {bytes} bytes.");
-
-            var info = new AfterPostInfo();
-            var timer = new Stopwatch();
-            try
-            {
-                timer.Start();
-                PostToBosun(url, queue.UrlPath, true, sw => sw.Write(payload.Data, 0, payload.Used));
-                timer.Stop();
-
-                PostSuccessCount++;
-                TotalMetricsPosted += payload.MetricsCount;
-                queue.ReleasePayload(payload);
-                return true;
-            }
-            catch (Exception ex)
-            {
-                timer.Stop();
-                // posting to Bosun failed, so put the batch back in the queue to try again later
-                Debug.WriteLine("BosunReporter: Posting to the Bosun API failed. Pushing metrics back onto the queue.");
-                PostFailCount++;
-                info.Exception = ex;
-                queue.AddPendingPayload(payload);
-                queue.SuspendFlushingUntil = DateTime.UtcNow.AddSeconds(10); // back off for 10 seconds after a failed request
-                SendExceptionToHandler(ex);
-                return false;
-            }
-            finally
-            {
-                // don't use the payload variable in this block - it may have been released back to the pool by now
-                info.Count = metricsCount;
-                info.BytesWritten = bytes;
-                info.Duration = timer.Elapsed;
-
-                // Use BeginInvoke here to invoke the event listeners asynchronously.
-                // We're inside a lock, so calling the listeners synchronously would put us at risk of a deadlock.
-                AfterPost?.BeginInvoke(info, s_asyncNoopCallback, null);
-            }
-        }
-
-        static void AsyncNoopCallback(IAsyncResult result) { }
-
-        delegate void ApiPostWriter(Stream sw);
-
-        void PostToBosun(Uri bosunUrl, string path, bool gzip, ApiPostWriter postWriter)
-        {
-            var url = new Uri(bosunUrl, path);
-
-            var request = WebRequest.Create(url);
-            request.Method = "POST";
-            request.ContentType = "application/json";
-            if (gzip)
-                request.Headers["Content-Encoding"] = "gzip";
-
-            // support for http://username:password@domain.com, by default this does not work
-            var userInfo = url.GetComponents(UriComponents.UserInfo, UriFormat.Unescaped);
-            if (!string.IsNullOrEmpty(userInfo))
-            {
-                var auth = "Basic " + Convert.ToBase64String(Encoding.Default.GetBytes(userInfo));
-                request.Headers["Authorization"] = auth;
-            }
-
-            var accessToken = _getAccessToken != null ? _getAccessToken() : _accessToken;
-            if (!string.IsNullOrEmpty(accessToken))
-                request.Headers["X-Access-Token"] = accessToken;
-
-            try
-            {
-                using (var stream = request.GetRequestStream())
-                {
-                    if (gzip)
-                    {
-                        using (var gzipStream = new GZipStream(stream, CompressionMode.Compress))
-                        {
-                            postWriter(gzipStream);
-                        }
-                    }
-                    else
-                    {
-                        postWriter(stream);
-                    }
-                }
-
-                request.GetResponse().Close();
-            }
-            catch (WebException e)
-            {
-                using (var response = (HttpWebResponse)e.Response)
-                {
-                    if (response == null)
-                    {
-                        throw new BosunPostException(e);
-                    }
-
-                    using (Stream data = response.GetResponseStream())
-                    using (var reader = new StreamReader(data))
-                    {
-                        string text = reader.ReadToEnd();
-                        throw new BosunPostException(response.StatusCode, text, e);
-                    }
-                }
-            }
-        }
-
-        void SerializeMetrics(out int metricsCount, out int bytesWritten)
+        void SerializeMetrics(MetricEndpoint endpoint, out long metricsCount, out long bytesWritten)
         {
             lock (_metricsLock)
             {
-                // We don't want to send metadata more frequently than the snapshot interval, so this is a good place to flip to the ready-to-send state.
-                if (_hasNewMetadata || DateTime.UtcNow - _lastMetadataFlushTime >= TimeSpan.FromDays(1))
-                    _readyToFlushMetadata = true;
-
                 var timestamp = DateTime.UtcNow;
                 if (_metricsNeedingPreSerialize.Count > 0)
                 {
@@ -923,99 +630,46 @@ namespace BosunReporter
 
                 metricsCount = 0;
                 bytesWritten = 0;
-                SerializeMetricListToWriter(_localMetricsQueue, _localMetrics, timestamp, ref metricsCount, ref bytesWritten);
-                SerializeMetricListToWriter(_externalCounterQueue, _externalCounterMetrics, timestamp, ref metricsCount, ref bytesWritten);
+                if (_metrics.Count == 0)
+                    return;
+
+                using (var batch = endpoint.Handler.BeginBatch())
+                {
+                    foreach (var m in _metrics)
+                    {
+                        m.SerializeInternal(batch, timestamp);
+                    }
+
+                    metricsCount += batch.MetricsWritten;
+                    bytesWritten += batch.BytesWritten;
+                }
             }
         }
 
-        static void SerializeMetricListToWriter(PayloadQueue queue, List<BosunMetric> metrics, DateTime timestamp, ref int metricsCount, ref int bytesWritten)
+        void SerializeMetadata(MetricEndpoint endpoint, IEnumerable<MetaData> metadata)
         {
-            if (metrics.Count == 0)
-                return;
-
-            var writer = queue.GetWriter();
-
-            try
-            {
-                foreach (var m in metrics)
-                {
-                    m.SerializeInternal(writer, timestamp);
-
-                    if (queue.IsFull)
-                        break;
-                }
-
-                metricsCount += writer.MetricsCount;
-                bytesWritten += writer.TotalBytesWritten;
-            }
-            finally
-            {
-                writer.EndBatch();
-            }
-        }
-
-        void PostMetadata(Uri bosunUrl)
-        {
-            Debug.WriteLine("BosunReporter: Gathering metadata.");
-            var metaJson = GatherMetaData();
-            Debug.WriteLine("BosunReporter: Sending metadata.");
-            PostToBosun(bosunUrl, "/api/metadata/put", false, stream =>
-            {
-                using (var sw = new StreamWriter(stream, new UTF8Encoding(false)))
-                {
-                    sw.Write(metaJson);
-                }
-            });
-
+            Debug.WriteLine("BosunReporter: Serializing metadata.");
+            endpoint.Handler.SerializeMetadata(metadata);
             _lastMetadataFlushTime = DateTime.UtcNow;
-            _readyToFlushMetadata = false;
+            Debug.WriteLine("BosunReporter: Serialized metadata.");
         }
 
-        string GatherMetaData()
+        IReadOnlyList<MetaData> GatherMetaData()
         {
-            var json = new StringBuilder();
-
             lock (_metricsLock)
             {
+                var allMetadata = new List<MetaData>();
                 foreach (var metric in Metrics)
                 {
                     if (metric == null)
                         continue;
 
-                    foreach (var meta in metric.GetMetaData())
-                    {
-                        json.Append(",{\"Metric\":\"");
-                        json.Append(meta.Metric);
-                        json.Append("\",\"Name\":\"");
-                        json.Append(meta.Name);
-                        json.Append("\",\"Value\":");
-                        JsonHelper.WriteString(json, meta.Value);
-
-                        if (meta.Tags != null)
-                        {
-                            json.Append(",\"Tags\":");
-                            json.Append(meta.Tags);
-                        }
-
-                        json.Append("}\n");
-                    }
+                    allMetadata.AddRange(metric.GetMetaData());
                 }
 
                 _hasNewMetadata = false;
+                return allMetadata;
             }
-
-            if (json.Length == 0)
-                return "[]";
-
-            json[0] = '['; // replace the first comma with an open bracket
-            json.Append(']');
-
-            return json.ToString();
-        }
-
-        void OnPayloadDropped(BosunQueueFullException ex)
-        {
-            SendExceptionToHandler(ex);
         }
 
         void SendExceptionToHandler(Exception ex)
@@ -1061,11 +715,11 @@ namespace BosunReporter
         /// <summary>
         /// The number of data points serialized. The could be less than or greater than the number of metrics managed by the collector.
         /// </summary>
-        public int Count { get; internal set; }
+        public long Count { get; internal set; }
         /// <summary>
         /// The number of bytes written to payload(s).
         /// </summary>
-        public int BytesWritten { get; internal set; }
+        public long BytesWritten { get; internal set; }
         /// <summary>
         /// The duration of the serialization pass.
         /// </summary>
@@ -1082,18 +736,18 @@ namespace BosunReporter
     }
 
     /// <summary>
-    /// Information about a POST to the Bosun API.
+    /// Information about a send to a metrics endpoint.
     /// </summary>
-    public class AfterPostInfo
+    public class AfterSendInfo
     {
         /// <summary>
-        /// The number of data points sent.
+        /// Endpoint that we sent data to.
         /// </summary>
-        public int Count { get; internal set; }
+        public string Endpoint { get; internal set; }
         /// <summary>
         /// The number of bytes in the payload. This does not include HTTP header bytes.
         /// </summary>
-        public int BytesWritten { get; internal set; }
+        public long BytesWritten { get; internal set; }
         /// <summary>
         /// The duration of the POST.
         /// </summary>
@@ -1111,7 +765,7 @@ namespace BosunReporter
         /// </summary>
         public DateTime StartTime { get; }
 
-        internal AfterPostInfo()
+        internal AfterSendInfo()
         {
             StartTime = DateTime.UtcNow;
         }

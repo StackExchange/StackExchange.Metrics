@@ -22,12 +22,12 @@ namespace BosunReporter.Metrics
         /// <summary>
         /// The type of metric (gauge).
         /// </summary>
-        public override string MetricType => "gauge";
+        public override MetricType MetricType => MetricType.Gauge;
 
         /// <summary>
         /// See <see cref="BosunMetric.Serialize"/>
         /// </summary>
-        protected override void Serialize(MetricWriter writer, DateTime now)
+        protected override void Serialize(IMetricBatch writer, DateTime now)
         {
             if (_pendingMetrics.Count == 0)
                 return;

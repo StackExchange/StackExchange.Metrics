@@ -2,7 +2,7 @@
 
 namespace BosunReporter.Infrastructure
 {
-    struct MetricKey
+    readonly struct MetricKey
     {
         // Knowing that the lengths and hash codes match should be plenty to ensure uniqueness
         // without holding onto object references.
@@ -10,7 +10,7 @@ namespace BosunReporter.Infrastructure
         internal int TagsLength { get; }
         internal ulong Hash { get; }
 
-        internal MetricKey(string name, string tagsJson)
+        internal MetricKey(string name, IReadOnlyDictionary<string, string> tags)
         {
             // compute a FNV-1a hash
             const ulong FNV_PRIME = 1099511628211;
@@ -22,13 +22,22 @@ namespace BosunReporter.Infrastructure
                 hash = unchecked((c ^ hash) * FNV_PRIME);
             }
 
-            foreach (var c in tagsJson)
+            TagsLength = 0;
+            if (tags != null)
             {
-                hash = unchecked((c ^ hash) * FNV_PRIME);
+                foreach (var tagNameAndValue in tags)
+                {
+                    var tag = tagNameAndValue.Key + ":" + tagNameAndValue.Value;
+                    foreach (var c in tag)
+                    {
+                        hash = unchecked((c ^ hash) * FNV_PRIME);
+                    }
+
+                    TagsLength += tag.Length;
+                }
             }
 
             NameLength = name.Length;
-            TagsLength = tagsJson.Length;
             Hash = hash;
         }
     }

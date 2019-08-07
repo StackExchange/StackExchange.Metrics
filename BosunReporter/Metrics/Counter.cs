@@ -23,12 +23,12 @@ namespace BosunReporter.Metrics
         /// <summary>
         /// The metric type (counter, in this case).
         /// </summary>
-        public override string MetricType => "counter";
+        public override MetricType MetricType => MetricType.Counter;
 
         /// <summary>
         /// Serializes the counter.
         /// </summary>
-        protected override void Serialize(MetricWriter writer, DateTime now)
+        protected override void Serialize(IMetricBatch writer, DateTime now)
         {
             WriteValue(writer, Value, now);
         }

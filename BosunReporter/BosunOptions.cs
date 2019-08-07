@@ -23,22 +23,10 @@ namespace BosunReporter
         /// </summary>
         public string MetricsNamePrefix { get; set; }
         /// <summary>
-        /// The url of the Bosun API. No path is required. If this is null, metrics will be discarded instead of sent to Bosun.
+        /// Zero or more endpoints to publish metrics to. If this is empty, metrics will be discarded instead of sent to any endpoints.
         /// </summary>
-        public Uri BosunUrl { get; set; }
-        /// <summary>
-        /// If the url for the Bosun API can change, provide a function which will be called before each API request. This takes precedence over the BosunUrl
-        /// option. If this function returns null, the request will not be made, and the batch of metrics which would have been sent will be discarded.
-        /// </summary>
-        public Func<Uri> GetBosunUrl { get; set; }
-        /// <summary>
-        /// The maximum size (in bytes) the HTTP body of a single post to the Bosun API can be.
-        /// </summary>
-        public int MaxPayloadSize { get; set; } = 8000;
-        /// <summary>
-        /// The maximum number of payloads which can be queued for sending before they start being dropped.
-        /// </summary>
-        public int MaxPendingPayloads { get; set; } = 240;
+        public IEnumerable<MetricEndpoint> Endpoints { get; set; }
+
         /// <summary>
         /// If true, BosunReporter will generate an exception every time posting to the Bosun API fails with a server error (response code 5xx).
         /// </summary>
@@ -69,24 +57,10 @@ namespace BosunReporter
         /// tags will generally not be included in metadata.
         /// </summary>
         public Dictionary<string, string> DefaultTags { get; set; }
-        /// <summary>
-        /// Enables sending metrics to the /api/count route on OpenTSDB relays which support external counters. External counters don't reset when applications
-        /// reload, and are intended for low-volume metrics. For high-volume metrics, use normal counters.
-        /// </summary>
-        public bool EnableExternalCounters { get; set; } = true;
-        /// <summary>
-        /// If not null or empty, this string will be sent as the X-Access-Token header on all API requests to Bosun.
-        /// </summary>
-        public string AccessToken { get; set; }
-        /// <summary>
-        /// If the access token can change, provide a function which will be called before each API request. This takes precedence over the
-        /// <see cref="AccessToken"/> option. If this function returns empty or null, the X-Access-Token header will be omitted.
-        /// </summary>
-        public Func<string> GetAccessToken { get; set; }
 
         /// <summary>
         /// Defines initialization options for <see cref="MetricsCollector"/>. An exception handler is required. All other options are optional. However,
-        /// BosunReporter will never send metrics unless <see cref="BosunUrl"/> or <see cref="GetBosunUrl"/> is set.
+        /// BosunReporter will never send metrics unless <see cref="Endpoints"/> is set.
         /// </summary>
         /// <param name="exceptionHandler">Exceptions which occur on a background thread within BosunReporter will be passed to this delegate.</param>
         public BosunOptions(Action<Exception> exceptionHandler)

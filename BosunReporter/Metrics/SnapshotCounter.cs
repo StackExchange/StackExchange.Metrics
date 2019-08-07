@@ -14,7 +14,7 @@ namespace BosunReporter.Metrics
         /// <summary>
         /// The type of metric (counter, in this case).
         /// </summary>
-        public override string MetricType => "counter";
+        public override MetricType MetricType => MetricType.Counter;
 
         /// <summary>
         /// Initializes a new snapshot counter. The counter will call <paramref name="getCountFunc"/> at each reporting interval in order to get the current
@@ -31,7 +31,7 @@ namespace BosunReporter.Metrics
         /// <summary>
         /// See <see cref="BosunMetric.Serialize"/>
         /// </summary>
-        protected override void Serialize(MetricWriter writer, DateTime now)
+        protected override void Serialize(IMetricBatch writer, DateTime now)
         {
             var val = GetValue();
             if (!val.HasValue)
