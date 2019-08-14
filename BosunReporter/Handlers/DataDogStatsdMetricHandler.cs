@@ -1,5 +1,4 @@
 ﻿using BosunReporter.Infrastructure;
-using Pipelines.Sockets.Unofficial;
 using Pipelines.Sockets.Unofficial.Buffers;
 using System;
 using System.Buffers;
@@ -22,8 +21,9 @@ namespace BosunReporter.Handlers
     {
         readonly Lazy<ValueTask<IPEndPoint>> _endpointFactory;
         readonly Socket _socket;
-        readonly Lazy<BufferWriter<byte>> _metricBufferWriter;
-        readonly Lazy<BufferWriter<byte>> _metadataBufferWriter;
+
+        BufferWriter<byte> _metricBufferWriter;
+        BufferWriter<byte> _metadataBufferWriter;
 
         const int ValueDecimals = 5;
         static readonly byte[] s_counter = Encoding.UTF8.GetBytes("c");
@@ -53,11 +53,6 @@ namespace BosunReporter.Handlers
 
             _endpointFactory = new Lazy<ValueTask<IPEndPoint>>(() => CreateEndpointAsync(host, port));
             _socket = new Socket(SocketType.Dgram, ProtocolType.Udp);
-
-            BufferWriter<byte> CreateBufferWriter() => BufferWriter<byte>.Create(MaxPayloadSize);
-
-            _metricBufferWriter = new Lazy<BufferWriter<byte>>(CreateBufferWriter);
-            _metadataBufferWriter = new Lazy<BufferWriter<byte>>(CreateBufferWriter);
         }
 
         /// <inheritdoc />
@@ -218,14 +213,16 @@ namespace BosunReporter.Handlers
         /// <inheritdoc />
         protected override BufferWriter<byte> CreateBufferWriter(PayloadType payloadType)
         {
+            BufferWriter<byte> CreateBufferWriter() => BufferWriter<byte>.Create(MaxPayloadSize);
+
             switch (payloadType)
             {
                 case PayloadType.Counter:
                 case PayloadType.CumulativeCounter:
                 case PayloadType.Gauge:
-                    return _metricBufferWriter.Value;
+                    return _metricBufferWriter ?? (_metricBufferWriter = CreateBufferWriter());
                 case PayloadType.Metadata:
-                    return _metadataBufferWriter.Value;
+                    return _metadataBufferWriter ?? (_metadataBufferWriter = CreateBufferWriter());
                 default:
                     throw new ArgumentOutOfRangeException(nameof(payloadType));
             }

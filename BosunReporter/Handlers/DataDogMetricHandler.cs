@@ -78,8 +78,9 @@ namespace BosunReporter.Handlers
 
         readonly Uri _metricUri;
         readonly Uri _metadataUri;
-        readonly Lazy<BufferWriter<byte>> _metricBufferWriter;
-        readonly Lazy<BufferWriter<byte>> _metadataBufferWriter;
+
+        BufferWriter<byte> _metricBufferWriter;
+        BufferWriter<byte> _metadataBufferWriter;
         List<MetadataPayload> _metadata;
 
         /// <summary>
@@ -102,11 +103,6 @@ namespace BosunReporter.Handlers
 
             _metricUri = new Uri(baseUri, "/api/v1/series");
             _metadataUri = new Uri(baseUri, "/api/v1/metrics");
-
-            BufferWriter<byte> CreateBufferWriter() => BufferWriter<byte>.Create(MaxPayloadSize);
-
-            _metricBufferWriter = new Lazy<BufferWriter<byte>>(CreateBufferWriter);
-            _metadataBufferWriter = new Lazy<BufferWriter<byte>>(CreateBufferWriter);
         }
 
         /// <summary>
@@ -214,14 +210,16 @@ namespace BosunReporter.Handlers
         /// <inheritdoc />
         protected override BufferWriter<byte> CreateBufferWriter(PayloadType payloadType)
         {
+            BufferWriter<byte> CreateBufferWriter() => BufferWriter<byte>.Create(MaxPayloadSize);
+
             switch (payloadType)
             {
                 case PayloadType.Counter:
                 case PayloadType.CumulativeCounter:
                 case PayloadType.Gauge:
-                    return _metricBufferWriter.Value;
+                    return _metricBufferWriter ?? (_metricBufferWriter = CreateBufferWriter());
                 case PayloadType.Metadata:
-                    return _metadataBufferWriter.Value;
+                    return _metadataBufferWriter ?? (_metadataBufferWriter = CreateBufferWriter());
                 default:
                     throw new ArgumentOutOfRangeException(nameof(payloadType));
             }

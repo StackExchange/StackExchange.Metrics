@@ -35,15 +35,10 @@ namespace BosunReporter.Handlers
         readonly Uri _metricUri;
         readonly Uri _counterUri;
         readonly Uri _metadataUri;
-        readonly Lazy<BufferWriter<byte>> _metricBufferWriter;
-        readonly Lazy<BufferWriter<byte>> _slowMetricBufferWriter;
-        readonly Lazy<BufferWriter<byte>> _metadataBufferWriter;
 
-        /// <inheritdoc />
-        protected override int GetPreambleLength(PayloadType payloadType) => s_startArray.Length;
-
-        /// <inheritdoc />
-        protected override int GetPostambleLength(PayloadType payloadType) => s_endArray.Length;
+        BufferWriter<byte> _metricBufferWriter;
+        BufferWriter<byte> _slowMetricBufferWriter;
+        BufferWriter<byte> _metadataBufferWriter;
 
         static BosunMetricHandler()
         {
@@ -73,12 +68,6 @@ namespace BosunReporter.Handlers
             _metricUri = new Uri(uri, "/api/put");
             _counterUri = new Uri(uri, "/api/count");
             _metadataUri = new Uri(uri, "/api/metadata/put");
-
-            BufferWriter<byte> CreateBufferWriter() => BufferWriter<byte>.Create(MaxPayloadSize);
-
-            _metricBufferWriter = new Lazy<BufferWriter<byte>>(CreateBufferWriter);
-            _slowMetricBufferWriter = new Lazy<BufferWriter<byte>>(CreateBufferWriter);
-            _metadataBufferWriter = new Lazy<BufferWriter<byte>>(CreateBufferWriter);
         }
 
         /// <summary>
@@ -140,6 +129,12 @@ namespace BosunReporter.Handlers
         }
 
         /// <inheritdoc />
+        protected override int GetPreambleLength(PayloadType payloadType) => s_startArray.Length;
+
+        /// <inheritdoc />
+        protected override int GetPostambleLength(PayloadType payloadType) => s_endArray.Length;
+
+        /// <inheritdoc />
         protected override Task WritePreambleAsync(Stream stream, PayloadType payloadType) => stream.WriteAsync(s_startArray, 0, s_startArray.Length);
 
         /// <inheritdoc />
@@ -167,15 +162,17 @@ namespace BosunReporter.Handlers
         /// <inheritdoc />
         protected override BufferWriter<byte> CreateBufferWriter(PayloadType payloadType)
         {
+            BufferWriter<byte> CreateBufferWriter() => BufferWriter<byte>.Create(blockSize: MaxPayloadSize);
+
             switch (payloadType)
             {
                 case PayloadType.CumulativeCounter:
-                    return _slowMetricBufferWriter.Value;
+                    return _slowMetricBufferWriter ?? (_slowMetricBufferWriter = CreateBufferWriter());
                 case PayloadType.Counter:
                 case PayloadType.Gauge:
-                    return _metricBufferWriter.Value;
+                    return _metricBufferWriter ?? (_metricBufferWriter = CreateBufferWriter());
                 case PayloadType.Metadata:
-                    return _metadataBufferWriter.Value;
+                    return _metadataBufferWriter ?? (_metadataBufferWriter = CreateBufferWriter());
                 default:
                     throw new ArgumentOutOfRangeException(nameof(payloadType));
             }
