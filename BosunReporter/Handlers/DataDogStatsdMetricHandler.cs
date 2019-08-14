@@ -141,11 +141,7 @@ namespace BosunReporter.Handlers
             // go grab some space in the buffer writer
             var memory = writer.GetMemory(length);
             // we also need a byte array otherwise we can't do all the encoding bits
-            if (!MemoryMarshal.TryGetArray(Unsafe.AsRef<ReadOnlyMemory<byte>>(memory), out var arraySegment))
-            {
-                throw new InvalidOperationException("Could not retrieve underlying array from ReadOnlyMemory<byte>");
-            }
-
+            var arraySegment = memory.GetArray();
             var buffer = arraySegment.Array;
             var bytesWritten = arraySegment.Offset;
             // write data into the buffer
@@ -257,11 +253,7 @@ namespace BosunReporter.Handlers
 
         private ValueTask SendMetricAsync(PayloadType type, ReadOnlyMemory<byte> buffer)
         {
-            if (!MemoryMarshal.TryGetArray(buffer, out var arraySegment))
-            {
-                throw new InvalidOperationException("Could not retrieve underlying array from ReadOnlyMemory<byte>");
-            }
-
+            var arraySegment = buffer.GetArray();
             var endpointTask = _endpointFactory.Value;
             if (endpointTask.IsCompleted)
             {

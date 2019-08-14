@@ -187,30 +187,7 @@ namespace BosunReporter.Infrastructure
             protected override async Task SerializeToStreamAsync(Stream stream, TransportContext context)
             {
                 await _writePreamble(stream, _type);
-
-                // TODO: for netcoreapp2.2 this should be writing the ReadOnlyMemory directly to the stream
-                // for now we try to get the underlying buffer from the ReadOnlyMemory using MemoryMarshal
-                // which works on old versions of the framework
-                if (MemoryMarshal.TryGetArray(_memory, out var segment))
-                {
-                    await stream.WriteAsync(segment.Array, segment.Offset, segment.Count);
-                }
-                else
-                {
-                    // we can't get the buffer directly, copy the ReadOnlyMemory to a new one instead
-                    // grab a buffer that we can prefix with an array start and suffix with an array end
-                    var buffer = ArrayPool<byte>.Shared.Rent(_memory.Length);
-                    try
-                    {
-                        _memory.CopyTo(buffer.AsMemory());
-                        await stream.WriteAsync(buffer, 0, _memory.Length);
-                    }
-                    finally
-                    {
-                        ArrayPool<byte>.Shared.Return(buffer);
-                    }
-                }
-
+                await stream.WriteAsync(_memory);
                 await _writePostamble(stream, _type);
             }
 
