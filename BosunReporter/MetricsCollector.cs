@@ -31,7 +31,6 @@ namespace BosunReporter
         Dictionary<MetricKey, BosunMetric> _rootNameAndTagsToMetric = new Dictionary<MetricKey, BosunMetric>(s_metricKeyComparer);
 
         readonly List<BosunMetric> _metrics = new List<BosunMetric>();
-        readonly List<BosunMetric> _externalCounterMetrics = new List<BosunMetric>();
 
         bool _hasNewMetadata = false;
         DateTime _lastMetadataFlushTime = DateTime.MinValue;
@@ -136,6 +135,11 @@ namespace BosunReporter
         /// Enumerable of all metrics managed by this collector.
         /// </summary>
         public IEnumerable<BosunMetric> Metrics => _rootNameAndTagsToMetric.Values.AsEnumerable();
+
+        /// <summary>
+        /// Enumerable of all endpoints managed by this collector.
+        /// </summary>
+        public IEnumerable<MetricEndpoint> Endpoints => _endpoints.AsEnumerable();
 
         /// <summary>
         /// Instantiates a new collector (the primary class of BosunReporter). You should typically only instantiate one collector for the lifetime of your

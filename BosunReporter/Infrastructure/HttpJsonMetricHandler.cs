@@ -127,6 +127,11 @@ namespace BosunReporter.Infrastructure
         /// <inheritdoc />
         protected async ValueTask SendAsync(Uri uri, HttpMethod method, PayloadType payloadType, ReadOnlySequence<byte> sequence)
         {
+            if (uri == null)
+            {
+                return;
+            }
+
             var preambleLength = GetPreambleLength(payloadType);
             var postambleLength = GetPostambleLength(payloadType);
             var request = new HttpRequestMessage(method, uri)

@@ -76,40 +76,33 @@ namespace BosunReporter.Handlers
         static readonly byte[] s_comma = Encoding.UTF8.GetBytes(",");
         static readonly byte[] s_metadataSentinel = Encoding.UTF8.GetBytes("__metadata__");
 
-        readonly Uri _metricUri;
-        readonly Uri _metadataUri;
-
+        Uri _baseUri;
+        Uri _metricUri;
+        Uri _metadataUri;
+        string _apiKey;
+        string _appKey;
         PayloadTypeMetadata _metricMetadata;
         PayloadTypeMetadata _metadataMetadata;
         List<MetadataPayload> _metadata;
 
         /// <summary>
-        /// Constructs a new <see cref="DataDogMetricHandler" /> pointing at the specified URL.
+        /// Constructs a new <see cref="DataDogMetricHandler" /> pointing at the specified <see cref="Uri" />.
         /// </summary>
-        /// <param name="baseUrl">
-        /// URL of a DataDog endpoint.
+        /// <param name="baseUri">
+        /// <see cref="Uri" /> of a DataDog endpoint.
         /// </param>
-        public DataDogMetricHandler(string baseUrl)
+        public DataDogMetricHandler(Uri baseUri)
         {
-            if (baseUrl == null)
-            {
-                throw new ArgumentNullException(baseUrl);
-            }
+            _baseUri = baseUri;
 
-            if (!Uri.TryCreate(baseUrl, UriKind.Absolute, out var baseUri))
-            {
-                throw new ArgumentException("Invalid URI specified", nameof(baseUrl));
-            }
-
-            _metricUri = new Uri(baseUri, "/api/v1/series");
-            _metadataUri = new Uri(baseUri, "/api/v1/metrics");
+            ReconfigureUris();
         }
-
+    
         /// <summary>
         /// Constructs a new <see cref="DataDogMetricHandler" /> pointing at the specified URL
         /// and using the given API and app keys.
         /// </summary>
-        /// <param name="baseUrl">
+        /// <param name="baseUri">
         /// URL of a DataDog endpoint.
         /// </param>
         /// <param name="apiKey">
@@ -118,17 +111,53 @@ namespace BosunReporter.Handlers
         /// <param name="appKey">
         /// An app key.
         /// </param>
-        public DataDogMetricHandler(string baseUrl, string apiKey, string appKey) : this(baseUrl)
+        public DataDogMetricHandler(Uri baseUri, string apiKey, string appKey)
         {
-            _metricUri = new UriBuilder(_metricUri)
-            {
-                Query = $"api_key={apiKey}"
-            }.Uri;
+            _baseUri = baseUri;
+            _apiKey = apiKey;
+            _appKey = appKey;
 
-            _metadataUri = new UriBuilder(_metadataUri)
+            ReconfigureUris();
+        }
+
+
+        /// <summary>
+        /// Gets or sets the base URI used by the handler.
+        /// </summary>
+        public Uri BaseUri
+        {
+            get => _baseUri;
+            set
             {
-                Query = $"api_key={apiKey}&application_key={appKey}"
-            }.Uri;
+                _baseUri = value;
+                ReconfigureUris();
+            }
+        }
+
+        /// <summary>
+        /// Gets or sets an API key used by the handler.
+        /// </summary>
+        public string ApiKey
+        {
+            get => _apiKey;
+            set
+            {
+                _apiKey = value;
+                ReconfigureUris();
+            }
+        }
+
+        /// <summary>
+        /// Gets or sets an app key used by the handler.
+        /// </summary>
+        public string AppKey
+        {
+            get => _appKey;
+            set
+            {
+                _appKey = value;
+                ReconfigureUris();
+            }
         }
 
         /// <inheritdoc />
@@ -259,6 +288,38 @@ namespace BosunReporter.Handlers
             if (firstByte == ',')
             {
                 sequence = sequence.Slice(1);
+            }
+        }
+
+        private void ReconfigureUris()
+        {
+            if (_baseUri != null && !string.IsNullOrEmpty(_apiKey) && !string.IsNullOrEmpty(_appKey))
+            {
+                var basePath = _baseUri.AbsolutePath.Trim('/');
+                var apiKeyQuery = "api_key=" + _apiKey;
+                var appKeyQuery = "application_key=" + _appKey;
+
+                _metricUri = new UriBuilder(_baseUri)
+                {
+                    Path = basePath + "/api/v1/series",
+                    Query = apiKeyQuery
+                }.Uri;
+
+                _metadataUri = new UriBuilder(_baseUri)
+                {
+                    Path = basePath + "/api/v1/metrics",
+                    Query = apiKeyQuery + "&" + appKeyQuery
+                }.Uri;
+            }
+            else if (_baseUri != null)
+            {
+                _metricUri = new Uri(_baseUri, "/api/v1/series");
+                _metadataUri = new Uri(_baseUri, "/api/v1/metrics");
+            }
+            else
+            {
+                _metricUri = null;
+                _metadataUri = null;
             }
         }
 

@@ -32,10 +32,10 @@ namespace BosunReporter.Handlers
             }
         };
 
-        readonly Uri _metricUri;
-        readonly Uri _counterUri;
-        readonly Uri _metadataUri;
-
+        Uri _baseUri;
+        Uri _metricUri;
+        Uri _counterUri;
+        Uri _metadataUri;
         PayloadTypeMetadata _metricMetadata;
         PayloadTypeMetadata _slowMetricMetadata;
         PayloadTypeMetadata _metadataMetadata;
@@ -50,24 +50,36 @@ namespace BosunReporter.Handlers
         /// <summary>
         /// Constructs a new <see cref="BosunMetricHandler" /> pointing at the specified <see cref="Uri" />.
         /// </summary>
-        /// <param name="url">
-        /// URL to a Bosun endpoint.
+        /// <param name="baseUri">
+        /// <see cref="Uri" /> of a Bosun endpoint.
         /// </param>
-        public BosunMetricHandler(string url)
+        public BosunMetricHandler(Uri baseUri)
         {
-            if (url == null)
-            {
-                throw new ArgumentNullException(nameof(url));
-            }
+            BaseUri = baseUri;
+        }
 
-            if (!Uri.TryCreate(url, UriKind.Absolute, out var uri))
+        /// <summary>
+        /// Gets or sets the base URI used by the handler.
+        /// </summary>
+        public Uri BaseUri
+        {
+            get => _baseUri;
+            set
             {
-                throw new ArgumentException("Invalid URI specified", nameof(url));
+                _baseUri = value;
+                if (value != null)
+                {
+                    _metricUri = new Uri(value, "/api/put");
+                    _counterUri = new Uri(value, "/api/count");
+                    _metadataUri = new Uri(value, "/api/metadata/put");
+                }
+                else
+                {
+                    _metricUri = null;
+                    _counterUri = null;
+                    _metadataUri = null;
+                }
             }
-
-            _metricUri = new Uri(uri, "/api/put");
-            _counterUri = new Uri(uri, "/api/count");
-            _metadataUri = new Uri(uri, "/api/metadata/put");
         }
 
         /// <summary>

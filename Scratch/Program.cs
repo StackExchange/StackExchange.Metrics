@@ -45,13 +45,16 @@ namespace Scratch
             })
             {
                 Endpoints = new MetricEndpoint[] {
-                    //new MetricEndpoint("Test HTTP", new TestHttpMetricHandler("http://127.0.0.1/")),
+                    //new MetricEndpoint("Test HTTP", new TestHttpMetricHandler(new Uri("http://127.0.0.1/"))),
                     //new MetricEndpoint("Test UDP", new TestUdpMetricHandler(s_cancellationTokenSource.Token) { MaxPayloadSize = 320 }),
-                    //new MetricEndpoint("Bosun", new BosunMetricHandler("http://devbosun.ds.stackexchange.com/")),
+                    //new MetricEndpoint("Bosun (no URL)", new BosunMetricHandler(null)),
+                    //new MetricEndpoint("Bosun", new BosunMetricHandler(new Uri("http://devbosun.ds.stackexchange.com/"))),
                     //new MetricEndpoint("DataDog Agent", new DataDogStatsdMetricHandler("dogstatsd.datadog.svc.ny-intkube.k8s", 8125)),
-                    //new MetricEndpoint("SignalFx Agent", new SignalFxMetricHandler("http://sfxgateway.signalfx.svc.ny-intkube.k8s:18080")),
-                    //new MetricEndpoint("DataDog Cloud", new DataDogMetricHandler("https://api.datadoghq.com/", "{API_KEY}", "{APP_KEY}")),
-                    //new MetricEndpoint("SignalFx Cloud", new SignalFxMetricHandler("https://ingest.us1.signalfx.com/", "{API_KEY}")),
+                    //new MetricEndpoint("SignalFx Agent", new SignalFxMetricHandler(new Uri("http://sfxgateway.signalfx.svc.ny-intkube.k8s:18080"))),
+                    //new MetricEndpoint("DataDog Cloud", new DataDogMetricHandler(new Uri("https://api.datadoghq.com/"), "{API_KEY}", "{APP_KEY}")),
+                    //new MetricEndpoint("DataDog Cloud (no URL)", new DataDogMetricHandler(null, "{API_KEY}", "{APP_KEY}")),
+                    //new MetricEndpoint("SignalFx Cloud", new SignalFxMetricHandler(new Uri("https://ingest.us1.signalfx.com/"), "{API_KEY}")),
+                    //new MetricEndpoint("SignalFx Cloud (no URL)", new SignalFxMetricHandler(null, "{API_KEY}")),
                     //new MetricEndpoint(LocalEndpointKey, localHandler)
                 },
                 MetricsNamePrefix = "bosun.reporter.",
@@ -233,7 +236,7 @@ namespace Scratch
 
     class TestHttpMetricHandler : SignalFxMetricHandler
     {
-        public TestHttpMetricHandler(string url) : base(url)
+        public TestHttpMetricHandler(Uri baseUri) : base(baseUri)
         {
         }
 

@@ -16,7 +16,8 @@ namespace BosunReporter.Handlers
     /// </summary>
     public class SignalFxMetricHandler : HttpJsonMetricHandler
     {
-        readonly Uri _metricUri;
+        Uri _baseUri;
+        Uri _metricUri;
         readonly string _accessToken;
 
         static readonly JsonSerializerOptions s_jsonOptions = new JsonSerializerOptions
@@ -35,39 +36,42 @@ namespace BosunReporter.Handlers
         static readonly byte[] s_postamble = Encoding.UTF8.GetBytes("]}");
 
         /// <summary>
-        /// Constructs a new <see cref="SignalFxMetricHandler" /> pointing at the specified URL
+        /// Constructs a new <see cref="SignalFxMetricHandler" /> pointing at the specified <see cref="Uri" />.
         /// </summary>
-        /// <param name="baseUrl">
-        /// URL of a SignalFX endpoint.
+        /// <param name="baseUri">
+        /// <see cref="Uri" /> of a SignalFx endpoint.
         /// </param>
-        public SignalFxMetricHandler(string baseUrl)
+        public SignalFxMetricHandler(Uri baseUri)
         {
-            if (baseUrl == null)
-            {
-                throw new ArgumentNullException(baseUrl);
-            }
-
-            if (!Uri.TryCreate(baseUrl, UriKind.Absolute, out var baseUri))
-            {
-                throw new ArgumentException("Invalid URI specified", nameof(baseUrl));
-            }
-
-            _metricUri = new Uri(baseUri, "/v2/datapoint");
+            BaseUri = baseUri;
         }
 
         /// <summary>
         /// Constructs a new <see cref="SignalFxMetricHandler" /> pointing at the specified URL
         /// and using the given API key.
         /// </summary>
-        /// <param name="baseUrl">
-        /// URL of a SignalFX endpoint.
+        /// <param name="baseUri">
+        /// <see cref="Uri" /> of a SignalFx endpoint.
         /// </param>
         /// <param name="accessToken">
         /// An access token.
         /// </param>
-        public SignalFxMetricHandler(string baseUrl, string accessToken) : this(baseUrl)
+        public SignalFxMetricHandler(Uri baseUri, string accessToken) : this(baseUri)
         {
             _accessToken = accessToken ?? throw new ArgumentNullException(nameof(accessToken));
+        }
+
+        /// <summary>
+        /// Gets or sets the base URI used by the handler.
+        /// </summary>
+        public Uri BaseUri
+        {
+            get => _baseUri;
+            set
+            {
+                _baseUri = value;
+                _metricUri = value != null ? new Uri(value, "/v2/datapoint") : null;
+            }
         }
 
         /// <inheritdoc />

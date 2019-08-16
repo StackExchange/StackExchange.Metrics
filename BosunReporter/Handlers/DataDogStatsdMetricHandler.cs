@@ -19,8 +19,10 @@ namespace BosunReporter.Handlers
     public class DataDogStatsdMetricHandler : BufferedMetricHandler
     {
         readonly Socket _socket;
-        readonly ValueTask<SocketAwaitableEventArgs> _socketEventArgsTask;
 
+        string _host;
+        ushort _port;
+        ValueTask<SocketAwaitableEventArgs> _socketEventArgsTask;
         PayloadTypeMetadata _metricMetadata;
         PayloadTypeMetadata _metadataMetadata;
 
@@ -50,8 +52,51 @@ namespace BosunReporter.Handlers
                 throw new ArgumentNullException(nameof(host));
             }
 
-            _socketEventArgsTask = CreateSocketEventArgsAsync(host, port);
+            _host = host;
+            _port = port;
+            _socketEventArgsTask = CreateSocketEventArgsAsync();
             _socket = new Socket(SocketType.Dgram, ProtocolType.Udp);
+        }
+
+        /// <summary>
+        /// Host to which we should send metrics to.
+        /// </summary>
+        public string Host
+        {
+            get => _host;
+            set
+            {
+                _host = value;
+                _socketEventArgsTask = CreateSocketEventArgsAsync();
+            }
+        }
+
+        /// <summary>
+        /// Port to which we should send metrics to.
+        /// </summary>
+        public ushort Port
+        {
+            get => _port;
+            set
+            {
+                _port = value;
+                _socketEventArgsTask = CreateSocketEventArgsAsync();
+            }
+        }
+
+        /// <inheritdoc />
+        public override async ValueTask DisposeAsync()
+        {
+            try
+            {
+                using (await _socketEventArgsTask)
+                using (_socket)
+                {
+                }
+            }
+            catch
+            {
+            }
         }
 
         /// <inheritdoc />
@@ -228,14 +273,19 @@ namespace BosunReporter.Handlers
             }
         }
 
-        private ValueTask<SocketAwaitableEventArgs> CreateSocketEventArgsAsync(string host, ushort port)
+        private ValueTask<SocketAwaitableEventArgs> CreateSocketEventArgsAsync()
         {
-            if (IPAddress.TryParse(host, out IPAddress ip))
+            if (_host == null || _port == 0)
+            {
+                return new ValueTask<SocketAwaitableEventArgs>((SocketAwaitableEventArgs)null);
+            }
+
+            if (IPAddress.TryParse(_host, out IPAddress ip))
             {
                 return new ValueTask<SocketAwaitableEventArgs>(
                     new SocketAwaitableEventArgs
                     {
-                        RemoteEndPoint = new IPEndPoint(ip, port)
+                        RemoteEndPoint = new IPEndPoint(ip, _port)
                     }
                 );
             }
@@ -244,21 +294,21 @@ namespace BosunReporter.Handlers
 
             async ValueTask<SocketAwaitableEventArgs> CreateSocketEventArgsAsync()
             {
-                var hostAddresses = await Dns.GetHostAddressesAsync(host);
+                var hostAddresses = await Dns.GetHostAddressesAsync(_host);
                 var hostAddress = hostAddresses.FirstOrDefault(x => x.AddressFamily == AddressFamily.InterNetwork || x.AddressFamily == AddressFamily.InterNetworkV6);
                 if (hostAddress == null)
                 {
-                    throw new ArgumentException("Unable to find an IPv4 or IPv6 address for host", nameof(host));
+                    throw new ArgumentException("Unable to find an IPv4 or IPv6 address for host", nameof(_host));
                 }
 
                 IPEndPoint endpoint;
                 if (hostAddress.AddressFamily == AddressFamily.InterNetworkV6)
                 {
-                    endpoint = new IPEndPoint(hostAddress.MapToIPv6(), port);
+                    endpoint = new IPEndPoint(hostAddress.MapToIPv6(), _port);
                 }
                 else
                 {
-                    endpoint = new IPEndPoint(hostAddress.MapToIPv4(), port);
+                    endpoint = new IPEndPoint(hostAddress.MapToIPv4(), _port);
                 }
 
                 return new SocketAwaitableEventArgs
@@ -284,6 +334,11 @@ namespace BosunReporter.Handlers
 
             async ValueTask SendMetricAsync(SocketAwaitableEventArgs socketArgs, ReadOnlySequence<byte> buffer)
             {
+                if (socketArgs == null)
+                {
+                    return;
+                }
+
                 socketArgs.BufferList = GetBufferList(buffer);
                 if (!_socket.SendToAsync(socketArgs))
                 {
@@ -310,21 +365,6 @@ namespace BosunReporter.Handlers
             }
 
             return list;
-        }
-
-        /// <inheritdoc />
-        public override async ValueTask DisposeAsync()
-        {
-            try
-            {
-                using (await _socketEventArgsTask)
-                using (_socket)
-                {
-                }
-            }
-            catch
-            {
-            }
         }
     }
 }
