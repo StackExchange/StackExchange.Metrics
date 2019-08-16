@@ -44,5 +44,10 @@ namespace BosunReporter.Infrastructure
         /// Handler used when to record exception information.
         /// </param>
         ValueTask FlushAsync(TimeSpan delayBetweenRetries, int maxRetries, Action<AfterSendInfo> afterSend, Action<Exception> exceptionHandler);
+
+        /// <summary>
+        /// Cleans-up any resources associated with this handler.
+        /// </summary>
+        ValueTask DisposeAsync();
     }
 }

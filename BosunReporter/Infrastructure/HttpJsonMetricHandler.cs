@@ -4,7 +4,6 @@ using System.IO;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
-using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 
 namespace BosunReporter.Infrastructure
@@ -26,18 +25,29 @@ namespace BosunReporter.Infrastructure
         }
 
         /// <inheritdoc />
-        protected override ValueTask SendAsync(PayloadType payloadType, ReadOnlyMemory<byte> buffer)
+        public override ValueTask DisposeAsync()
+        {
+            if (_httpClientFactory.IsValueCreated)
+            {
+                _httpClientFactory.Value.Dispose();
+            }
+
+            return default;
+        }
+
+        /// <inheritdoc />
+        protected override ValueTask SendAsync(PayloadType payloadType, ReadOnlySequence<byte> sequence)
         {
             switch (payloadType)
             {
                 case PayloadType.Metadata:
-                    return SendMetadataAsync(buffer);
+                    return SendMetadataAsync(sequence);
                 case PayloadType.Counter:
-                    return SendCounterAsync(buffer);
+                    return SendCounterAsync(sequence);
                 case PayloadType.CumulativeCounter:
-                    return SendCumulativeCounterAsync(buffer);
+                    return SendCumulativeCounterAsync(sequence);
                 case PayloadType.Gauge:
-                    return SendGaugeAsync(buffer);
+                    return SendGaugeAsync(sequence);
                 default:
                     throw new ArgumentOutOfRangeException(nameof(payloadType));
             }
@@ -46,34 +56,34 @@ namespace BosunReporter.Infrastructure
         /// <summary>
         /// Sends a buffer containing counters to an HTTP endpoint.
         /// </summary>
-        /// <param name="buffer">
-        /// <see cref="ReadOnlyMemory{T}" /> containing the data to send.
+        /// <param name="sequence">
+        /// <see cref="ReadOnlySequence{T}" /> containing the data to send.
         /// </param>
-        protected abstract ValueTask SendCounterAsync(ReadOnlyMemory<byte> buffer);
+        protected abstract ValueTask SendCounterAsync(ReadOnlySequence<byte> sequence);
 
         /// <summary>
         /// Sends a buffer containing cumulative counter metrics to an HTTP endpoint.
         /// </summary>
-        /// <param name="buffer">
-        /// <see cref="ReadOnlyMemory{T}" /> containing the data to send.
+        /// <param name="sequence">
+        /// <see cref="ReadOnlySequence{T}" /> containing the data to send.
         /// </param>
-        protected abstract ValueTask SendCumulativeCounterAsync(ReadOnlyMemory<byte> buffer);
+        protected abstract ValueTask SendCumulativeCounterAsync(ReadOnlySequence<byte> sequence);
 
         /// <summary>
         /// Sends a buffer containing gauge metrics to an HTTP endpoint.
         /// </summary>
-        /// <param name="buffer">
-        /// <see cref="ReadOnlyMemory{T}" /> containing the data to send.
+        /// <param name="sequence">
+        /// <see cref="ReadOnlySequence{T}" /> containing the data to send.
         /// </param>
-        protected abstract ValueTask SendGaugeAsync(ReadOnlyMemory<byte> buffer);
+        protected abstract ValueTask SendGaugeAsync(ReadOnlySequence<byte> sequence);
 
         /// <summary>
         /// Sends a buffer containing metadata to an HTTP endpoint.
         /// </summary>
-        /// <param name="buffer">
-        /// <see cref="ReadOnlyMemory{T}" /> containing the data to send.
+        /// <param name="sequence">
+        /// <see cref="ReadOnlySequence{T}" /> containing the data to send.
         /// </param>
-        protected abstract ValueTask SendMetadataAsync(ReadOnlyMemory<byte> buffer);
+        protected abstract ValueTask SendMetadataAsync(ReadOnlySequence<byte> sequence);
 
         /// <summary>
         /// Gets the length of the preamble for a given type of payload.
@@ -110,31 +120,18 @@ namespace BosunReporter.Infrastructure
         protected abstract Task WritePostambleAsync(Stream stream, PayloadType payloadType);
 
         /// <summary>
-        /// Prepares a buffer for writing to the underlying HTTP stream.
-        /// </summary>
-        /// <param name="buffer">
-        /// <see cref="ReadOnlyMemory{T}"/> representing buffer.
-        /// </param>
-        /// <param name="payloadType">
-        /// A <see cref="PayloadType" /> value.
-        /// </param>
-        protected abstract void PrepareBuffer(ref ReadOnlyMemory<byte> buffer, PayloadType payloadType);
-
-        /// <summary>
         /// Creates an <see cref="HttpClient" /> used for sending data to the endpoint.
         /// </summary>
         protected virtual HttpClient CreateHttpClient() => new HttpClient();
 
         /// <inheritdoc />
-        protected async ValueTask SendAsync(Uri uri, HttpMethod method, PayloadType payloadType, ReadOnlyMemory<byte> buffer)
+        protected async ValueTask SendAsync(Uri uri, HttpMethod method, PayloadType payloadType, ReadOnlySequence<byte> sequence)
         {
-            PrepareBuffer(ref buffer, payloadType);
-
             var preambleLength = GetPreambleLength(payloadType);
             var postambleLength = GetPostambleLength(payloadType);
             var request = new HttpRequestMessage(method, uri)
             {
-                Content = new ReadOnlyMemoryContent(payloadType, buffer, preambleLength, WritePreambleAsync, postambleLength, WritePostambleAsync)
+                Content = new ReadOnlySequenceContent(payloadType, sequence, preambleLength, WritePreambleAsync, postambleLength, WritePostambleAsync)
             };
 
             var response = await _httpClientFactory.Value.SendAsync(request);
@@ -156,17 +153,17 @@ namespace BosunReporter.Infrastructure
             }
         }
 
-        private class ReadOnlyMemoryContent : HttpContent
+        private class ReadOnlySequenceContent : HttpContent
         {
             readonly PayloadType _type;
-            readonly ReadOnlyMemory<byte> _memory;
+            readonly ReadOnlySequence<byte> _sequence;
             readonly Func<Stream, PayloadType, Task> _writePreamble;
             readonly Func<Stream, PayloadType, Task> _writePostamble;
-            readonly int _length;
+            readonly long _length;
 
-            public ReadOnlyMemoryContent(
+            public ReadOnlySequenceContent(
                 PayloadType type,
-                ReadOnlyMemory<byte> memory, 
+                in ReadOnlySequence<byte> sequence, 
                 int preambleLength,
                 Func<Stream, PayloadType, Task> writePreamble, 
                 int postambleLength,
@@ -174,8 +171,8 @@ namespace BosunReporter.Infrastructure
             )
             {
                 _type = type;
-                _memory = memory;
-                _length = memory.Length + preambleLength + postambleLength;
+                _sequence = sequence;
+                _length = sequence.Length + preambleLength + postambleLength;
                 _writePreamble = writePreamble;
                 _writePostamble = writePostamble;
 
@@ -187,7 +184,7 @@ namespace BosunReporter.Infrastructure
             protected override async Task SerializeToStreamAsync(Stream stream, TransportContext context)
             {
                 await _writePreamble(stream, _type);
-                await stream.WriteAsync(_memory);
+                await stream.WriteAsync(_sequence);
                 await _writePostamble(stream, _type);
             }
 

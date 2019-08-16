@@ -79,8 +79,8 @@ namespace BosunReporter.Handlers
         readonly Uri _metricUri;
         readonly Uri _metadataUri;
 
-        BufferWriter<byte> _metricBufferWriter;
-        BufferWriter<byte> _metadataBufferWriter;
+        PayloadTypeMetadata _metricMetadata;
+        PayloadTypeMetadata _metadataMetadata;
         List<MetadataPayload> _metadata;
 
         /// <summary>
@@ -138,7 +138,7 @@ namespace BosunReporter.Handlers
         protected override int GetPostambleLength(PayloadType payloadType) => payloadType == PayloadType.Metadata ? 0 : s_postamble.Length;
 
         /// <inheritdoc />
-        protected override async ValueTask SendMetadataAsync(ReadOnlyMemory<byte> buffer)
+        protected override async ValueTask SendMetadataAsync(ReadOnlySequence<byte> buffer)
         {
             // metadata needs to be posted separately, one call per metric
             // so write it into a buffer writer and continually flush it out
@@ -158,35 +158,24 @@ namespace BosunReporter.Handlers
 
                     using (var metadataBuffer = bufferWriter.Flush())
                     {
-                        var sequence = metadataBuffer.Value;
-                        if (sequence.IsSingleSegment)
-                        {
-                            await SendAsync(uri, HttpMethod.Put, PayloadType.Metadata, sequence.First);
-                        }
-                        else
-                        {
-                            foreach (var segment in sequence)
-                            {
-                                await SendAsync(uri, HttpMethod.Put, PayloadType.Metadata, segment);
-                            }
-                        }
+                        await SendAsync(uri, HttpMethod.Put, PayloadType.Metadata, metadataBuffer.Value);
                     }
                 }
             }
         }
 
         /// <inheritdoc />
-        protected override ValueTask SendCounterAsync(ReadOnlyMemory<byte> buffer) => SendAsync(_metricUri, HttpMethod.Post, PayloadType.Counter, buffer);
+        protected override ValueTask SendCounterAsync(ReadOnlySequence<byte> sequence) => SendAsync(_metricUri, HttpMethod.Post, PayloadType.Counter, sequence);
 
         /// <inheritdoc />
-        protected override ValueTask SendCumulativeCounterAsync(ReadOnlyMemory<byte> buffer)
+        protected override ValueTask SendCumulativeCounterAsync(ReadOnlySequence<byte> sequence)
         {
             // TODO: verify that DataDog handles this gracefully
-            return SendAsync(_metricUri, HttpMethod.Post, PayloadType.CumulativeCounter, buffer);
+            return SendAsync(_metricUri, HttpMethod.Post, PayloadType.CumulativeCounter, sequence);
         }
 
         /// <inheritdoc />
-        protected override ValueTask SendGaugeAsync(ReadOnlyMemory<byte> buffer) => SendAsync(_metricUri, HttpMethod.Post, PayloadType.Gauge, buffer);
+        protected override ValueTask SendGaugeAsync(ReadOnlySequence<byte> sequence) => SendAsync(_metricUri, HttpMethod.Post, PayloadType.Gauge, sequence);
 
         /// <inheritdoc />
         protected override void SerializeMetadata(IBufferWriter<byte> writer, IEnumerable<MetaData> metadata)
@@ -208,18 +197,18 @@ namespace BosunReporter.Handlers
         }
 
         /// <inheritdoc />
-        protected override BufferWriter<byte> CreateBufferWriter(PayloadType payloadType)
+        protected override PayloadTypeMetadata CreatePayloadTypeMetadata(PayloadType payloadType)
         {
-            BufferWriter<byte> CreateBufferWriter() => BufferWriter<byte>.Create(MaxPayloadSize);
+            PayloadTypeMetadata CreatePayloadTypeMetadata() => new PayloadTypeMetadata(BufferWriter<byte>.Create(blockSize: MaxPayloadSize));
 
             switch (payloadType)
             {
-                case PayloadType.Counter:
                 case PayloadType.CumulativeCounter:
+                case PayloadType.Counter:
                 case PayloadType.Gauge:
-                    return _metricBufferWriter ?? (_metricBufferWriter = CreateBufferWriter());
+                    return _metricMetadata ?? (_metricMetadata = CreatePayloadTypeMetadata());
                 case PayloadType.Metadata:
-                    return _metadataBufferWriter ?? (_metadataBufferWriter = CreateBufferWriter());
+                    return _metadataMetadata ?? (_metadataMetadata = CreatePayloadTypeMetadata());
                 default:
                     throw new ArgumentOutOfRangeException(nameof(payloadType));
             }
@@ -228,12 +217,12 @@ namespace BosunReporter.Handlers
         /// <inheritdoc />
         protected override void SerializeMetric(IBufferWriter<byte> writer, in MetricReading reading)
         {
+            writer.Write(s_comma);
+
             using (var utfWriter = new Utf8JsonWriter(writer))
             {
                 JsonSerializer.Serialize(utfWriter, reading, s_jsonOptions);
             }
-
-            writer.Write(s_comma);
         }
 
         /// <inheritdoc />
@@ -259,25 +248,17 @@ namespace BosunReporter.Handlers
         }
 
         /// <inheritdoc />
-        protected override void PrepareBuffer(ref ReadOnlyMemory<byte> buffer, PayloadType payloadType)
+        protected override void PrepareSequence(ref ReadOnlySequence<byte> sequence, PayloadType payloadType)
         {
             if (payloadType == PayloadType.Metadata)
             {
                 return;
             }
 
-            // make sure that there are no trailing or leading commas
-            var firstByte = buffer.Span[0];
+            var firstByte = sequence.First.Span[0];
             if (firstByte == ',')
             {
-                buffer = buffer.Slice(1);
-            }
-
-            var lastIndex = buffer.Length - 1;
-            var lastByte = buffer.Span[lastIndex];
-            if (lastByte == ',')
-            {
-                buffer = buffer.Slice(0, lastIndex);
+                sequence = sequence.Slice(1);
             }
         }
 
@@ -338,7 +319,7 @@ namespace BosunReporter.Handlers
                     {
                         writer.WriteStringValue(tag.Key + ":" + tag.Value); // "tag:value"
                     }
-                    writer.WriteStartArray(); // ]
+                    writer.WriteEndArray(); // ]
                 }
                 writer.WriteString(s_hostProperty, s_hostValue); // ,"host": "hostname"
                 writer.WriteEndObject(); // }

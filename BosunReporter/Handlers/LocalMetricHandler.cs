@@ -122,6 +122,9 @@ namespace BosunReporter.Handlers
             _readings[nameWithSuffix] = reading;
         }
 
+        /// <inheritdoc />
+        public ValueTask DisposeAsync() => default;
+
         private class Batch : IMetricBatch
         {
             private readonly LocalMetricHandler _handler;

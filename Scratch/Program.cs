@@ -1,10 +1,15 @@
 ﻿using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using System.Net;
 using System.Net.Http;
+using System.Net.Sockets;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using BenchmarkDotNet.Running;
 using BosunReporter;
 using BosunReporter.Handlers;
 using BosunReporter.Infrastructure;
@@ -17,8 +22,17 @@ namespace Scratch
         static Task s_samplerTask;
         static CancellationTokenSource s_cancellationTokenSource;
 
-        static async Task Main(string[] args)
+       static async Task Main(string[] args)
         {
+            //BenchmarkRunner.Run<Benchmark>();
+            //var x = 1;
+            //if (x == 1)
+            //{
+            //    return;
+            //}
+
+            s_cancellationTokenSource = new CancellationTokenSource();
+
             Debug.AutoFlush = true;
 
             const string LocalEndpointKey = "Local";
@@ -30,16 +44,17 @@ namespace Scratch
                 Console.WriteLine(exception);
             })
             {
-                Endpoints = new[] {
-                    //new MetricEndpoint("DataDog Cloud", new DataDogMetricHandler("https://api.datadoghq.com/", "{API_KEY}", "{APP_KEY}")),
+                Endpoints = new MetricEndpoint[] {
+                    //new MetricEndpoint("Test HTTP", new TestHttpMetricHandler("http://127.0.0.1/")),
+                    //new MetricEndpoint("Test UDP", new TestUdpMetricHandler(s_cancellationTokenSource.Token) { MaxPayloadSize = 320 }),
                     //new MetricEndpoint("Bosun", new BosunMetricHandler("http://devbosun.ds.stackexchange.com/")),
-                    //new MetricEndpoint("Test", new TestMetricsHandler("http://127.0.0.1/")),
                     //new MetricEndpoint("DataDog Agent", new DataDogStatsdMetricHandler("dogstatsd.datadog.svc.ny-intkube.k8s", 8125)),
+                    //new MetricEndpoint("SignalFx Agent", new SignalFxMetricHandler("http://sfxgateway.signalfx.svc.ny-intkube.k8s:18080")),
+                    //new MetricEndpoint("DataDog Cloud", new DataDogMetricHandler("https://api.datadoghq.com/", "{API_KEY}", "{APP_KEY}")),
                     //new MetricEndpoint("SignalFx Cloud", new SignalFxMetricHandler("https://ingest.us1.signalfx.com/", "{API_KEY}")),
-                    new MetricEndpoint("SignalFx Agent", new SignalFxMetricHandler("http://sfxgateway.signalfx.svc.ny-intkube.k8s:18080")),
                     //new MetricEndpoint(LocalEndpointKey, localHandler)
                 },
-                MetricsNamePrefix = "scratch3.",
+                MetricsNamePrefix = "bosun.reporter.",
                 ThrowOnPostFail = true,
                 SnapshotInterval = TimeSpan.FromSeconds(5),
                 PropertyToTagName = NameTransformers.CamelToLowerSnakeCase,
@@ -60,7 +75,7 @@ namespace Scratch
                         Console.WriteLine($"{reading.Name}{reading.Suffix}@{reading.Timestamp:s} {reading.Value}");
                     }
                 }
-                Console.WriteLine($"BosunReporter: {info.BytesWritten} bytes posted to endpoint {info.Endpoint} in {info.Duration.TotalMilliseconds.ToString("0.##")}ms ({(info.Successful ? "SUCCESS" : "FAILED")})");
+                Console.WriteLine($"BosunReporter: Payload {info.PayloadType} - {info.BytesWritten} bytes posted to endpoint {info.Endpoint} in {info.Duration.TotalMilliseconds.ToString("0.##")}ms ({(info.Successful ? "SUCCESS" : "FAILED")})");
             };
 
             collector.BindMetric("my_counter", "increments", typeof(TestCounter));
@@ -125,7 +140,6 @@ namespace Scratch
             var sai = 0;
             var random = new Random();
 
-            s_cancellationTokenSource = new CancellationTokenSource();
             s_samplerTask = Task.Run(async () =>
             {
                 while (true)
@@ -169,7 +183,14 @@ namespace Scratch
                 s_cancellationTokenSource.Cancel();
             };
 
-            await s_samplerTask;
+            try
+            {
+                await s_samplerTask;
+            }
+            catch (TaskCanceledException)
+            {
+                // meh, ignore
+            }
         }
 
         static void Run(object obj)
@@ -183,13 +204,14 @@ namespace Scratch
 
             var rand = new Random(tup.Item3);
             int i;
-            while (true)
+            while (!s_cancellationTokenSource.IsCancellationRequested)
             {
                 for (i = 0; i < 20; i++)
                 {
                     gauge1.Record(rand.NextDouble());
                     gauge2.Record(rand.NextDouble());
                 }
+
                 Thread.Sleep(1);
             }
         }
@@ -209,13 +231,35 @@ namespace Scratch
         }
     }
 
-    class TestMetricsHandler : BosunMetricHandler
+    class TestHttpMetricHandler : SignalFxMetricHandler
     {
-        public TestMetricsHandler(string url) : base(url)
+        public TestHttpMetricHandler(string url) : base(url)
         {
         }
 
         protected override HttpClient CreateHttpClient() => new HttpClient(new TestHttpHandler());
+    }
+
+    class TestUdpMetricHandler : DataDogStatsdMetricHandler
+    {
+        public TestUdpMetricHandler(CancellationToken cancellationToken) : base(IPAddress.Loopback.ToString(), 1234)
+        {
+            Task.Run(
+                () =>
+                {
+                    var udpClient = new UdpClient(1234);
+                    var ipEndpoint = new IPEndPoint(IPAddress.Loopback, 0);
+                    cancellationToken.Register(() => udpClient.Dispose());
+                    while (!cancellationToken.IsCancellationRequested)
+                    {
+                        try
+                        {
+                            udpClient.Receive(ref ipEndpoint);
+                        }
+                        catch { }
+                    }
+                });
+        }
     }
 
     [GaugeAggregator(AggregateMode.Count)]

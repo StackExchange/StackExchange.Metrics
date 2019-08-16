@@ -30,7 +30,7 @@ namespace BosunReporter.Handlers
 
         static readonly byte[] s_comma = Encoding.UTF8.GetBytes(",");
         static readonly byte[] s_counterPreamble = Encoding.UTF8.GetBytes(@"{""counter"":[");
-        static readonly byte[] s_cumulativeCounterPreamble = Encoding.UTF8.GetBytes(@"{""cumulative counter"":[");
+        static readonly byte[] s_cumulativeCounterPreamble = Encoding.UTF8.GetBytes(@"{""cumulative_counter"":[");
         static readonly byte[] s_gaugePreamble = Encoding.UTF8.GetBytes(@"{""gauge"":[");
         static readonly byte[] s_postamble = Encoding.UTF8.GetBytes("]}");
 
@@ -103,12 +103,12 @@ namespace BosunReporter.Handlers
         /// <inheritdoc />
         protected override void SerializeMetric(IBufferWriter<byte> writer, in MetricReading reading)
         {
+            writer.Write(s_comma);
+
             using (var utfWriter = new Utf8JsonWriter(writer))
             {
                 JsonSerializer.Serialize(utfWriter, reading, s_jsonOptions);
             }
-
-            writer.Write(s_comma);
         }
 
         /// <inheritdoc />
@@ -118,16 +118,16 @@ namespace BosunReporter.Handlers
         }
 
         /// <inheritdoc />
-        protected override ValueTask SendCounterAsync(ReadOnlyMemory<byte> buffer) => SendAsync(_metricUri, HttpMethod.Post, PayloadType.Counter, buffer);
+        protected override ValueTask SendCounterAsync(ReadOnlySequence<byte> sequence) => default;//SendAsync(_metricUri, HttpMethod.Post, PayloadType.Counter, sequence);
 
         /// <inheritdoc />
-        protected override ValueTask SendCumulativeCounterAsync(ReadOnlyMemory<byte> buffer) => SendAsync(_metricUri, HttpMethod.Post, PayloadType.CumulativeCounter, buffer);
+        protected override ValueTask SendCumulativeCounterAsync(ReadOnlySequence<byte> sequence) => SendAsync(_metricUri, HttpMethod.Post, PayloadType.CumulativeCounter, sequence);
 
         /// <inheritdoc />
-        protected override ValueTask SendGaugeAsync(ReadOnlyMemory<byte> buffer) => SendAsync(_metricUri, HttpMethod.Post, PayloadType.Gauge, buffer);
+        protected override ValueTask SendGaugeAsync(ReadOnlySequence<byte> sequence) => default;// SendAsync(_metricUri, HttpMethod.Post, PayloadType.Gauge, sequence);
 
         /// <inheritdoc />
-        protected override ValueTask SendMetadataAsync(ReadOnlyMemory<byte> buffer)
+        protected override ValueTask SendMetadataAsync(ReadOnlySequence<byte> sequence)
         {
             // this particular implementation doesn't understand metadata
             return default;
@@ -172,25 +172,18 @@ namespace BosunReporter.Handlers
         }
 
         /// <inheritdoc />
-        protected override void PrepareBuffer(ref ReadOnlyMemory<byte> buffer, PayloadType payloadType)
+        protected override void PrepareSequence(ref ReadOnlySequence<byte> sequence, PayloadType payloadType)
         {
             if (payloadType == PayloadType.Metadata)
             {
                 return;
             }
 
-            // make sure that there are no trailing or leading commas
-            var firstByte = buffer.Span[0];
+            // make sure that there are no leading commas
+            var firstByte = sequence.First.Span[0];
             if (firstByte == ',')
             {
-                buffer = buffer.Slice(1);
-            }
-
-            var lastIndex = buffer.Length - 1;
-            var lastByte = buffer.Span[lastIndex];
-            if (lastByte == ',')
-            {
-                buffer = buffer.Slice(0, lastIndex);
+                sequence = sequence.Slice(1);
             }
         }
 
@@ -204,7 +197,7 @@ namespace BosunReporter.Handlers
             static readonly JsonEncodedText s_metricProperty = JsonEncodedText.Encode("metric");
             static readonly JsonEncodedText s_valueProperty = JsonEncodedText.Encode("value");
             static readonly JsonEncodedText s_dimensionsProperty = JsonEncodedText.Encode("dimensions");
-            static readonly JsonEncodedText s_timestampProperty = JsonEncodedText.Encode("host");
+            static readonly JsonEncodedText s_timestampProperty = JsonEncodedText.Encode("timestamp");
 
             public override void Write(Utf8JsonWriter writer, MetricReading reading, JsonSerializerOptions options)
             {

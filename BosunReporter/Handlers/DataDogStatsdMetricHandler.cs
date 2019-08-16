@@ -1,4 +1,5 @@
 ﻿using BosunReporter.Infrastructure;
+using Pipelines.Sockets.Unofficial;
 using Pipelines.Sockets.Unofficial.Buffers;
 using System;
 using System.Buffers;
@@ -7,8 +8,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Net.Sockets;
-using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -19,11 +18,11 @@ namespace BosunReporter.Handlers
     /// </summary>
     public class DataDogStatsdMetricHandler : BufferedMetricHandler
     {
-        readonly Lazy<ValueTask<IPEndPoint>> _endpointFactory;
         readonly Socket _socket;
+        readonly ValueTask<SocketAwaitableEventArgs> _socketEventArgsTask;
 
-        BufferWriter<byte> _metricBufferWriter;
-        BufferWriter<byte> _metadataBufferWriter;
+        PayloadTypeMetadata _metricMetadata;
+        PayloadTypeMetadata _metadataMetadata;
 
         const int ValueDecimals = 5;
         static readonly byte[] s_counter = Encoding.UTF8.GetBytes("c");
@@ -51,12 +50,17 @@ namespace BosunReporter.Handlers
                 throw new ArgumentNullException(nameof(host));
             }
 
-            _endpointFactory = new Lazy<ValueTask<IPEndPoint>>(() => CreateEndpointAsync(host, port));
+            _socketEventArgsTask = CreateSocketEventArgsAsync(host, port);
             _socket = new Socket(SocketType.Dgram, ProtocolType.Udp);
         }
 
         /// <inheritdoc />
-        protected override ValueTask SendAsync(PayloadType payloadType, ReadOnlyMemory<byte> buffer)
+        protected override void PrepareSequence(ref ReadOnlySequence<byte> sequence, PayloadType payloadType)
+        {
+        }
+
+        /// <inheritdoc />
+        protected override ValueTask SendAsync(PayloadType payloadType, ReadOnlySequence<byte> sequence)
         {
             if (payloadType == PayloadType.Metadata)
             {
@@ -69,7 +73,7 @@ namespace BosunReporter.Handlers
                 case PayloadType.Counter:
                 case PayloadType.CumulativeCounter:
                 case PayloadType.Gauge:
-                    return SendMetricAsync(payloadType, buffer);
+                    return SendMetricAsync(payloadType, sequence);
                 default:
                     throw new ArgumentOutOfRangeException(nameof(payloadType));
             }
@@ -207,33 +211,38 @@ namespace BosunReporter.Handlers
         }
 
         /// <inheritdoc />
-        protected override BufferWriter<byte> CreateBufferWriter(PayloadType payloadType)
+        protected override PayloadTypeMetadata CreatePayloadTypeMetadata(PayloadType payloadType)
         {
-            BufferWriter<byte> CreateBufferWriter() => BufferWriter<byte>.Create(MaxPayloadSize);
+            PayloadTypeMetadata CreatePayloadTypeMetadata() => new PayloadTypeMetadata(BufferWriter<byte>.Create(blockSize: MaxPayloadSize));
 
             switch (payloadType)
             {
-                case PayloadType.Counter:
                 case PayloadType.CumulativeCounter:
+                case PayloadType.Counter:
                 case PayloadType.Gauge:
-                    return _metricBufferWriter ?? (_metricBufferWriter = CreateBufferWriter());
+                    return _metricMetadata ?? (_metricMetadata = CreatePayloadTypeMetadata());
                 case PayloadType.Metadata:
-                    return _metadataBufferWriter ?? (_metadataBufferWriter = CreateBufferWriter());
+                    return _metadataMetadata ?? (_metadataMetadata = CreatePayloadTypeMetadata());
                 default:
                     throw new ArgumentOutOfRangeException(nameof(payloadType));
             }
         }
 
-        private ValueTask<IPEndPoint> CreateEndpointAsync(string host, ushort port)
+        private ValueTask<SocketAwaitableEventArgs> CreateSocketEventArgsAsync(string host, ushort port)
         {
             if (IPAddress.TryParse(host, out IPAddress ip))
             {
-                return new ValueTask<IPEndPoint>(new IPEndPoint(ip, port));
+                return new ValueTask<SocketAwaitableEventArgs>(
+                    new SocketAwaitableEventArgs
+                    {
+                        RemoteEndPoint = new IPEndPoint(ip, port)
+                    }
+                );
             }
 
-            return GetEndpointAsync();
+            return CreateSocketEventArgsAsync();
 
-            async ValueTask<IPEndPoint> GetEndpointAsync()
+            async ValueTask<SocketAwaitableEventArgs> CreateSocketEventArgsAsync()
             {
                 var hostAddresses = await Dns.GetHostAddressesAsync(host);
                 var hostAddress = hostAddresses.FirstOrDefault(x => x.AddressFamily == AddressFamily.InterNetwork || x.AddressFamily == AddressFamily.InterNetworkV6);
@@ -242,41 +251,79 @@ namespace BosunReporter.Handlers
                     throw new ArgumentException("Unable to find an IPv4 or IPv6 address for host", nameof(host));
                 }
 
+                IPEndPoint endpoint;
                 if (hostAddress.AddressFamily == AddressFamily.InterNetworkV6)
                 {
-                    return new IPEndPoint(hostAddress.MapToIPv6(), port);
+                    endpoint = new IPEndPoint(hostAddress.MapToIPv6(), port);
+                }
+                else
+                {
+                    endpoint = new IPEndPoint(hostAddress.MapToIPv4(), port);
                 }
 
-                return new IPEndPoint(hostAddress.MapToIPv4(), port);
+                return new SocketAwaitableEventArgs
+                {
+                    RemoteEndPoint = endpoint
+                };
             }
         }
 
-        private ValueTask SendMetricAsync(PayloadType type, ReadOnlyMemory<byte> buffer)
+        private ValueTask SendMetricAsync(PayloadType type, in ReadOnlySequence<byte> sequence)
         {
-            var arraySegment = buffer.GetArray();
-            var endpointTask = _endpointFactory.Value;
-            if (endpointTask.IsCompleted)
+            if (_socketEventArgsTask.IsCompleted)
             {
-                var sendTask = Task.Factory.FromAsync(
-                    _socket.BeginSendTo(arraySegment.Array, arraySegment.Offset, arraySegment.Count, SocketFlags.None, endpointTask.Result, null, _socket),
-                    _socket.EndSendTo
-                );
-
-                if (sendTask.IsCompleted)
-                {
-                    return default;
-                }
+                return SendMetricAsync(_socketEventArgsTask.Result, sequence);
             }
 
-            return SendMetricAsync(endpointTask, arraySegment);
+            return FetchSocketArgsAndSendAsync(_socketEventArgsTask, sequence);
 
-            async ValueTask SendMetricAsync(ValueTask<IPEndPoint> task, ArraySegment<byte> array)
+            async ValueTask FetchSocketArgsAndSendAsync(ValueTask<SocketAwaitableEventArgs> socketArgsTask, ReadOnlySequence<byte> buffer)
             {
-                await task;
-                await Task.Factory.FromAsync(
-                    _socket.BeginSendTo(arraySegment.Array, arraySegment.Offset, arraySegment.Count, SocketFlags.None, endpointTask.Result, null, _socket),
-                    _socket.EndSendTo
-                );
+                await SendMetricAsync(await socketArgsTask, buffer);
+            }
+
+            async ValueTask SendMetricAsync(SocketAwaitableEventArgs socketArgs, ReadOnlySequence<byte> buffer)
+            {
+                socketArgs.BufferList = GetBufferList(buffer);
+                if (!_socket.SendToAsync(socketArgs))
+                {
+                    socketArgs.Complete();
+                }
+
+                await socketArgs;
+            }
+        }
+
+        private static List<ArraySegment<byte>> GetBufferList(in ReadOnlySequence<byte> sequence)
+        {
+            if (sequence.IsSingleSegment)
+            {
+                return new List<ArraySegment<byte>>(1)
+                {
+                    sequence.First.GetArray()
+                };
+            }
+            var list = new List<ArraySegment<byte>>();
+            foreach (var b in sequence)
+            {
+                list.Add(b.GetArray());
+            }
+
+            return list;
+        }
+
+        /// <inheritdoc />
+        public override async ValueTask DisposeAsync()
+        {
+            try
+            {
+                using (await _socketEventArgsTask)
+                using (_socket)
+                {
+                }
+            }
+            catch
+            {
             }
         }
     }

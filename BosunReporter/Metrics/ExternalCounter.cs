@@ -13,7 +13,6 @@ namespace BosunReporter.Metrics
     /// See https://github.com/bretcope/BosunReporter.NET/blob/master/docs/MetricTypes.md#externalcounter
     /// </remarks>
     /// </summary>
-    [ExcludeDefaultTags("host")]
     public class ExternalCounter : BosunMetric
     {
         int _count;

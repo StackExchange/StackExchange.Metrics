@@ -16,16 +16,14 @@ namespace BosunReporter.Infrastructure
     {
         static readonly PayloadType[] s_payloadTypes = (PayloadType[])Enum.GetValues(typeof(PayloadType));
 
-        readonly Lazy<BufferWriter<byte>[]> _bufferWriterFactory;
-        readonly Dictionary<PayloadType, int> _payloadCountsByType;
+        readonly Dictionary<PayloadType, PayloadTypeMetadata> _payloadMetadata;
 
         /// <summary>
         /// Constructs a <see cref="BufferedMetricHandler" />.
         /// </summary>
         protected BufferedMetricHandler()
         {
-            _bufferWriterFactory = new Lazy<BufferWriter<byte>[]>(CreateBufferWriters);
-            _payloadCountsByType = new Dictionary<PayloadType, int>();
+            _payloadMetadata = new Dictionary<PayloadType, PayloadTypeMetadata>();
         }
 
         /// <summary>
@@ -42,13 +40,28 @@ namespace BosunReporter.Infrastructure
         /// </summary>
         public long MaxPayloadCount { get; set; } = 240;
 
-        /// <summary>
-        /// Gets the total size of buffer used by the handler.
-        /// </summary>
-        public long TotalBufferSize => _bufferWriterFactory.Value.Sum(x => x.Length);
-
         /// <ineritdoc />
         public IMetricBatch BeginBatch() => new Batch(this);
+
+        private void SerializeMetric(PayloadType payloadType, PayloadTypeMetadata payloadMetadata, in MetricReading reading)
+        {
+            if (payloadMetadata.PayloadCount >= MaxPayloadCount)
+            {
+                throw new BosunQueueFullException(payloadType, payloadMetadata.PayloadCount);
+            }
+
+            var bufferWriter = payloadMetadata.BufferWriter;
+            var startPosition = bufferWriter.Length;
+            var flushPosition = payloadMetadata.FlushPositions.LastOrDefault();
+            SerializeMetric(bufferWriter, reading);
+            var endPosition = bufferWriter.Length;
+            if (endPosition - flushPosition > MaxPayloadSize && startPosition > 0)
+            {
+                payloadMetadata.FlushPositions.Add(startPosition);
+            }
+
+            payloadMetadata.PayloadCount++;
+        }
 
         /// <summary>
         /// Serializes a metric into a format appropriate for the endpoint.
@@ -59,9 +72,9 @@ namespace BosunReporter.Infrastructure
         public void SerializeMetric(in MetricReading reading)
         {
             var payloadType = GetPayloadType(reading.Type);
-            var bufferWriter = GetBufferWriter(payloadType);
+            var payloadMetadata = GetPayloadTypeMetadata(payloadType);
 
-            SerializeMetric(bufferWriter.Writer, reading);
+            SerializeMetric(payloadType, payloadMetadata, reading);
         }
 
         /// <summary>
@@ -72,9 +85,16 @@ namespace BosunReporter.Infrastructure
         /// </param>
         public void SerializeMetadata(IEnumerable<MetaData> metadata)
         {
-            var bufferWriter = GetBufferWriter(PayloadType.Metadata);
-
+            var payloadMetadata = GetPayloadTypeMetadata(PayloadType.Metadata);
+            var bufferWriter = payloadMetadata.BufferWriter;
+            // keep track of how much data was written
+            var startPosition = bufferWriter.Length;
             SerializeMetadata(bufferWriter.Writer, metadata);
+            var endPosition = bufferWriter.Length;
+            if (endPosition > MaxPayloadSize)
+            {
+                payloadMetadata.FlushPositions.Add(startPosition);
+            }
         }
 
         /// <summary>
@@ -94,14 +114,15 @@ namespace BosunReporter.Infrastructure
         /// </param>
         public async ValueTask FlushAsync(TimeSpan delayBetweenRetries, int maxRetries, Action<AfterSendInfo> afterSend, Action<Exception> exceptionHandler)
         {
-            async Task SendWithErrorHandlingAsync(PayloadType payloadType, ReadOnlyMemory<byte> buffer)
+            async Task SendWithErrorHandlingAsync(PayloadType payloadType, ReadOnlySequence<byte> sequence)
             {
-                var info = new AfterSendInfo();
+                var info = new AfterSendInfo { PayloadType = payloadType };
                 var sw = Stopwatch.StartNew();
                 try
                 {
-                    await SendAsync(payloadType, buffer);
-                    info.BytesWritten = buffer.Length;
+                    PrepareSequence(ref sequence, payloadType);
+                    await SendAsync(payloadType, sequence);
+                    info.BytesWritten = sequence.Length;
                     sw.Stop();
                 }
                 catch (Exception ex)
@@ -121,11 +142,13 @@ namespace BosunReporter.Infrastructure
             foreach (var payloadType in s_payloadTypes)
             {
                 var retries = 0;
-                var bufferWriter = GetBufferWriter(payloadType);
+                var payloadMetadata = GetPayloadTypeMetadata(payloadType);
+                var bufferWriter = payloadMetadata.BufferWriter;
                 if (bufferWriter.Length == 0)
                 {
-                    _payloadCountsByType[payloadType] = 0;
-                    return;
+                    payloadMetadata.PayloadCount = 0;
+                    payloadMetadata.FlushPositions.Clear();
+                    continue;
                 }
 
                 using (var data = bufferWriter.Flush())
@@ -135,18 +158,32 @@ namespace BosunReporter.Infrastructure
                     {
                         try
                         {
-                            if (sequence.IsSingleSegment)
+                            // flush blocks based upon the positions we recorded, or everything
+                            // if there are no positions recorded
+                            var positionsToFlush = payloadMetadata.FlushPositions.ToList();
+                            if (positionsToFlush.Count == 0)
                             {
-                                await SendWithErrorHandlingAsync(payloadType, sequence.First);
+                                // flush everything
+                                await SendWithErrorHandlingAsync(payloadType, sequence);
                             }
                             else
                             {
-                                foreach (var segment in sequence)
+                                // flush each valid payload individually
+                                var startIndex = 0L;
+                                foreach (var positionToFlush in positionsToFlush)
                                 {
-                                    await SendWithErrorHandlingAsync(payloadType, segment);
+                                    await SendWithErrorHandlingAsync(payloadType, sequence.Slice(startIndex, positionToFlush - startIndex));
+                                    startIndex = positionToFlush;
+                                }
+
+                                if (startIndex < sequence.Length)
+                                {
+                                    await SendWithErrorHandlingAsync(payloadType, sequence.Slice(startIndex));
                                 }
                             }
-                            _payloadCountsByType[payloadType] = 0;
+
+                            payloadMetadata.PayloadCount = 0;
+                            payloadMetadata.FlushPositions.Clear();
                             break;
                         }
                         catch (Exception) when (++retries < maxRetries)
@@ -166,16 +203,30 @@ namespace BosunReporter.Infrastructure
             }
         }
 
+        /// <inheritdoc />
+        public virtual ValueTask DisposeAsync() => default;
+
+        /// <summary>
+        /// Prepares a sequence for writing to the underlying transport.
+        /// </summary>
+        /// <param name="sequence">
+        /// <see cref="ReadOnlySequence{T}"/> representing buffer.
+        /// </param>
+        /// <param name="payloadType">
+        /// A <see cref="PayloadType" /> value.
+        /// </param>
+        protected abstract void PrepareSequence(ref ReadOnlySequence<byte> sequence, PayloadType payloadType);
+
         /// <summary>
         /// Sends a batch of serialized data to the metrics endpoint.
         /// </summary>
         /// <param name="type">
         /// A <see cref="PayloadType" /> value.
         /// </param>
-        /// <param name="buffer">
-        /// <see cref="ReadOnlyMemory{T}" /> containing the data to send.
+        /// <param name="sequence">
+        /// <see cref="ReadOnlySequence{T}" /> containing the data to send.
         /// </param>
-        protected abstract ValueTask SendAsync(PayloadType type, ReadOnlyMemory<byte> buffer);
+        protected abstract ValueTask SendAsync(PayloadType type, ReadOnlySequence<byte> sequence);
 
         /// <summary>
         /// Serializes a metric into the supplied <see cref="IBufferWriter{T}" />
@@ -212,6 +263,19 @@ namespace BosunReporter.Infrastructure
         /// </remarks>
         protected virtual BufferWriter<byte> CreateBufferWriter(PayloadType payloadType) => BufferWriter<byte>.Create(blockSize: MaxPayloadSize);
 
+        /// <summary>
+        /// Creates a <see cref="PayloadTypeMetadata" /> for a specific type of payload.
+        /// </summary>
+        /// <param name="payloadType">
+        /// A <see cref="PayloadType" /> value.
+        /// </param>
+        /// <remarks>
+        /// Overriding implementations can return the same <see cref="PayloadTypeMetadata" />
+        /// instance for different kinds of payload.
+        /// </remarks>
+        protected virtual PayloadTypeMetadata CreatePayloadTypeMetadata(PayloadType payloadType) 
+            => new PayloadTypeMetadata(BufferWriter<byte>.Create(blockSize: MaxPayloadSize));
+
         private static PayloadType GetPayloadType(MetricType metricType)
         {
             switch (metricType)
@@ -227,7 +291,15 @@ namespace BosunReporter.Infrastructure
             }
         }
 
-        private BufferWriter<byte> GetBufferWriter(PayloadType payloadType) => _bufferWriterFactory.Value[(int)payloadType];
+        private PayloadTypeMetadata GetPayloadTypeMetadata(PayloadType payloadType)
+        {
+            if (!_payloadMetadata.TryGetValue(payloadType, out var metadata))
+            {
+                metadata = _payloadMetadata[payloadType] = CreatePayloadTypeMetadata(payloadType);
+            }
+
+            return metadata;
+        }
 
         private BufferWriter<byte>[] CreateBufferWriters()
         {
@@ -255,21 +327,10 @@ namespace BosunReporter.Infrastructure
             public void SerializeMetric(in MetricReading reading)
             {
                 var payloadType = GetPayloadType(reading.Type);
-                if (!_handler._payloadCountsByType.TryGetValue(payloadType, out var payloadCount))
-                {
-                    payloadCount = 0;
-                }
-
-                if (payloadCount >= _handler.MaxPayloadCount)
-                {
-                    throw new BosunQueueFullException(payloadType, payloadCount);
-                }
-
-                var bufferWriter = _handler.GetBufferWriter(payloadType);
+                var payloadMetadata = _handler.GetPayloadTypeMetadata(payloadType);
+                var bufferWriter = payloadMetadata.BufferWriter;
                 var startBytes = bufferWriter.Length;
-                _handler.SerializeMetric(bufferWriter.Writer, reading);
-                _handler._payloadCountsByType[payloadType] = payloadCount + 1;
-
+                _handler.SerializeMetric(payloadType, payloadMetadata, reading);
                 MetricsWritten++;
                 BytesWritten += bufferWriter.Length - startBytes;
             }
@@ -279,5 +340,28 @@ namespace BosunReporter.Infrastructure
             }
         }
 
+        /// <summary>
+        /// Wraps a <see cref="BufferWriter{T}" /> to keep track of the payload count
+        /// and completed payloads offsets.
+        /// </summary>
+        protected class PayloadTypeMetadata
+        {
+            /// <summary>
+            /// Constructs a new instance of <see cref="PayloadTypeMetadata" />.
+            /// </summary>
+            /// <param name="bufferWriter">
+            /// A <see cref="BufferWriter{T}" /> used for serialized payloads.
+            /// </param>
+            public PayloadTypeMetadata(BufferWriter<byte> bufferWriter)
+            {
+                BufferWriter = bufferWriter;
+                FlushPositions = new List<long>();
+                PayloadCount = 0;
+            }
+
+            internal BufferWriter<byte> BufferWriter { get; }
+            internal int PayloadCount { get; set; }
+            internal List<long> FlushPositions { get; }
+        }
     }
 }

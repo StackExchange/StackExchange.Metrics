@@ -68,6 +68,10 @@ namespace BosunReporter
         /// </summary>
         public TimeSpan ReportingInterval { get; }
         /// <summary>
+        /// The length of time between flush operations to an endpoint.
+        /// </summary>
+        public TimeSpan FlushInterval { get; }
+        /// <summary>
         /// Allows you to specify a function which takes a property name and returns a tag name. This may be useful if you want to convert PropertyName to
         /// property_name or similar transformations. This function does not apply to any tag names which are set manually via the BosunTag attribute.
         /// </summary>
@@ -154,6 +158,7 @@ namespace BosunReporter
             ThrowOnPostFail = options.ThrowOnPostFail;
             ThrowOnQueueFull = options.ThrowOnQueueFull;
             ReportingInterval = options.SnapshotInterval;
+            FlushInterval = options.FlushInterval;
             PropertyToTagName = options.PropertyToTagName;
             TagValueConverter = options.TagValueConverter;
             DefaultTags = ValidateDefaultTags(options.DefaultTags);
@@ -168,7 +173,7 @@ namespace BosunReporter
                 {
                     while (!_shutdownTokenSource.IsCancellationRequested)
                     {
-                        await Task.Delay(1000, _shutdownTokenSource.Token);
+                        await Task.Delay(FlushInterval);
 
                         try
                         {
@@ -524,6 +529,10 @@ namespace BosunReporter
             await Task.WhenAll(_flushTask, _reportingTask);
             await SnapshotAsync(false);
             await FlushAsync(false);
+            foreach (var endpoint in _endpoints)
+            {
+                await endpoint.Handler.DisposeAsync();
+            }
         }
 
         Task SnapshotAsync(bool isCalledFromTimer)
@@ -744,6 +753,10 @@ namespace BosunReporter
         /// Endpoint that we sent data to.
         /// </summary>
         public string Endpoint { get; internal set; }
+        /// <summary>
+        /// Gets a <see cref="PayloadType" /> indicating the type of payload that was flushed.
+        /// </summary>
+        public PayloadType PayloadType { get; internal set; }
         /// <summary>
         /// The number of bytes in the payload. This does not include HTTP header bytes.
         /// </summary>
