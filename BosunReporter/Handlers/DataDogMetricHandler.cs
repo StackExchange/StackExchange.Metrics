@@ -56,10 +56,10 @@ namespace BosunReporter.Handlers
 
         static readonly Dictionary<string, string> _typeMappings = new Dictionary<string, string>
         {
-            [nameof(MetricType.Counter)] = "count",
+            [nameof(MetricType.Counter).ToLower()] = "count",
             // TODO: see if this is properly supported by DataDog
-            [nameof(MetricType.CumulativeCounter)] = "count",
-            [nameof(MetricType.Gauge)] = "gauge"
+            [nameof(MetricType.CumulativeCounter).ToLower()] = "count",
+            [nameof(MetricType.Gauge).ToLower()] = "gauge"
         };
 
         static readonly JsonSerializerOptions s_jsonOptions = new JsonSerializerOptions

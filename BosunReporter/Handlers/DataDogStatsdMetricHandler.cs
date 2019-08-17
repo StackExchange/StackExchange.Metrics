@@ -47,11 +47,6 @@ namespace BosunReporter.Handlers
         /// </param>
         public DataDogStatsdMetricHandler(string host, ushort port)
         {
-            if (host == null)
-            {
-                throw new ArgumentNullException(nameof(host));
-            }
-
             _host = host;
             _port = port;
             _socketEventArgsTask = CreateSocketEventArgsAsync();

@@ -127,7 +127,7 @@ namespace BosunReporter.Infrastructure
             {
                 var fullName = Name + SuffixesArray[i];
 
-                yield return new MetaData(fullName, MetadataNames.Rate, null, MetricType.ToString());
+                yield return new MetaData(fullName, MetadataNames.Rate, null, MetricType.ToString().ToLower());
 
                 var desc = GetDescription(i);
                 if (!string.IsNullOrEmpty(desc))
