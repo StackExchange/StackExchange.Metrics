@@ -162,10 +162,18 @@ namespace BosunReporter.Handlers
 
             length += s_pipe.Length;
 
-            var valueLength = 1 + 1 + ValueDecimals; // first number + decimal point + number of decimals
+            // calculate the length needed to render the value
             var value = reading.Value;
-            var valueAsInt = (int)value;
-            while ((valueAsInt /= 10) > 0)
+            var valueIsWhole = value % 1 == 0;
+            int valueLength = 1; // first digit
+            if (!valueIsWhole)
+            {
+                valueLength += 1 + ValueDecimals; // + decimal point + decimal digits
+            }
+
+            // calculate the remaining digits before the decimal point
+            var valueAsLong = (long)value;
+            while ((valueAsLong /= 10) > 0)
             {
                 valueLength++;
             }
@@ -207,11 +215,31 @@ namespace BosunReporter.Handlers
                 // separator (:)
                 CopyToBuffer(s_colon);
 
-                // write the value as a fixed point (f5) decimal
-                if (!Utf8Formatter.TryFormat(reading.Value, buffer.AsSpan(bytesWritten, valueLength), out var valueBytesWritten, s_valueFormat))
+                // write the value as a long
+                var valueBytesWritten = 0;
+                if (valueIsWhole)
                 {
-                    // hmmm, this shouldn't happen, BUG!
-                    throw new InvalidOperationException("Span was not big enough to write metric value");
+                    if (!Utf8Formatter.TryFormat((long)reading.Value, buffer.AsSpan(bytesWritten, valueLength), out valueBytesWritten))
+                    {
+                        var ex = new InvalidOperationException(
+                            "Span was not big enough to write metric value"
+                        );
+
+                        ex.Data.Add("Value", valueAsLong.ToString());
+                        ex.Data.Add("Size", valueLength.ToString());
+                        throw ex;
+                    }
+                }
+                // write the value as a fixed point (f5) decimal
+                else if (!Utf8Formatter.TryFormat(reading.Value, buffer.AsSpan(bytesWritten, valueLength), out valueBytesWritten, s_valueFormat))
+                {
+                    var ex = new InvalidOperationException(
+                        "Span was not big enough to write metric value"
+                    );
+
+                    ex.Data.Add("Value", value.ToString("f5"));
+                    ex.Data.Add("Size", valueLength.ToString());
+                    throw ex;
                 }
 
                 bytesWritten += valueBytesWritten;
