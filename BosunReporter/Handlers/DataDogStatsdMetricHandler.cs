@@ -18,11 +18,10 @@ namespace BosunReporter.Handlers
     /// </summary>
     public class DataDogStatsdMetricHandler : BufferedMetricHandler
     {
-        readonly Socket _socket;
-
         string _host;
         ushort _port;
         ValueTask<SocketAwaitableEventArgs> _socketEventArgsTask;
+        Socket _socket;
         PayloadTypeMetadata _metricMetadata;
         PayloadTypeMetadata _metadataMetadata;
 
@@ -128,6 +127,12 @@ namespace BosunReporter.Handlers
         /// <inheritdoc />
         protected override void SerializeMetric(IBufferWriter<byte> writer, in MetricReading reading)
         {
+            if (_host == null || _port == 0)
+            {
+                // no endpoint to write to, don't bother
+                return;
+            }
+
             // UTF-8 formatted as follows:
             // {metric}:{value}|{unit}|{tag},{tag}
 

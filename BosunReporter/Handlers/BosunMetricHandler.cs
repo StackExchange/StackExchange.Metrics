@@ -111,9 +111,18 @@ namespace BosunReporter.Handlers
         /// <inheritdoc />
         protected override void SerializeMetric(IBufferWriter<byte> writer, in MetricReading reading)
         {
-            if (reading.Type == MetricType.CumulativeCounter && !EnableExternalCounters)
+            if (reading.Type == MetricType.CumulativeCounter)
             {
-                // don't serialize cumulative counters if they're not enabled
+                if (!EnableExternalCounters || _slowMetricMetadata == null)
+                {
+                    // don't serialize cumulative counters if they're not enabled
+                    // or if there's no endpoint to write to
+                    return;
+                }
+            }
+            else if (_metricUri == null)
+            {
+                // no endpoint to write to, don't bother
                 return;
             }
 
@@ -134,6 +143,12 @@ namespace BosunReporter.Handlers
         /// <inheritdoc />
         protected override void SerializeMetadata(IBufferWriter<byte> writer, IEnumerable<MetaData> metadata)
         {
+            if (_metadataUri == null)
+            {
+                // no endpoint to write to, don't bother
+                return;
+            }
+
             using (var utfWriter = new Utf8JsonWriter(writer))
             {
                 JsonSerializer.Serialize(utfWriter, metadata, s_jsonOptions);

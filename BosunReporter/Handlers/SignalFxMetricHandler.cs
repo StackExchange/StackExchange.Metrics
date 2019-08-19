@@ -107,6 +107,12 @@ namespace BosunReporter.Handlers
         /// <inheritdoc />
         protected override void SerializeMetric(IBufferWriter<byte> writer, in MetricReading reading)
         {
+            if (_metricUri == null)
+            {
+                // no endpoint to write to, don't bother
+                return;
+            }
+
             writer.Write(s_comma);
 
             using (var utfWriter = new Utf8JsonWriter(writer))
