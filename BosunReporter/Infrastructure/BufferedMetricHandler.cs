@@ -121,7 +121,10 @@ namespace BosunReporter.Infrastructure
                 try
                 {
                     PrepareSequence(ref sequence, payloadType);
-                    await SendAsync(payloadType, sequence);
+                    if (sequence.Length > 0)
+                    {
+                        await SendAsync(payloadType, sequence);
+                    }
                     info.BytesWritten = sequence.Length;
                     sw.Stop();
                 }

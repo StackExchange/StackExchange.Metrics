@@ -554,11 +554,19 @@ namespace BosunReporter
                 {
                     metadata = GatherMetaData();
                 }
+
+                // prep all metrics for serialization
+                var timestamp = DateTime.UtcNow;
+                if (_metricsNeedingPreSerialize.Count > 0)
+                {
+                    Parallel.ForEach(_metricsNeedingPreSerialize, m => m.PreSerializeInternal());
+                }
+
                 var sw = new Stopwatch();
                 foreach (var endpoint in _endpoints)
                 {
                     sw.Restart();
-                    SerializeMetrics(endpoint, out var metricsCount, out var bytesWritten);
+                    SerializeMetrics(endpoint, timestamp, out var metricsCount, out var bytesWritten);
                     // We don't want to send metadata more frequently than the snapshot interval, so serialize it out if we need to
                     if (metadata.Count > 0)
                     {
@@ -631,16 +639,10 @@ namespace BosunReporter
             }
         }
 
-        void SerializeMetrics(MetricEndpoint endpoint, out long metricsCount, out long bytesWritten)
+        void SerializeMetrics(MetricEndpoint endpoint, DateTime timestamp, out long metricsCount, out long bytesWritten)
         {
             lock (_metricsLock)
             {
-                var timestamp = DateTime.UtcNow;
-                if (_metricsNeedingPreSerialize.Count > 0)
-                {
-                    Parallel.ForEach(_metricsNeedingPreSerialize, m => m.PreSerializeInternal());
-                }
-
                 metricsCount = 0;
                 bytesWritten = 0;
                 if (_metrics.Count == 0)
