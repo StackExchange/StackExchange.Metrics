@@ -20,8 +20,7 @@ namespace BosunReporter.Handlers
     {
         string _host;
         ushort _port;
-        ValueTask<SocketAwaitableEventArgs> _socketEventArgsTask;
-        Socket _socket;
+        ValueTask<ClientSocketData> _clientSocketDataTask;
         PayloadTypeMetadata _metricMetadata;
         PayloadTypeMetadata _metadataMetadata;
 
@@ -48,8 +47,7 @@ namespace BosunReporter.Handlers
         {
             _host = host;
             _port = port;
-            _socketEventArgsTask = CreateSocketEventArgsAsync();
-            _socket = new Socket(SocketType.Dgram, ProtocolType.Udp);
+            _clientSocketDataTask = CreateClientSocketDataAsync();
         }
 
         /// <summary>
@@ -61,7 +59,7 @@ namespace BosunReporter.Handlers
             set
             {
                 _host = value;
-                _socketEventArgsTask = CreateSocketEventArgsAsync();
+                _clientSocketDataTask = CreateClientSocketDataAsync();
             }
         }
 
@@ -74,7 +72,7 @@ namespace BosunReporter.Handlers
             set
             {
                 _port = value;
-                _socketEventArgsTask = CreateSocketEventArgsAsync();
+                _clientSocketDataTask = CreateClientSocketDataAsync();
             }
         }
 
@@ -83,8 +81,9 @@ namespace BosunReporter.Handlers
         {
             try
             {
-                using (await _socketEventArgsTask)
-                using (_socket)
+                var clientSocketData = await _clientSocketDataTask;
+                using (clientSocketData.Args)
+                using (clientSocketData.Socket)
                 {
                 }
             }
@@ -301,26 +300,29 @@ namespace BosunReporter.Handlers
             }
         }
 
-        private ValueTask<SocketAwaitableEventArgs> CreateSocketEventArgsAsync()
+        private ValueTask<ClientSocketData> CreateClientSocketDataAsync()
         {
             if (_host == null || _port == 0)
             {
-                return new ValueTask<SocketAwaitableEventArgs>((SocketAwaitableEventArgs)null);
+                return new ValueTask<ClientSocketData>(default(ClientSocketData));
             }
 
             if (IPAddress.TryParse(_host, out IPAddress ip))
             {
-                return new ValueTask<SocketAwaitableEventArgs>(
-                    new SocketAwaitableEventArgs
-                    {
-                        RemoteEndPoint = new IPEndPoint(ip, _port)
-                    }
+                return new ValueTask<ClientSocketData>(
+                    new ClientSocketData(
+                        new Socket(ip.AddressFamily, SocketType.Dgram, ProtocolType.Udp),
+                        new SocketAwaitableEventArgs
+                        {
+                            RemoteEndPoint = new IPEndPoint(ip, _port)
+                        }
+                    )
                 );
             }
 
-            return CreateSocketEventArgsAsync();
+            return FetchClientSocketDataAsync();
 
-            async ValueTask<SocketAwaitableEventArgs> CreateSocketEventArgsAsync()
+            async ValueTask<ClientSocketData> FetchClientSocketDataAsync()
             {
                 var hostAddresses = await Dns.GetHostAddressesAsync(_host);
                 var hostAddress = hostAddresses.FirstOrDefault(x => x.AddressFamily == AddressFamily.InterNetwork || x.AddressFamily == AddressFamily.InterNetworkV6);
@@ -339,41 +341,66 @@ namespace BosunReporter.Handlers
                     endpoint = new IPEndPoint(hostAddress.MapToIPv4(), _port);
                 }
 
-                return new SocketAwaitableEventArgs
-                {
-                    RemoteEndPoint = endpoint
-                };
+                return new ClientSocketData(
+                    new Socket(endpoint.AddressFamily, SocketType.Dgram, ProtocolType.Udp),
+                    new SocketAwaitableEventArgs
+                    {
+                        RemoteEndPoint = endpoint
+                    }
+                );
             }
         }
 
         private ValueTask SendMetricAsync(PayloadType type, in ReadOnlySequence<byte> sequence)
         {
-            if (_socketEventArgsTask.IsCompleted)
+            if (_clientSocketDataTask.IsCompleted)
             {
-                return SendMetricAsync(_socketEventArgsTask.Result, sequence);
+                return SendMetricAsync(_clientSocketDataTask.Result, sequence);
             }
 
-            return FetchSocketArgsAndSendAsync(_socketEventArgsTask, sequence);
+            return FetchSocketArgsAndSendAsync(_clientSocketDataTask, sequence);
 
-            async ValueTask FetchSocketArgsAndSendAsync(ValueTask<SocketAwaitableEventArgs> socketArgsTask, ReadOnlySequence<byte> buffer)
+            async ValueTask FetchSocketArgsAndSendAsync(ValueTask<ClientSocketData> socketDataTask, ReadOnlySequence<byte> buffer)
             {
-                await SendMetricAsync(await socketArgsTask, buffer);
+                await SendMetricAsync(await socketDataTask, buffer);
             }
 
-            async ValueTask SendMetricAsync(SocketAwaitableEventArgs socketArgs, ReadOnlySequence<byte> buffer)
+            async ValueTask SendMetricAsync(ClientSocketData socketData, ReadOnlySequence<byte> buffer)
             {
-                if (socketArgs == null)
+                var socket = socketData.Socket;
+                var socketArgs = socketData.Args;
+                if (socket == null || socketArgs == null)
                 {
                     return;
                 }
 
+
                 socketArgs.BufferList = GetBufferList(buffer);
-                if (!_socket.SendToAsync(socketArgs))
+                if (!socket.SendToAsync(socketArgs))
                 {
                     socketArgs.Complete();
                 }
 
-                await socketArgs;
+                try
+                {
+                    await socketArgs;
+                }
+                catch
+                {
+                    // reset the args
+                    try
+                    {
+                        using (socketArgs)
+                        using (socket)
+                        {
+                        }
+                    }
+                    finally
+                    {
+                        _clientSocketDataTask = CreateClientSocketDataAsync();
+                    }
+                    throw;
+                }
             }
         }
 
@@ -393,6 +420,18 @@ namespace BosunReporter.Handlers
             }
 
             return list;
+        }
+
+        private readonly struct ClientSocketData
+        {
+            public ClientSocketData(Socket socket, SocketAwaitableEventArgs args)
+            {
+                Socket = socket;
+                Args = args;
+            }
+
+            public Socket Socket { get; }
+            public SocketAwaitableEventArgs Args { get; }
         }
     }
 }
