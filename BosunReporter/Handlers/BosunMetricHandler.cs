@@ -22,15 +22,9 @@ namespace BosunReporter.Handlers
         static readonly byte[] s_endArray;
         static readonly DateTime s_minimumTimestamp = new DateTime(2000, 1, 1, 0, 0, 0, DateTimeKind.Utc);
         static readonly DateTime s_maximumTimestamp = new DateTime(2250, 1, 1, 0, 0, 0, DateTimeKind.Utc);
-        static readonly JsonSerializerOptions s_jsonOptions = new JsonSerializerOptions
-        {
-            IgnoreNullValues = true,
-            Converters =
-            {
-                new JsonEpochConverter(),
-                new JsonMetricReadingConverter()
-            }
-        };
+
+        readonly JsonSerializerOptions _jsonOptions;
+        readonly Dictionary<string, double> _counterValues;
 
         Uri _baseUri;
         Uri _metricUri;
@@ -56,6 +50,17 @@ namespace BosunReporter.Handlers
         public BosunMetricHandler(Uri baseUri)
         {
             BaseUri = baseUri;
+
+            _counterValues = new Dictionary<string, double>();
+            _jsonOptions = new JsonSerializerOptions
+            {
+                IgnoreNullValues = true,
+                Converters =
+                {
+                    new JsonEpochConverter(),
+                    new JsonMetricReadingConverter(_counterValues)
+                }
+            };
         }
 
         /// <summary>
@@ -132,11 +137,25 @@ namespace BosunReporter.Handlers
             if (reading.Timestamp > s_maximumTimestamp)
                 throw new Exception($"Bosun cannot serialize metrics dated after {s_maximumTimestamp}.");
 
+            // Bosun treats counters somewhat differently than other providers
+            // it expects a monotonically increasing value and calculates rates, etc.
+            // based upon that value. Here we store the total value and use that when
+            // serializing!
+            if (reading.Type == MetricType.Counter)
+            {
+                if (!_counterValues.TryGetValue(reading.NameWithSuffix, out var value))
+                {
+                    value = 0d;
+                }
+
+                _counterValues[reading.NameWithSuffix] = value + reading.Value;
+            }
+
             writer.Write(s_comma);
 
             using (var utfWriter = new Utf8JsonWriter(writer))
             {
-                JsonSerializer.Serialize(utfWriter, reading, s_jsonOptions);
+                JsonSerializer.Serialize(utfWriter, reading, _jsonOptions);
             }
         }
 
@@ -151,7 +170,7 @@ namespace BosunReporter.Handlers
 
             using (var utfWriter = new Utf8JsonWriter(writer))
             {
-                JsonSerializer.Serialize(utfWriter, metadata, s_jsonOptions);
+                JsonSerializer.Serialize(utfWriter, metadata, _jsonOptions);
             }
         }
 
@@ -204,6 +223,13 @@ namespace BosunReporter.Handlers
 
         class JsonMetricReadingConverter : JsonConverter<MetricReading>
         {
+            readonly IReadOnlyDictionary<string, double> _counterValues;
+
+            public JsonMetricReadingConverter(IReadOnlyDictionary<string, double> counterValues)
+            {
+                _counterValues = counterValues;
+            }
+
             public override MetricReading Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
             {
                 throw new NotSupportedException();
@@ -217,12 +243,15 @@ namespace BosunReporter.Handlers
             public override void Write(Utf8JsonWriter writer, MetricReading reading, JsonSerializerOptions options)
             {
                 var epochConverter = (JsonConverter<DateTime>)options.GetConverter(typeof(DateTime));
-                // TODO: use string.Create in netstandard21
-                var nameWithSuffix = !string.IsNullOrEmpty(reading.Suffix) ? reading.Name + reading.Suffix : reading.Name;
+
+                if (!_counterValues.TryGetValue(reading.NameWithSuffix, out var value))
+                {
+                    value = reading.Value;
+                }
 
                 writer.WriteStartObject(); // {
-                writer.WriteString(s_metricProperty, nameWithSuffix); // "metric": "name"
-                writer.WriteNumber(s_valueProperty, reading.Value); // ,"value": 1.23
+                writer.WriteString(s_metricProperty, reading.NameWithSuffix); // "metric": "name"
+                writer.WriteNumber(s_valueProperty, value); // ,"value": 1.23
                 if (reading.Tags.Count > 0)
                 {
                     writer.WritePropertyName(s_tagsProperty); // ,"tags":

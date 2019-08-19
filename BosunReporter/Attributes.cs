@@ -31,7 +31,7 @@ namespace BosunReporter
     }
 
     /// <summary>
-    /// Excludes default tags from a BosunMetric. The primary use case is <see cref="ExternalCounter"/> which excludes the Host tag.
+    /// Excludes default tags from a BosunMetric. The primary use case is <see cref="CumulativeCounter"/> which excludes the Host tag.
     /// </summary>
     [AttributeUsage(AttributeTargets.Class)]
     public class ExcludeDefaultTagsAttribute : Attribute

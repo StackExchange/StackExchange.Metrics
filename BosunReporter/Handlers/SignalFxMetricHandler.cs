@@ -212,11 +212,9 @@ namespace BosunReporter.Handlers
             public override void Write(Utf8JsonWriter writer, MetricReading reading, JsonSerializerOptions options)
             {
                 var epochConverter = (JsonConverter<DateTime>)options.GetConverter(typeof(DateTime));
-                // TODO: use string.Create in netstandard21
-                var nameWithSuffix = !string.IsNullOrEmpty(reading.Suffix) ? reading.Name + reading.Suffix : reading.Name;
 
                 writer.WriteStartObject(); // {
-                writer.WriteString(s_metricProperty, nameWithSuffix); // "metric": "name"
+                writer.WriteString(s_metricProperty, reading.NameWithSuffix); // "metric": "name"
                 writer.WriteNumber(s_valueProperty, reading.Value); // ,"value": 1.23
                 if (reading.Tags.Count > 0)
                 {

@@ -13,25 +13,17 @@ namespace BosunReporter.Metrics
         /// <summary>
         /// The underlying field for <see cref="Value"/>. This allows for direct manipulation via Interlocked methods.
         /// </summary>
-        protected long _value;
+        protected long _count;
 
         /// <summary>
         /// The current value of the counter.
         /// </summary>
-        public long Value => _value;
+        public long Value => _count;
 
         /// <summary>
         /// The metric type (counter, in this case).
         /// </summary>
         public override MetricType MetricType => MetricType.Counter;
-
-        /// <summary>
-        /// Serializes the counter.
-        /// </summary>
-        protected override void Serialize(IMetricBatch writer, DateTime now)
-        {
-            WriteValue(writer, Value, now);
-        }
 
         /// <summary>
         /// Instantiates a new counter. You should typically use a method on <see cref="MetricsCollector"/>, such as CreateMetric, instead of instantiating
@@ -47,7 +39,19 @@ namespace BosunReporter.Metrics
         public void Increment(long amount = 1)
         {
             AssertAttached();
-            Interlocked.Add(ref _value, amount);
+            Interlocked.Add(ref _count, amount);
+        }
+
+        /// <summary>
+        /// See <see cref="BosunMetric.Serialize"/>
+        /// </summary>
+        protected override void Serialize(IMetricBatch writer, DateTime now)
+        {
+            var increment = Interlocked.Exchange(ref _count, 0);
+            if (increment == 0)
+                return;
+
+            WriteValue(writer, increment, now);
         }
     }
 }

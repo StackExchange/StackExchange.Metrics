@@ -32,6 +32,7 @@ namespace BosunReporter.Infrastructure
         public MetricReading(string name, MetricType type, string suffix, double value, IReadOnlyDictionary<string, string> tags, DateTime timestamp)
         {
             Name = name;
+            NameWithSuffix = !string.IsNullOrEmpty(suffix) ? name + suffix : name;
             Type = type;
             Suffix = suffix;
             Value = value;
@@ -43,6 +44,10 @@ namespace BosunReporter.Infrastructure
         /// Name of the metric.
         /// </summary>
         public string Name { get; }
+        /// <summary>
+        /// Name of the metric with its suffix
+        /// </summary>
+        public string NameWithSuffix { get; }
         /// <summary>
         /// Type of the metric.
         /// </summary>

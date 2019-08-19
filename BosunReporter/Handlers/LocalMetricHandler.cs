@@ -117,9 +117,7 @@ namespace BosunReporter.Handlers
         /// <inheritdoc />
         public void SerializeMetric(in MetricReading reading)
         {
-            var nameWithSuffix = string.IsNullOrEmpty(reading.Suffix) ? reading.Name : reading.Name + reading.Suffix;
-
-            _readings[nameWithSuffix] = reading;
+            _readings[reading.NameWithSuffix] = reading;
         }
 
         /// <inheritdoc />

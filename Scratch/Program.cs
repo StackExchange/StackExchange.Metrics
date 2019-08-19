@@ -359,7 +359,7 @@ namespace Scratch
         }
     }
 
-    public class TestExternalCounter : ExternalCounter
+    public class TestExternalCounter : CumulativeCounter
     {
         [BosunTag] public readonly SomeEnum Something;
 
@@ -369,7 +369,7 @@ namespace Scratch
         }
     }
 
-    public class ExternalNoTagsCounter : ExternalCounter
+    public class ExternalNoTagsCounter : CumulativeCounter
     {
     }
 }

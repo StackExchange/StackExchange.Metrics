@@ -6,14 +6,14 @@ using BosunReporter.Infrastructure;
 namespace BosunReporter.Metrics
 {
     /// <summary>
-    /// A persistent counter (no resets) for very low-volume events.
+    /// A counter that is recorded using the deltas everytime it is incremented . Used for very low-volume events.
     /// <remarks>
     /// When using a Bosun endpoint <see cref="BosunMetricHandler.EnableExternalCounters"/> must be true
     /// to be reported. You'll also need to make sure your infrastructure is setup with external counters enabled. This currently requires using tsdbrelay.
     /// See https://github.com/bretcope/BosunReporter.NET/blob/master/docs/MetricTypes.md#externalcounter
     /// </remarks>
     /// </summary>
-    public class ExternalCounter : BosunMetric
+    public class CumulativeCounter : BosunMetric
     {
         int _count;
 

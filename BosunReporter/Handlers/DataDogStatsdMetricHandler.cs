@@ -26,7 +26,6 @@ namespace BosunReporter.Handlers
 
         const int ValueDecimals = 5;
         static readonly byte[] s_counter = Encoding.UTF8.GetBytes("c");
-        static readonly byte[] s_rate = Encoding.UTF8.GetBytes("g");
         static readonly byte[] s_gauge = Encoding.UTF8.GetBytes("g");
         static readonly byte[] s_pipe = Encoding.UTF8.GetBytes("|");
         static readonly byte[] s_colon = Encoding.UTF8.GetBytes(":");
@@ -141,8 +140,6 @@ namespace BosunReporter.Handlers
             switch (reading.Type)
             {
                 case MetricType.Counter:
-                    unit = s_rate;
-                    break;
                 case MetricType.CumulativeCounter:
                     unit = s_counter;
                     break;
@@ -156,13 +153,7 @@ namespace BosunReporter.Handlers
 
             // calculate the length of buffer we need
             var encoding = Encoding.UTF8;
-            var length = encoding.GetByteCount(reading.Name);
-            if (!string.IsNullOrEmpty(reading.Suffix))
-            {
-                length += encoding.GetByteCount(reading.Suffix);
-            }
-
-            length += s_pipe.Length;
+            var length = encoding.GetByteCount(reading.NameWithSuffix) + s_pipe.Length;
 
             // calculate the length needed to render the value
             var value = reading.Value;
@@ -206,13 +197,7 @@ namespace BosunReporter.Handlers
             // write data into the buffer
             {
                 // write the name into the buffer
-                bytesWritten += encoding.GetBytes(reading.Name, 0, reading.Name.Length, buffer, bytesWritten);
-
-                // write the suffix into the buffer
-                if (!string.IsNullOrEmpty(reading.Suffix))
-                {
-                    bytesWritten += encoding.GetBytes(reading.Suffix, 0, reading.Suffix.Length, buffer, bytesWritten);
-                }
+                bytesWritten += encoding.GetBytes(reading.NameWithSuffix, 0, reading.NameWithSuffix.Length, buffer, bytesWritten);
 
                 // separator (:)
                 CopyToBuffer(s_colon);
