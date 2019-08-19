@@ -142,19 +142,26 @@ namespace BosunReporter.Infrastructure
             var response = await _httpClientFactory.Value.SendAsync(request);
             if (!response.IsSuccessStatusCode)
             {
-                string errorText = string.Empty;
+                var requestText = string.Empty;
+                var responseText = string.Empty;
                 try
                 {
-                    errorText = await response.Content.ReadAsStringAsync();
+                    requestText = await request.Content.ReadAsStringAsync();
+                    responseText = await response.Content.ReadAsStringAsync();
                 }
                 catch
                 {
                     // nothing we can do here
                 }
 
-                throw new HttpRequestException(
-                    $"Response status code does not indicate success: {response.StatusCode}. {errorText}"
-                );
+                throw new HttpRequestException($"Response status code does not indicate success: {response.StatusCode}.")
+                {
+                    Data =
+                    {
+                        ["Request"] = requestText,
+                        ["Response"] = responseText
+                    }
+                };
             }
         }
 
