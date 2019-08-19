@@ -10,13 +10,15 @@ namespace BosunReporter.Metrics
     /// </summary>
     public class Counter : BosunMetric
     {
+        long _countSnapshot;
+
         /// <summary>
         /// The underlying field for <see cref="Value"/>. This allows for direct manipulation via Interlocked methods.
         /// </summary>
-        protected long _count;
+        long _count;
 
         /// <summary>
-        /// The current value of the counter.
+        /// The current value of the counter. This will reset to zero at each reporting interval.
         /// </summary>
         public long Value => _count;
 
@@ -47,11 +49,18 @@ namespace BosunReporter.Metrics
         /// </summary>
         protected override void Serialize(IMetricBatch writer, DateTime now)
         {
-            var increment = Interlocked.Exchange(ref _count, 0);
-            if (increment == 0)
-                return;
+            if (_countSnapshot > 0)
+            {
+                WriteValue(writer, _countSnapshot, now);
+            }
+        }
 
-            WriteValue(writer, increment, now);
+        /// <summary>
+        /// See <see cref="BosunMetric.PreSerialize"/>
+        /// </summary>
+        protected override void PreSerialize()
+        {
+            _countSnapshot = Interlocked.Exchange(ref _count, 0);
         }
     }
 }

@@ -15,12 +15,14 @@ namespace BosunReporter.Metrics
     /// </summary>
     public class CumulativeCounter : BosunMetric
     {
-        int _count;
+        long _countSnapshot;
+        long _count;
 
         /// <summary>
         /// The current value of this counter. This will reset to zero at each reporting interval.
         /// </summary>
-        public int Count => _count;
+        public long Count => _count;
+
         /// <summary>
         /// The type of metric (cumulative counter, in this case)
         /// </summary>
@@ -31,6 +33,7 @@ namespace BosunReporter.Metrics
         /// </summary>
         public void Increment()
         {
+            AssertAttached();
             Interlocked.Increment(ref _count);
         }
 
@@ -39,11 +42,18 @@ namespace BosunReporter.Metrics
         /// </summary>
         protected override void Serialize(IMetricBatch writer, DateTime now)
         {
-            var increment = Interlocked.Exchange(ref _count, 0);
-            if (increment == 0)
-                return;
+            if (_countSnapshot > 0)
+            {
+                WriteValue(writer, _countSnapshot, now);
+            }
+        }
 
-            WriteValue(writer, increment, now);
+        /// <summary>
+        /// See <see cref="BosunMetric.PreSerialize"/>
+        /// </summary>
+        protected override void PreSerialize()
+        {
+            _countSnapshot = Interlocked.Exchange(ref _count, 0);
         }
     }
 }

@@ -11,12 +11,19 @@ namespace BosunReporter.Metrics
     /// </summary>
     public class EventGauge : BosunMetric
     {
-        struct PendingMetric
+        readonly struct PendingMetric
         {
-            public double Value;
-            public DateTime Time;
+            public PendingMetric(double value, DateTime time)
+            {
+                Value = value;
+                Time = time;
+            }
+
+            public double Value { get; }
+            public DateTime Time { get; }
         }
 
+        ConcurrentBag<PendingMetric> _pendingSnapshot;
         ConcurrentBag<PendingMetric> _pendingMetrics = new ConcurrentBag<PendingMetric>();
 
         /// <summary>
@@ -29,14 +36,22 @@ namespace BosunReporter.Metrics
         /// </summary>
         protected override void Serialize(IMetricBatch writer, DateTime now)
         {
-            if (_pendingMetrics.Count == 0)
+            var pending = _pendingSnapshot;
+            if (pending.Count == 0)
                 return;
-
-            var pending = Interlocked.Exchange(ref _pendingMetrics, new ConcurrentBag<PendingMetric>());
+            
             foreach (var p in pending)
             {
                 WriteValue(writer, p.Value, p.Time);
             }
+        }
+
+        /// <summary>
+        /// See <see cref="BosunMetric.PreSerialize"/>
+        /// </summary>
+        protected override void PreSerialize()
+        {
+            _pendingSnapshot = Interlocked.Exchange(ref _pendingMetrics, new ConcurrentBag<PendingMetric>());
         }
 
         /// <summary>
@@ -45,7 +60,7 @@ namespace BosunReporter.Metrics
         public void Record(double value)
         {
             AssertAttached();
-            _pendingMetrics.Add(new PendingMetric { Value = value, Time = DateTime.UtcNow });
+            _pendingMetrics.Add(new PendingMetric(value, DateTime.UtcNow));
         }
 
         /// <summary>
@@ -54,7 +69,7 @@ namespace BosunReporter.Metrics
         public void Record(double value, DateTime time)
         {
             AssertAttached();
-            _pendingMetrics.Add(new PendingMetric { Value = value, Time = time });
+            _pendingMetrics.Add(new PendingMetric(value, time));
         }
     }
 }
