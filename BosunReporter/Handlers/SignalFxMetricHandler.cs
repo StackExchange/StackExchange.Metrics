@@ -128,13 +128,13 @@ namespace BosunReporter.Handlers
         }
 
         /// <inheritdoc />
-        protected override ValueTask SendCounterAsync(ReadOnlySequence<byte> sequence) => default;//SendAsync(_metricUri, HttpMethod.Post, PayloadType.Counter, sequence);
+        protected override ValueTask SendCounterAsync(ReadOnlySequence<byte> sequence) => SendAsync(_metricUri, HttpMethod.Post, PayloadType.Counter, sequence);
 
         /// <inheritdoc />
         protected override ValueTask SendCumulativeCounterAsync(ReadOnlySequence<byte> sequence) => SendAsync(_metricUri, HttpMethod.Post, PayloadType.CumulativeCounter, sequence);
 
         /// <inheritdoc />
-        protected override ValueTask SendGaugeAsync(ReadOnlySequence<byte> sequence) => default;// SendAsync(_metricUri, HttpMethod.Post, PayloadType.Gauge, sequence);
+        protected override ValueTask SendGaugeAsync(ReadOnlySequence<byte> sequence) => SendAsync(_metricUri, HttpMethod.Post, PayloadType.Gauge, sequence);
 
         /// <inheritdoc />
         protected override ValueTask SendMetadataAsync(ReadOnlySequence<byte> sequence)
