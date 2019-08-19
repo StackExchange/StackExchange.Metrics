@@ -26,6 +26,7 @@ namespace BosunReporter.Handlers
 
         const int ValueDecimals = 5;
         static readonly byte[] s_counter = Encoding.UTF8.GetBytes("c");
+        static readonly byte[] s_rate = Encoding.UTF8.GetBytes("g");
         static readonly byte[] s_gauge = Encoding.UTF8.GetBytes("g");
         static readonly byte[] s_pipe = Encoding.UTF8.GetBytes("|");
         static readonly byte[] s_colon = Encoding.UTF8.GetBytes(":");
@@ -140,6 +141,8 @@ namespace BosunReporter.Handlers
             switch (reading.Type)
             {
                 case MetricType.Counter:
+                    unit = s_rate;
+                    break;
                 case MetricType.CumulativeCounter:
                     unit = s_counter;
                     break;
