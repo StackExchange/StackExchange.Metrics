@@ -153,7 +153,7 @@ namespace BosunReporter.Handlers
 
             // calculate the length of buffer we need
             var encoding = Encoding.UTF8;
-            var length = encoding.GetByteCount(reading.NameWithSuffix) + s_pipe.Length;
+            var length = encoding.GetByteCount(reading.NameWithSuffix) + s_colon.Length;
 
             // calculate the length needed to render the value
             var value = reading.Value;
