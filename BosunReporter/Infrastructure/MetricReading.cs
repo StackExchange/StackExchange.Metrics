@@ -68,5 +68,19 @@ namespace BosunReporter.Infrastructure
         /// Timestamp that the metric was recorded at.
         /// </summary>
         public DateTime Timestamp { get; }
+
+        /// <summary>
+        /// Updates the value and the timestamp of the metric.
+        /// </summary>
+        /// <param name="delta">
+        /// Amount to increment the value.
+        /// </param>
+        /// <param name="timestamp">
+        /// Timestamp for the update.
+        /// </param>
+        public MetricReading Update(double delta, DateTime timestamp)
+        {
+            return new MetricReading(Name, Type, Suffix, Value + delta, Tags, timestamp);
+        }
     }
 }

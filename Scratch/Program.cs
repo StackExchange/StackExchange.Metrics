@@ -45,7 +45,7 @@ namespace Scratch
             })
             {
                 Endpoints = new MetricEndpoint[] {
-                    //new MetricEndpoint("Test HTTP", new TestHttpMetricHandler(new Uri("http://127.0.0.1/"))),
+                    new MetricEndpoint("Test HTTP", new TestHttpMetricHandler(new Uri("http://127.0.0.1/"))),
                     //new MetricEndpoint("Test UDP", new TestUdpMetricHandler(s_cancellationTokenSource.Token) { MaxPayloadSize = 320 }),
                     //new MetricEndpoint("Bosun (no URL)", new BosunMetricHandler(null)),
                     //new MetricEndpoint("Bosun", new BosunMetricHandler(new Uri("http://devbosun.ds.stackexchange.com/"))),

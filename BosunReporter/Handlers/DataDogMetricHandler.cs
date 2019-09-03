@@ -296,11 +296,7 @@ namespace BosunReporter.Handlers
                 return;
             }
 
-            var firstByte = sequence.First.Span[0];
-            if (firstByte == ',')
-            {
-                sequence = sequence.Slice(1);
-            }
+            sequence = sequence.Trim(',');
         }
 
         private void ReconfigureUris()

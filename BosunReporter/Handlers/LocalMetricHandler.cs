@@ -58,6 +58,8 @@ namespace BosunReporter.Handlers
     /// </summary>
     public class LocalMetricHandler : IMetricHandler
     {
+        readonly object _readingLock;
+        readonly object _metadataLock;
         readonly Dictionary<string, MetricReading> _readings;
         readonly List<LocalMetricMetadata> _metadata;
 
@@ -66,6 +68,8 @@ namespace BosunReporter.Handlers
         /// </summary>
         public LocalMetricHandler()
         {
+            _readingLock = new object();
+            _metadataLock = new object();
             _readings = new Dictionary<string, MetricReading>(StringComparer.OrdinalIgnoreCase);
             _metadata = new List<LocalMetricMetadata>();
         }
@@ -73,12 +77,33 @@ namespace BosunReporter.Handlers
         /// <summary>
         /// Returns all the metadata that has been recorded.
         /// </summary>
-        public IEnumerable<LocalMetricMetadata> GetMetadata() => _metadata.ToList();
+        public IEnumerable<LocalMetricMetadata> GetMetadata()
+        {
+            lock (_metadataLock)
+            {
+                return _metadata.ToList();
+            }
+        }
 
         /// <summary>
         /// Returns a current snapshot of all metrics.
         /// </summary>
-        public IEnumerable<MetricReading> GetReadings() => _readings.Values.ToList();
+        /// <param name="reset">
+        /// Indicates whether to reset the readings once they've been read.
+        /// </param>
+        public IEnumerable<MetricReading> GetReadings(bool reset = false)
+        {
+            lock (_readingLock)
+            {
+                var readings = _readings.Values.ToList();
+                if (reset)
+                {
+                    _readings.Clear();
+                }
+
+                return readings;
+            }
+        }
 
         /// <inheritdoc />
         public IMetricBatch BeginBatch() => new Batch(this);
@@ -99,25 +124,39 @@ namespace BosunReporter.Handlers
         /// <inheritdoc />
         public void SerializeMetadata(IEnumerable<MetaData> metadata)
         {
-            _metadata.Clear();
-            _metadata.AddRange(
-                metadata
-                    .GroupBy(x => x.Metric)
-                    .Select(
-                        g => new LocalMetricMetadata(
-                            metric: g.Key,
-                            type: g.Where(x => x.Name == MetadataNames.Rate).Select(x => x.Value).FirstOrDefault(),
-                            description: g.Where(x => x.Name == MetadataNames.Description).Select(x => x.Value).FirstOrDefault(),
-                            unit: g.Where(x => x.Name == MetadataNames.Unit).Select(x => x.Value).FirstOrDefault()
+            lock (_metadataLock)
+            {
+                _metadata.Clear();
+                _metadata.AddRange(
+                    metadata
+                        .GroupBy(x => x.Metric)
+                        .Select(
+                            g => new LocalMetricMetadata(
+                                metric: g.Key,
+                                type: g.Where(x => x.Name == MetadataNames.Rate).Select(x => x.Value).FirstOrDefault(),
+                                description: g.Where(x => x.Name == MetadataNames.Description).Select(x => x.Value).FirstOrDefault(),
+                                unit: g.Where(x => x.Name == MetadataNames.Unit).Select(x => x.Value).FirstOrDefault()
+                            )
                         )
-                    )
-            );
+                );
+            }
         }
 
         /// <inheritdoc />
         public void SerializeMetric(in MetricReading reading)
         {
-            _readings[reading.NameWithSuffix] = reading;
+            lock (_readingLock)
+            {
+                var isCounter = reading.Type == MetricType.Counter || reading.Type == MetricType.CumulativeCounter;
+                if (isCounter && _readings.TryGetValue(reading.NameWithSuffix, out var existingReading))
+                {
+                    _readings[reading.NameWithSuffix] = existingReading.Update(reading.Value, reading.Timestamp);
+                }
+                else
+                {
+                    _readings[reading.NameWithSuffix] = reading;
+                }
+            }
         }
 
         /// <inheritdoc />

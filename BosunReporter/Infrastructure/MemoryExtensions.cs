@@ -55,5 +55,24 @@ namespace BosunReporter.Infrastructure
                 await b.ConfigureAwait(false);
             }
         }
+
+        internal static ReadOnlySequence<byte> Trim(this ReadOnlySequence<byte> sequence, char element)
+        {
+            var firstByte = sequence.First.Span[0];
+            if (firstByte == element)
+            {
+                sequence = sequence.Slice(1);
+            }
+
+            var lastIndex = sequence.Length - 1;
+            var endSequence = sequence.Slice(lastIndex, 1);
+            var lastByte = endSequence.First.Span[0];
+            if (lastByte == element)
+            {
+                sequence = sequence.Slice(0, lastIndex);
+            }
+
+            return sequence;
+        }
     }
 }

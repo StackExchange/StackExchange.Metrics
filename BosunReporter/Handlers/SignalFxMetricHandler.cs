@@ -24,7 +24,7 @@ namespace BosunReporter.Handlers
         {
             Converters =
             {
-                new JsonEpochConverter(),
+                new JsonEpochMillisecondsConverter(),
                 new JsonMetricReadingConverter()
             }
         };
@@ -189,12 +189,7 @@ namespace BosunReporter.Handlers
                 return;
             }
 
-            // make sure that there are no leading commas
-            var firstByte = sequence.First.Span[0];
-            if (firstByte == ',')
-            {
-                sequence = sequence.Slice(1);
-            }
+            sequence = sequence.Trim(',');
         }
 
         class JsonMetricReadingConverter : JsonConverter<MetricReading>
@@ -229,6 +224,21 @@ namespace BosunReporter.Handlers
                 writer.WritePropertyName(s_timestampProperty);
                 epochConverter.Write(writer, reading.Timestamp, options); // ,"timestamp": 1234567
                 writer.WriteEndObject(); // }
+            }
+        }
+
+        class JsonEpochMillisecondsConverter : JsonConverter<DateTime>
+        {
+            static readonly DateTime s_epoch = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+
+            public override DateTime Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+            {
+                return s_epoch.AddMilliseconds(reader.GetInt64());
+            }
+
+            public override void Write(Utf8JsonWriter writer, DateTime value, JsonSerializerOptions options)
+            {
+                writer.WriteNumberValue((long)(value - s_epoch).TotalMilliseconds);
             }
         }
     }

@@ -194,12 +194,7 @@ namespace BosunReporter.Handlers
                 return;
             }
 
-            // make sure that there are leading commas
-            var firstByte = sequence.First.Span[0];
-            if (firstByte == ',')
-            {
-                sequence = sequence.Slice(1);
-            }
+            sequence = sequence.Trim(',');
         }
 
         /// <inheritdoc />
