@@ -37,7 +37,7 @@ namespace BosunReporter.Metrics
         protected override void Serialize(IMetricBatch writer, DateTime now)
         {
             var pending = _pendingSnapshot;
-            if (pending.Count == 0)
+            if (pending == null || pending.Count == 0)
                 return;
             
             foreach (var p in pending)
