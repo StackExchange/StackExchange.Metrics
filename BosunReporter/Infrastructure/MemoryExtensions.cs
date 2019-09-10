@@ -64,6 +64,11 @@ namespace BosunReporter.Infrastructure
                 sequence = sequence.Slice(1);
             }
 
+            if (sequence.Length == 0)
+            {
+                return sequence;
+            }
+
             var lastIndex = sequence.Length - 1;
             var endSequence = sequence.Slice(lastIndex, 1);
             var lastByte = endSequence.First.Span[0];
