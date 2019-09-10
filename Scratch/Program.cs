@@ -45,7 +45,9 @@ namespace Scratch
             })
             {
                 Endpoints = new MetricEndpoint[] {
-                    new MetricEndpoint("Test HTTP", new TestHttpMetricHandler(new Uri("http://127.0.0.1/"))),
+                    new MetricEndpoint(LocalEndpointKey, localHandler),
+                    new MetricEndpoint("Test HTTP 1", new TestBosunMetricHandler(new Uri("http://127.0.0.1/"))),
+                    new MetricEndpoint("Test HTTP 2", new TestSignalFxHandler(new Uri("http://127.0.0.1/"))),
                     //new MetricEndpoint("Test UDP", new TestUdpMetricHandler(s_cancellationTokenSource.Token) { MaxPayloadSize = 320 }),
                     //new MetricEndpoint("Bosun (no URL)", new BosunMetricHandler(null)),
                     //new MetricEndpoint("Bosun", new BosunMetricHandler(new Uri("http://devbosun.ds.stackexchange.com/"))),
@@ -55,11 +57,10 @@ namespace Scratch
                     //new MetricEndpoint("DataDog Cloud (no URL)", new DataDogMetricHandler(null, "{API_KEY}", "{APP_KEY}")),
                     //new MetricEndpoint("SignalFx Cloud", new SignalFxMetricHandler(new Uri("https://ingest.us1.signalfx.com/"), "{API_KEY}")),
                     //new MetricEndpoint("SignalFx Cloud (no URL)", new SignalFxMetricHandler(null, "{API_KEY}")),
-                    //new MetricEndpoint(LocalEndpointKey, localHandler)
                 },
                 MetricsNamePrefix = "bosun.reporter.",
                 ThrowOnPostFail = true,
-                SnapshotInterval = TimeSpan.FromSeconds(5),
+                SnapshotInterval = TimeSpan.FromSeconds(10),
                 PropertyToTagName = NameTransformers.CamelToLowerSnakeCase,
                 TagValueConverter = (name, value) => name == "converted" ? value.ToLowerInvariant() : value,
                 DefaultTags = new Dictionary<string, string> { {"host", NameTransformers.Sanitize(Environment.MachineName.ToLower())} }
@@ -71,13 +72,13 @@ namespace Scratch
             collector.AfterSerialization += info => Console.WriteLine($"BosunReporter: Metric Snapshot took {info.Duration.TotalMilliseconds.ToString("0.##")}ms");
             collector.AfterSend += info =>
             {
-                if (info.Endpoint == LocalEndpointKey)
-                {
-                    foreach (var reading in localHandler.GetReadings())
-                    {
-                        Console.WriteLine($"{reading.Name}{reading.Suffix}@{reading.Timestamp:s} {reading.Value}");
-                    }
-                }
+                //if (info.Endpoint == LocalEndpointKey)
+                //{
+                //    foreach (var reading in localHandler.GetReadings())
+                //    {
+                //        Console.WriteLine($"{reading.Name}{reading.Suffix}@{reading.Timestamp:s} {reading.Value}");
+                //    }
+                //}
                 Console.WriteLine($"BosunReporter: Payload {info.PayloadType} - {info.BytesWritten} bytes posted to endpoint {info.Endpoint} in {info.Duration.TotalMilliseconds.ToString("0.##")}ms ({(info.Successful ? "SUCCESS" : "FAILED")})");
             };
 
@@ -147,7 +148,7 @@ namespace Scratch
             {
                 while (true)
                 {
-                    await Task.Delay(1000);
+                    await Task.Delay(200);
 
                     sampler.Record(++sai % 35);
                     eventGauge.Record(sai % 35);
@@ -173,7 +174,7 @@ namespace Scratch
                     converted.Increment();
                     noHost.Increment();
 
-                    if (sai == 100 || s_cancellationTokenSource.IsCancellationRequested)
+                    if (sai == 1000 || s_cancellationTokenSource.IsCancellationRequested)
                     {
                         await collector.ShutdownAsync();
                         break;
@@ -223,10 +224,18 @@ namespace Scratch
 
     class TestHttpHandler : HttpMessageHandler
     {
+        readonly TimeSpan _timeout;
+
+        public TestHttpHandler(TimeSpan timeout)
+        {
+            this._timeout = timeout;
+        }
+
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
+            await Task.Delay(_timeout);
             var json = await request.Content.ReadAsStringAsync();
-            Console.WriteLine($"Sending metrics to {request.RequestUri}. JSON = {json}");
+            //Console.WriteLine($"Sending metrics to {request.RequestUri}. JSON = {json}");
             return new HttpResponseMessage
             {
                 StatusCode = HttpStatusCode.OK
@@ -234,13 +243,22 @@ namespace Scratch
         }
     }
 
-    class TestHttpMetricHandler : SignalFxMetricHandler
+    class TestBosunMetricHandler : BosunMetricHandler
     {
-        public TestHttpMetricHandler(Uri baseUri) : base(baseUri)
+        public TestBosunMetricHandler(Uri baseUri) : base(baseUri)
         {
         }
 
-        protected override HttpClient CreateHttpClient() => new HttpClient(new TestHttpHandler());
+        protected override HttpClient CreateHttpClient() => new HttpClient(new TestHttpHandler(TimeSpan.FromMilliseconds(300)));
+    }
+
+    class TestSignalFxHandler : SignalFxMetricHandler
+    {
+        public TestSignalFxHandler(Uri baseUri) : base(baseUri)
+        {
+        }
+
+        protected override HttpClient CreateHttpClient() => new HttpClient(new TestHttpHandler(TimeSpan.FromMilliseconds(10)));
     }
 
     class TestUdpMetricHandler : DataDogStatsdMetricHandler

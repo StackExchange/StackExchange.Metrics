@@ -36,7 +36,7 @@ namespace Scratch
             {
                 Endpoints = new[]
                 {
-                    new MetricEndpoint("Benchmark", new TestHttpMetricHandler(new Uri("http://127.0.0.1/")))
+                    new MetricEndpoint("Benchmark", new TestSignalFxHandler(new Uri("http://127.0.0.1/")))
                 },
                 DefaultTags = new Dictionary<string, string> { { "host", NameTransformers.Sanitize(Environment.MachineName.ToLower()) } },
                 MetricsNamePrefix = "benchmark1",
