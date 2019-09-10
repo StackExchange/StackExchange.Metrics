@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace BosunReporter.Handlers
@@ -62,6 +63,7 @@ namespace BosunReporter.Handlers
         readonly object _metadataLock;
         readonly Dictionary<string, MetricReading> _readings;
         readonly List<LocalMetricMetadata> _metadata;
+        long _serializeCount;
 
         /// <summary>
         /// Constructs a new <see cref="LocalMetricMetadata" />.
@@ -111,12 +113,18 @@ namespace BosunReporter.Handlers
         /// <inheritdoc />
         public ValueTask FlushAsync(TimeSpan delayBetweenRetries, int maxRetries, Action<AfterSendInfo> afterSend, Action<Exception> exceptionHandler)
         {
-            afterSend?.Invoke(
-                new AfterSendInfo
-                {
-                    Duration = TimeSpan.Zero,
-                    BytesWritten = 0
-                });
+            var flushCount = Interlocked.Read(ref _serializeCount);
+            if (flushCount > 0)
+            {
+                afterSend?.Invoke(
+                    new AfterSendInfo
+                    {
+                        Duration = TimeSpan.Zero,
+                        BytesWritten = 0
+                    });
+
+                Interlocked.Add(ref _serializeCount, -flushCount);
+            }
 
             return default;
         }
@@ -156,6 +164,8 @@ namespace BosunReporter.Handlers
                 {
                     _readings[reading.NameWithSuffix] = reading;
                 }
+
+                Interlocked.Increment(ref _serializeCount);
             }
         }
 
