@@ -652,7 +652,14 @@ namespace BosunReporter
                 {
                     foreach (var m in _metrics)
                     {
-                        m.SerializeInternal(batch, timestamp);
+                        try
+                        {
+                            m.SerializeInternal(batch, timestamp);
+                        }
+                        catch (Exception ex)
+                        {
+                            SendExceptionToHandler(ex);
+                        }
                     }
 
                     metricsCount += batch.MetricsWritten;

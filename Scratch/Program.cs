@@ -1,18 +1,13 @@
 ﻿using System;
-using System.Buffers;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.Sockets;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using BenchmarkDotNet.Running;
 using BosunReporter;
 using BosunReporter.Handlers;
-using BosunReporter.Infrastructure;
 using BosunReporter.Metrics;
 
 namespace Scratch
@@ -60,6 +55,7 @@ namespace Scratch
                 },
                 MetricsNamePrefix = "bosun.reporter.",
                 ThrowOnPostFail = true,
+                ThrowOnQueueFull = false,
                 SnapshotInterval = TimeSpan.FromSeconds(10),
                 PropertyToTagName = NameTransformers.CamelToLowerSnakeCase,
                 TagValueConverter = (name, value) => name == "converted" ? value.ToLowerInvariant() : value,
@@ -148,7 +144,7 @@ namespace Scratch
             {
                 while (true)
                 {
-                    await Task.Delay(200);
+                    await Task.Delay(20);
 
                     sampler.Record(++sai % 35);
                     eventGauge.Record(sai % 35);
