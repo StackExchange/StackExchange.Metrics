@@ -574,6 +574,7 @@ namespace BosunReporter
 
                     var info = new AfterSerializationInfo
                     {
+                        Endpoint = endpoint.Name,
                         Count = metricsCount,
                         BytesWritten = bytesWritten,
                         Duration = sw.Elapsed,
@@ -656,6 +657,9 @@ namespace BosunReporter
                         }
                         catch (Exception ex)
                         {
+                            ex.Data["Endpoint.Name"] = endpoint.Name;
+                            ex.Data["Endpoint.Type"] = endpoint.Handler.GetType();
+
                             SendExceptionToHandler(ex);
                         }
                     }
@@ -732,6 +736,10 @@ namespace BosunReporter
     /// </summary>
     public class AfterSerializationInfo
     {
+        /// <summary>
+        /// Endpoint that we wrote data to.
+        /// </summary>
+        public string Endpoint { get; internal set; }
         /// <summary>
         /// The number of data points serialized. The could be less than or greater than the number of metrics managed by the collector.
         /// </summary>

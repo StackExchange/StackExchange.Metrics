@@ -65,16 +65,16 @@ namespace Scratch
             var collector = new MetricsCollector(options);
 
             collector.BeforeSerialization += () => Console.WriteLine("BosunReporter: Running metrics snapshot.");
-            collector.AfterSerialization += info => Console.WriteLine($"BosunReporter: Metric Snapshot took {info.Duration.TotalMilliseconds.ToString("0.##")}ms");
+            collector.AfterSerialization += info => Console.WriteLine($"BosunReporter: Metric Snapshot wrote {info.Count} metrics ({info.BytesWritten} bytes) to {info.Endpoint} in {info.Duration.TotalMilliseconds.ToString("0.##")}ms");
             collector.AfterSend += info =>
             {
-                //if (info.Endpoint == LocalEndpointKey)
-                //{
-                //    foreach (var reading in localHandler.GetReadings())
-                //    {
-                //        Console.WriteLine($"{reading.Name}{reading.Suffix}@{reading.Timestamp:s} {reading.Value}");
-                //    }
-                //}
+                if (info.Endpoint == LocalEndpointKey)
+                {
+                    foreach (var reading in localHandler.GetReadings())
+                    {
+                        Console.WriteLine($"{reading.Name}{reading.Suffix}@{reading.Timestamp:s} {reading.Value}");
+                    }
+                }
                 Console.WriteLine($"BosunReporter: Payload {info.PayloadType} - {info.BytesWritten} bytes posted to endpoint {info.Endpoint} in {info.Duration.TotalMilliseconds.ToString("0.##")}ms ({(info.Successful ? "SUCCESS" : "FAILED")})");
             };
 
