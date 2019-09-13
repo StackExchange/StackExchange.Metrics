@@ -24,7 +24,7 @@ namespace BosunReporter.Handlers
         static readonly DateTime s_maximumTimestamp = new DateTime(2250, 1, 1, 0, 0, 0, DateTimeKind.Utc);
 
         readonly JsonSerializerOptions _jsonOptions;
-        readonly Dictionary<string, double> _counterValues;
+        readonly Dictionary<MetricKey, double> _counterValues;
 
         Uri _baseUri;
         Uri _metricUri;
@@ -51,7 +51,7 @@ namespace BosunReporter.Handlers
         {
             BaseUri = baseUri;
 
-            _counterValues = new Dictionary<string, double>();
+            _counterValues = new Dictionary<MetricKey, double>(MetricKeyComparer.Default);
             _jsonOptions = new JsonSerializerOptions
             {
                 IgnoreNullValues = true,
@@ -143,12 +143,13 @@ namespace BosunReporter.Handlers
             // serializing!
             if (reading.Type == MetricType.Counter)
             {
-                if (!_counterValues.TryGetValue(reading.NameWithSuffix, out var value))
+                var metricKey = new MetricKey(reading.Name, reading.Tags);
+                if (!_counterValues.TryGetValue(metricKey, out var value))
                 {
                     value = 0d;
                 }
 
-                _counterValues[reading.NameWithSuffix] = value + reading.Value;
+                _counterValues[metricKey] = value + reading.Value;
             }
 
             writer.Write(s_comma);
@@ -218,9 +219,9 @@ namespace BosunReporter.Handlers
 
         class JsonMetricReadingConverter : JsonConverter<MetricReading>
         {
-            readonly IReadOnlyDictionary<string, double> _counterValues;
+            readonly IReadOnlyDictionary<MetricKey, double> _counterValues;
 
-            public JsonMetricReadingConverter(IReadOnlyDictionary<string, double> counterValues)
+            public JsonMetricReadingConverter(IReadOnlyDictionary<MetricKey, double> counterValues)
             {
                 _counterValues = counterValues;
             }
@@ -238,8 +239,8 @@ namespace BosunReporter.Handlers
             public override void Write(Utf8JsonWriter writer, MetricReading reading, JsonSerializerOptions options)
             {
                 var epochConverter = (JsonConverter<DateTime>)options.GetConverter(typeof(DateTime));
-
-                if (!_counterValues.TryGetValue(reading.NameWithSuffix, out var value))
+                var metricKey = new MetricKey(reading.Name, reading.Tags);
+                if (!_counterValues.TryGetValue(metricKey, out var value))
                 {
                     value = reading.Value;
                 }

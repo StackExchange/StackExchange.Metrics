@@ -44,6 +44,12 @@ namespace BosunReporter.Infrastructure
 
     class MetricKeyComparer : IEqualityComparer<MetricKey>
     {
+        private MetricKeyComparer()
+        {
+        }
+
+        public static readonly MetricKeyComparer Default = new MetricKeyComparer();
+
         public bool Equals(MetricKey a, MetricKey b)
         {
             return a.NameLength == b.NameLength

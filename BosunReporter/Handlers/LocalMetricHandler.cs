@@ -61,7 +61,7 @@ namespace BosunReporter.Handlers
     {
         readonly object _readingLock;
         readonly object _metadataLock;
-        readonly Dictionary<string, MetricReading> _readings;
+        readonly Dictionary<MetricKey, MetricReading> _readings;
         readonly List<LocalMetricMetadata> _metadata;
         long _serializeCount;
 
@@ -72,7 +72,7 @@ namespace BosunReporter.Handlers
         {
             _readingLock = new object();
             _metadataLock = new object();
-            _readings = new Dictionary<string, MetricReading>(StringComparer.OrdinalIgnoreCase);
+            _readings = new Dictionary<MetricKey, MetricReading>(MetricKeyComparer.Default);
             _metadata = new List<LocalMetricMetadata>();
         }
 
@@ -156,13 +156,14 @@ namespace BosunReporter.Handlers
             lock (_readingLock)
             {
                 var isCounter = reading.Type == MetricType.Counter || reading.Type == MetricType.CumulativeCounter;
-                if (isCounter && _readings.TryGetValue(reading.NameWithSuffix, out var existingReading))
+                var key = new MetricKey(reading.Name, reading.Tags);
+                if (isCounter && _readings.TryGetValue(key, out var existingReading))
                 {
-                    _readings[reading.NameWithSuffix] = existingReading.Update(reading.Value, reading.Timestamp);
+                    _readings[key] = existingReading.Update(reading.Value, reading.Timestamp);
                 }
                 else
                 {
-                    _readings[reading.NameWithSuffix] = reading;
+                    _readings[key] = reading;
                 }
 
                 Interlocked.Increment(ref _serializeCount);

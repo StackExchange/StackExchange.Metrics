@@ -21,14 +21,12 @@ namespace BosunReporter
             public string Unit { get; set; }
         }
 
-        static readonly MetricKeyComparer s_metricKeyComparer = new MetricKeyComparer();
-
         readonly object _metricsLock = new object();
         // all of the first-class names which have been claimed (excluding suffixes in aggregate gauges)
         readonly Dictionary<string, RootMetricInfo> _rootNameToInfo = new Dictionary<string, RootMetricInfo>();
         readonly MetricEndpoint[] _endpoints;
         // this dictionary is to avoid duplicate metrics
-        Dictionary<MetricKey, BosunMetric> _rootNameAndTagsToMetric = new Dictionary<MetricKey, BosunMetric>(s_metricKeyComparer);
+        Dictionary<MetricKey, BosunMetric> _rootNameAndTagsToMetric = new Dictionary<MetricKey, BosunMetric>(MetricKeyComparer.Default);
 
         readonly List<BosunMetric> _metrics = new List<BosunMetric>();
 
