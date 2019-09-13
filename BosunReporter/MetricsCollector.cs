@@ -90,7 +90,7 @@ namespace BosunReporter
         /// True if <see cref="ShutdownAsync"/> has been called on this collector.
         /// </summary>
         public bool ShutdownCalled => _shutdownTokenSource.IsCancellationRequested;
-        
+
         /// <summary>
         /// Total number of data points successfully sent fo Bosun. This includes external counter data points.
         /// </summary>
@@ -290,7 +290,7 @@ namespace BosunReporter
                     return;
                 }
 
-                if (!type.IsSubclassOf(typeof (BosunMetric)))
+                if (!type.IsSubclassOf(typeof(BosunMetric)))
                 {
                     throw new Exception($"Cannot bind metric \"{name}\" to Type {type.FullName}. It does not inherit from BosunMetric.");
                 }
@@ -408,7 +408,7 @@ namespace BosunReporter
             if (addPrefix)
                 name = MetricsNamePrefix + name;
 
-            var metricType = typeof (T);
+            var metricType = typeof(T);
             if (metric == null)
             {
                 // if the type has a constructor without params, then create an instance
@@ -480,7 +480,7 @@ namespace BosunReporter
                     if (mustBeNew)
                         throw new Exception($"Attempted to create duplicate metric with name \"{name}\" and tags {string.Join(", ", metric.Tags.Keys)}.");
 
-                    return (T) _rootNameAndTagsToMetric[key];
+                    return (T)_rootNameAndTagsToMetric[key];
                 }
 
                 // metric doesn't exist yet.
