@@ -135,7 +135,13 @@ namespace Scratch
 
             var externalCounter = collector.GetMetricGroup<SomeEnum, TestExternalCounter>("external.test", "units", "Should aggregate externally.");
             externalCounter.PopulateFromEnum();
-//            var externalNoTags = collector.CreateMetric<ExternalNoTagsCounter>("external.no_tags", "units", "Shouldn't have any tags except relay.");
+            //            var externalNoTags = collector.CreateMetric<ExternalNoTagsCounter>("external.no_tags", "units", "Shouldn't have any tags except relay.");
+
+            var lotsOfCounters = new List<Counter>();
+            for (var i = 0; i < 400; i++)
+            {
+                lotsOfCounters.Add(collector.GetMetric("counter_" + i, "counts", "Testing lots of counters", new Counter()));
+            }
 
             var sai = 0;
             var random = new Random();
@@ -144,7 +150,7 @@ namespace Scratch
             {
                 while (true)
                 {
-                    await Task.Delay(20);
+                    await Task.Delay(100);
 
                     sampler.Record(++sai % 35);
                     eventGauge.Record(sai % 35);
@@ -164,6 +170,11 @@ namespace Scratch
                         externalCounter[SomeEnum.Three].Increment();
                     if (sai % 4 == 0)
                         externalCounter[SomeEnum.Four].Increment();
+
+                    foreach (var lotsOfCounter in lotsOfCounters)
+                    {
+                        lotsOfCounter.Increment(random.Next(0, 5));
+                    }
 
                     //                    externalNoTags.Increment();
 
