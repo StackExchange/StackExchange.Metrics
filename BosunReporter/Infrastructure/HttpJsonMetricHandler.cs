@@ -25,14 +25,12 @@ namespace BosunReporter.Infrastructure
         }
 
         /// <inheritdoc />
-        public override ValueTask DisposeAsync()
+        public override void Dispose()
         {
             if (_httpClientFactory.IsValueCreated)
             {
                 _httpClientFactory.Value.Dispose();
             }
-
-            return default;
         }
 
         /// <inheritdoc />

@@ -48,6 +48,6 @@ namespace BosunReporter.Infrastructure
         /// <summary>
         /// Cleans-up any resources associated with this handler.
         /// </summary>
-        ValueTask DisposeAsync();
+        void Dispose();
     }
 }

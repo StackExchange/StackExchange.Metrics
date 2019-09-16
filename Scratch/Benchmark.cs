@@ -66,9 +66,9 @@ namespace Scratch
         {
             _cancellationTokenSource.Cancel();
             _cancellationTokenSource.Dispose();
-            _emptyCollector.ShutdownAsync().Wait();
-            _httpCollector.ShutdownAsync().Wait();
-            _udpCollector.ShutdownAsync().Wait();
+            _emptyCollector.Shutdown();
+            _httpCollector.Shutdown();
+            _udpCollector.Shutdown();
         }
 
         [Benchmark(Baseline = true)]

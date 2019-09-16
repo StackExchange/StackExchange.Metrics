@@ -171,7 +171,9 @@ namespace BosunReporter.Handlers
         }
 
         /// <inheritdoc />
-        public ValueTask DisposeAsync() => default;
+        public void Dispose()
+        {
+        }
 
         private class Batch : IMetricBatch
         {

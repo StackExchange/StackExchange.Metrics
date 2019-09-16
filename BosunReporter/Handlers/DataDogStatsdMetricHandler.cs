@@ -77,22 +77,6 @@ namespace BosunReporter.Handlers
         }
 
         /// <inheritdoc />
-        public override async ValueTask DisposeAsync()
-        {
-            try
-            {
-                var clientSocketData = await _clientSocketDataTask;
-                using (clientSocketData.Args)
-                using (clientSocketData.Socket)
-                {
-                }
-            }
-            catch
-            {
-            }
-        }
-
-        /// <inheritdoc />
         protected override void PrepareSequence(ref ReadOnlySequence<byte> sequence, PayloadType payloadType)
         {
         }

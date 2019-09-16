@@ -32,6 +32,7 @@ namespace BosunReporter
 
         bool _hasNewMetadata = false;
         DateTime _lastMetadataFlushTime = DateTime.MinValue;
+        CancellationTokenSource _shutdownTokenSource;
 
         readonly List<BosunMetric> _metricsNeedingPreSerialize = new List<BosunMetric>();
         // All of the names which have been claimed, including the metrics which may have multiple suffixes, mapped to their root metric name.
@@ -40,7 +41,6 @@ namespace BosunReporter
 
         readonly Task _flushTask;
         readonly Task _reportingTask;
-        readonly CancellationTokenSource _shutdownTokenSource;
         readonly TimeSpan _delayBetweenRetries;
         readonly int _maxRetries;
 
@@ -87,7 +87,7 @@ namespace BosunReporter
         public ReadOnlyDictionary<string, string> DefaultTags { get; private set; }
 
         /// <summary>
-        /// True if <see cref="ShutdownAsync"/> has been called on this collector.
+        /// True if <see cref="Shutdown"/> has been called on this collector.
         /// </summary>
         public bool ShutdownCalled => _shutdownTokenSource.IsCancellationRequested;
 
@@ -143,7 +143,9 @@ namespace BosunReporter
         /// Instantiates a new collector (the primary class of BosunReporter). You should typically only instantiate one collector for the lifetime of your
         /// application. It will manage the serialization of metrics and sending data to Bosun.
         /// </summary>
-        /// <param name="options"></param>
+        /// <param name="options">
+        /// <see cref="BosunOptions" /> representing the options to use for this collector.
+        /// </param>
         public MetricsCollector(BosunOptions options)
         {
             ExceptionHandler = options.ExceptionHandler;
@@ -523,17 +525,15 @@ namespace BosunReporter
         /// This method should only be called on application shutdown, and should not be called more than once.
         /// When called, it runs one final metric snapshot and makes a single attempt to flush all metrics in the queue.
         /// </summary>
-        public async Task ShutdownAsync()
+        public void Shutdown()
         {
             Debug.WriteLine("BosunReporter: Shutting down MetricsCollector.");
             _shutdownTokenSource.Cancel();
-            _shutdownTokenSource.Dispose();
-            await Task.WhenAll(_flushTask, _reportingTask);
-            await SnapshotAsync(false);
-            await FlushAsync(false);
+            _shutdownTokenSource = null;
+
             foreach (var endpoint in _endpoints)
             {
-                await endpoint.Handler.DisposeAsync();
+                endpoint.Handler.Dispose();
             }
         }
 

@@ -207,7 +207,9 @@ namespace BosunReporter.Infrastructure
         }
 
         /// <inheritdoc />
-        public virtual ValueTask DisposeAsync() => default;
+        public virtual void Dispose()
+        {
+        }
 
         /// <summary>
         /// Prepares a sequence for writing to the underlying transport.
