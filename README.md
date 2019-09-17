@@ -1,11 +1,11 @@
-# BosunReporter
+# StackExchange.Metrics
 
-[![NuGet version](https://badge.fury.io/nu/BosunReporter.svg)](http://badge.fury.io/nu/BosunReporter)
-[![Build status](https://ci.appveyor.com/api/projects/status/yt8nl66ha598jbr7/branch/master?svg=true)](https://ci.appveyor.com/project/StackExchange/bosunreporter-net/branch/master)
+[![NuGet version](https://badge.fury.io/nu/StackExchange.Metrics.svg)](http://badge.fury.io/nu/StackExchange.Metrics)
+[![Build status](https://ci.appveyor.com/api/projects/status/3pt8vns2pe74eowu/branch/master?svg=true)](https://ci.appveyor.com/project/StackExchange/StackExchange.Metrics/branch/master)
 
 A thread-safe C# .NET client for reporting metrics to various providers, including [Bosun (Time Series Alerting Framework)](http://bosun.org), SignalFx and DataDog. This library is more than a simple wrapper around relevant APIs. It is designed to encourage best-practices while making it easy to create counters and gauges, including multi-aggregate gauges. It automatically reports metrics on an interval and handles temporary API or network outages using a re-try queue.
 
-__[VIEW CHANGES IN 5.0](https://github.com/StackExchange/StackExchange.Metrics/blob/master/docs/ReleaseNotes.md)__
+__[VIEW CHANGES IN StackExchange.Metrics 1.0](https://github.com/StackExchange/StackExchange.Metrics/blob/master/docs/ReleaseNotes.md)__
 
 ### Basic Usage
 
