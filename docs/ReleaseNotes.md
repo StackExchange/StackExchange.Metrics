@@ -1,4 +1,16 @@
-# BosunReporter.NET Release Notes
+# StackExchange.Metrics Release Notes
+
+## BosunReporter 4.0.0 => StackExchange.Metrics 1.0.0
+
+Released for .NET Standard 2.0
+
+#### Project Rename
+
+Rename of project from BosunReporter to StackExchange.Metrics. Rename of namespaces and anything `Bosun` to just `Metric` or `Metrics`.
+
+#### Multiple metric handlers
+
+We now support reporting metrics to several handlers via an extensible mechanism. In the box we include handlers for Bosun, SignalFx and DataDog. As a result of this, some configuration options have been moved to the handler rather than to the collector itself.
 
 ## 4.0.0
 
