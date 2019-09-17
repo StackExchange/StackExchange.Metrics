@@ -1,0 +1,26 @@
+<Project>
+  <PropertyGroup>
+    <VersionPrefix>1.0.0</VersionPrefix>
+    <Copyright>2019 Stack Exchange, Inc.</Copyright>
+    <LibTargetFrameworks>netstandard2.0</LibTargetFrameworks>
+    <PackageId>$(AssemblyName)</PackageId>
+    <Features>strict</Features>
+    <Authors>Stack Exchange, Inc., Bret Copeland</Authors>
+    <CodeAnalysisRuleset>$(MSBuildThisFileDirectory)Shared.ruleset</CodeAnalysisRuleset>
+    <MSBuildWarningsAsMessages>NETSDK1069</MSBuildWarningsAsMessages>
+    <NoWarn>NU5105</NoWarn>
+    <PackageProjectUrl>https://github.com/StackExchange/StackExchange.Metrics</PackageProjectUrl>
+    <PackageLicenseUrl>https://raw.github.com/StackExchange/StackExchange.Metrics/master/LICENSE.MIT</PackageLicenseUrl>
+    <RepositoryUrl>https://github.com/StackExchange/StackExchange.Metrics</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>embedded</DebugType>
+    <DefaultLanguage>en-US</DefaultLanguage>
+    <IncludeSymbols>false</IncludeSymbols>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Nerdbank.GitVersioning" Version="2.2.13" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="1.0.0-beta2-18618-05" PrivateAssets="All"/>
+  </ItemGroup>
+</Project>

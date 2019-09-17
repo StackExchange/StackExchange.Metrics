@@ -1,67 +1,29 @@
-# See http://www.appveyor.com/docs/appveyor-yml for reference
-
-#---------------------------------#
-#    environment configuration    #
-#---------------------------------#
-
 os: Visual Studio 2017
 
-#---------------------------------#
-#       build configuration       #
-#---------------------------------#
+skip_branch_with_pr: true
+skip_tags: true
+skip_commits:
+  files:
+    - '**/*.md'
+    - docs/*
+
+environment:
+  Appveyor: true
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
 
 build_script:
-  - ps: .\build.ps1 -pack
-
-#---------------------------------#
-#      artifacts configuration    #
-#---------------------------------#
+- ps: .\build.ps1 -PullRequestNumber "$env:APPVEYOR_PULL_REQUEST_NUMBER" -CreatePackages $true
 
 artifacts:
-  - path: artifacts/*
+- path: .\.nupkgs\*.nupkg
 
-#---------------------------------#
-#       tests configuration       #
-#---------------------------------#
-
-# we run tests explicitly as part of the build script
 test: off
 
-#---------------------------------#
-#     deployment configuration    #
-#---------------------------------#
-
 deploy:
-
- - provider: GitHub
-   release: $(APPVEYOR_REPO_TAG_NAME)
-   auth_token:
-     secure: R4+VK7DPGDBh/IvVDn06bAqBr/QKFS5eB9OFQZLzKsapKq1QJ+ytmHx71v7mV9oO
-   artifact: /^artifacts[\\/]/
-   draft: false
-   prerelease: false
-   on:
-     branch: master
-     appveyor_repo_tag: true
-
- # MyGet
- - provider: NuGet
-   server: https://www.myget.org/F/bretcope/api/v2/package
-   symbol_server: https://www.myget.org/F/bretcope/symbols/api/v2/package
-   api_key:
-     secure: 4OhfGM3pJQHTs5OYskc448dwXt8DqPec7vdyK+G+AS5v0m8pSxyP30UoZyTanDcz
-   artifact: /^artifacts[\\/].*\.nupkg$/
-   skip_symbols: false
-   on:
-     branch: master
-
- # NuGet.org
- - provider: NuGet
-   api_key:
-     secure: NiH62CvEa6ztPGnR9glvKexCL5sJStB62JcJ/8CcVJJAj7rkCzZvfN87E5xPpNd0
-   artifact: /^artifacts[\\/].*\.nupkg$/
-   skip_symbols: false
-   on:
-     branch: master
-     appveyor_repo_tag: true
-
+- provider: NuGet
+  server: https://www.myget.org/F/stackoverflow/api/v2
+  on:
+    branch: master
+  api_key:
+    secure: P/UHxq2DEs0GI1SoDXDesHjRVsSVgdywz5vmsnhFQQY5aJgO3kP+QfhwfhXz19Rw
+  symbol_server: https://www.myget.org/F/stackoverflow/symbols/api/v2/package
