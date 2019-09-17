@@ -572,15 +572,14 @@ namespace BosunReporter
                     }
                     sw.Stop();
 
-                    var info = new AfterSerializationInfo
-                    {
-                        Endpoint = endpoint.Name,
-                        Count = metricsCount,
-                        BytesWritten = bytesWritten,
-                        Duration = sw.Elapsed,
-                    };
-
-                    AfterSerialization?.Invoke(info);
+                    AfterSerialization?.Invoke(
+                        new AfterSerializationInfo
+                        {
+                            Endpoint = endpoint.Name,
+                            Count = metricsCount,
+                            BytesWritten = bytesWritten,
+                            Duration = sw.Elapsed,
+                        });
                 }
             }
             catch (Exception ex)
