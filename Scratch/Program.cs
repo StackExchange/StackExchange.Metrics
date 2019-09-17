@@ -183,7 +183,7 @@ namespace Scratch
 
                     if (sai == 1000 || s_cancellationTokenSource.IsCancellationRequested)
                     {
-                        await collector.Shutdown();
+                        collector.Shutdown();
                         break;
                     }
                 }
