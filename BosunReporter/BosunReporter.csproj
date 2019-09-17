@@ -5,15 +5,15 @@
   </PropertyGroup>
 
   <PropertyGroup Label="Package">
-    <PackageId>BosunReporter</PackageId>
-    <Version>4.0.0</Version>
-    <Authors>Bret Copeland</Authors>
-    <Description>A thread-safe C# .NET client for reporting metrics to Bosun (Time Series Alerting Framework).</Description>
-    <PackageProjectUrl>https://github.com/bretcope/BosunReporter.NET</PackageProjectUrl>
-    <RepositoryUrl>https://github.com/bretcope/BosunReporter.NET</RepositoryUrl>
+    <PackageId>StackExchange.Metrics</PackageId>
+    <Version>5.0.0</Version>
+    <Authors>Bret Copeland, Stack Overflow</Authors>
+    <Description>A thread-safe C# .NET client for reporting metrics to various providers, including Bosun, SignalFx and DataDog.</Description>
+    <PackageProjectUrl>https://github.com/StackExchange/StackExchange.Metrics</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/StackExchange/StackExchange.Metrics</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <Copyright />
-    <PackageTags>Bosun Time-Series Alerting Metrics</PackageTags>
+    <PackageTags>metrics</PackageTags>
     <DebugSymbols>true</DebugSymbols>
     <DebugType>embedded</DebugType>
     <LangVersion>latest</LangVersion>
@@ -32,7 +32,7 @@
   </ItemGroup>
 
   <PropertyGroup>
-    <DocumentationFile>bin\$(Configuration)\$(TargetFramework)\BosunReporter.xml</DocumentationFile>
+    <DocumentationFile>bin\$(Configuration)\$(TargetFramework)\StackExchange.Metrics.xml</DocumentationFile>
   </PropertyGroup>
 
   <ItemGroup>
@@ -40,10 +40,6 @@
     <PackageReference Include="Pipelines.Sockets.Unofficial" Version="2.0.25" />
     <PackageReference Include="System.Buffers" Version="4.5.0" />
     <PackageReference Include="System.Text.Json" Version="4.6.0-preview8.19405.3" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Service Include="{508349b6-6b84-4df5-91f0-309beebad82d}" />
   </ItemGroup>
 
 </Project>
