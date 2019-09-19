@@ -89,7 +89,7 @@ namespace StackExchange.Metrics
         /// <summary>
         /// True if <see cref="Shutdown"/> has been called on this collector.
         /// </summary>
-        public bool ShutdownCalled => _shutdownTokenSource.IsCancellationRequested;
+        public bool ShutdownCalled => _shutdownTokenSource?.IsCancellationRequested ?? true;
 
         /// <summary>
         /// Total number of data points successfully sent fo Bosun. This includes external counter data points.
