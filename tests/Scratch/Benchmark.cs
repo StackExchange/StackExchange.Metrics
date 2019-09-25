@@ -1,10 +1,8 @@
 ﻿using BenchmarkDotNet.Attributes;
-using BosunReporter;
-using BosunReporter.Metrics;
+using StackExchange.Metrics;
+using StackExchange.Metrics.Metrics;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -23,7 +21,7 @@ namespace Scratch
         {
             _cancellationTokenSource = new CancellationTokenSource();
 
-            var emptyOptions = new BosunOptions(ex => Console.WriteLine(ex))
+            var emptyOptions = new MetricsCollectorOptions(ex => Console.WriteLine(ex))
             {
                 Endpoints = Array.Empty<MetricEndpoint>(),
                 DefaultTags = new Dictionary<string, string> { { "host", NameTransformers.Sanitize(Environment.MachineName.ToLower()) } },
@@ -32,7 +30,7 @@ namespace Scratch
                 ThrowOnQueueFull = false,
             };
 
-            var httpOptions = new BosunOptions(ex => Console.WriteLine(ex))
+            var httpOptions = new MetricsCollectorOptions(ex => Console.WriteLine(ex))
             {
                 Endpoints = new[]
                 {
@@ -44,7 +42,7 @@ namespace Scratch
                 ThrowOnQueueFull = false,
             };
 
-            var udpOptions = new BosunOptions(ex => Console.WriteLine(ex))
+            var udpOptions = new MetricsCollectorOptions(ex => Console.WriteLine(ex))
             {
                 Endpoints = new[]
                 {
