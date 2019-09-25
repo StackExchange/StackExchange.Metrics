@@ -111,7 +111,7 @@ namespace StackExchange.Metrics.Handlers
         protected override ValueTask SendGaugeAsync(ReadOnlySequence<byte> sequence) => SendAsync(_metricUri, HttpMethod.Post, PayloadType.Gauge, sequence);
 
         /// <inheritdoc />
-        protected override ValueTask SendMetadataAsync(ReadOnlySequence<byte> sequence) => SendAsync(_metadataUri, HttpMethod.Post, PayloadType.Metadata, sequence);
+        protected override ValueTask SendMetadataAsync(ReadOnlySequence<byte> sequence) => SendAsync(_metadataUri, HttpMethod.Post, PayloadType.Metadata, sequence, gzip: false);
 
         /// <inheritdoc />
         protected override void SerializeMetric(IBufferWriter<byte> writer, in MetricReading reading)
