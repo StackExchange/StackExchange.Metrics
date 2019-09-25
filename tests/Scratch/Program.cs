@@ -37,12 +37,16 @@ namespace Scratch
             {
                 Console.WriteLine("Hey, there was an exception.");
                 Console.WriteLine(exception);
+                foreach (var key in exception.Data.Keys)
+                {
+                    Console.WriteLine($"{key}={exception.Data[key]}");
+                }
             })
             {
                 Endpoints = new MetricEndpoint[] {
-                    new MetricEndpoint(LocalEndpointKey, localHandler),
-                    new MetricEndpoint("Test HTTP 1", new TestBosunMetricHandler(new Uri("http://127.0.0.1/"))),
-                    new MetricEndpoint("Test HTTP 2", new TestSignalFxHandler(new Uri("http://127.0.0.1/"))),
+                    //new MetricEndpoint(LocalEndpointKey, localHandler),
+                    //new MetricEndpoint("Test HTTP 1", new TestBosunMetricHandler(new Uri("http://127.0.0.1/"))),
+                    //new MetricEndpoint("Test HTTP 2", new TestSignalFxHandler(new Uri("http://127.0.0.1/"))),
                     //new MetricEndpoint("Test UDP", new TestUdpMetricHandler(s_cancellationTokenSource.Token) { MaxPayloadSize = 320 }),
                     //new MetricEndpoint("Bosun (no URL)", new BosunMetricHandler(null)),
                     //new MetricEndpoint("Bosun", new BosunMetricHandler(new Uri("http://devbosun.ds.stackexchange.com/"))),

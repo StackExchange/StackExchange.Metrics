@@ -90,7 +90,7 @@ namespace StackExchange.Metrics.Handlers
 
         /// <summary>
         /// Enables sending metrics to the /api/count route on OpenTSDB relays which support external counters. External counters don't reset when applications
-        /// reload, and are intended for low-volume metrics. For high-volume metrics, use normal counters.
+        /// reload, and are intended for low-volume metrics. For high-volume metrics,GZp use normal counters.
         /// </summary>
         public bool EnableExternalCounters { get; set; } = true;
 
@@ -112,7 +112,7 @@ namespace StackExchange.Metrics.Handlers
         protected override ValueTask SendGaugeAsync(ReadOnlySequence<byte> sequence) => SendAsync(_metricUri, HttpMethod.Post, PayloadType.Gauge, sequence);
 
         /// <inheritdoc />
-        protected override ValueTask SendMetadataAsync(ReadOnlySequence<byte> sequence) => SendAsync(_metadataUri, HttpMethod.Post, PayloadType.Metadata, sequence);
+        protected override ValueTask SendMetadataAsync(ReadOnlySequence<byte> sequence) => SendAsync(_metadataUri, HttpMethod.Post, PayloadType.Metadata, sequence, gzip: false);
 
         /// <inheritdoc />
         protected override void SerializeMetric(IBufferWriter<byte> writer, in MetricReading reading)
