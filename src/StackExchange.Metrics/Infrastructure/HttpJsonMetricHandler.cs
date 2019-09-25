@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Buffers;
 using System.IO;
-using System.IO.Compression;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
@@ -123,10 +122,8 @@ namespace StackExchange.Metrics.Infrastructure
         /// </summary>
         protected virtual HttpClient CreateHttpClient() => new HttpClient();
 
-        /// <summary>
-        /// Sends a <see cref="ReadOnlySequence{T}" /> of bytes to an HTTP endpoint.
-        /// </summary>
-        protected async ValueTask SendAsync(Uri uri, HttpMethod method, PayloadType payloadType, ReadOnlySequence<byte> sequence, bool gzip = true)
+        /// <inheritdoc />
+        protected async ValueTask SendAsync(Uri uri, HttpMethod method, PayloadType payloadType, ReadOnlySequence<byte> sequence)
         {
             if (uri == null)
             {
@@ -137,7 +134,7 @@ namespace StackExchange.Metrics.Infrastructure
             var postambleLength = GetPostambleLength(payloadType);
             var request = new HttpRequestMessage(method, uri)
             {
-                Content = new ReadOnlySequenceContent(gzip, payloadType, sequence, preambleLength, WritePreambleAsync, postambleLength, WritePostambleAsync)
+                Content = new ReadOnlySequenceContent(payloadType, sequence, preambleLength, WritePreambleAsync, postambleLength, WritePostambleAsync)
             };
 
             var response = await _httpClientFactory.Value.SendAsync(request);
@@ -168,7 +165,6 @@ namespace StackExchange.Metrics.Infrastructure
 
         private class ReadOnlySequenceContent : HttpContent
         {
-            readonly bool _gzip;
             readonly PayloadType _type;
             readonly ReadOnlySequence<byte> _sequence;
             readonly Func<Stream, PayloadType, Task> _writePreamble;
@@ -176,7 +172,6 @@ namespace StackExchange.Metrics.Infrastructure
             readonly long _length;
 
             public ReadOnlySequenceContent(
-                bool gzip,
                 PayloadType type,
                 in ReadOnlySequence<byte> sequence, 
                 int preambleLength,
@@ -185,7 +180,6 @@ namespace StackExchange.Metrics.Infrastructure
                 Func<Stream, PayloadType, Task> writePostamble
             )
             {
-                _gzip = gzip;
                 _type = type;
                 _sequence = sequence;
                 _length = sequence.Length + preambleLength + postambleLength;
@@ -193,28 +187,15 @@ namespace StackExchange.Metrics.Infrastructure
                 _writePostamble = writePostamble;
 
                 Headers.ContentType = s_jsonHeader;
-                if (gzip)
-                {
-                    Headers.ContentEncoding.Add("gzip");
-                }
             }
 
             static readonly MediaTypeHeaderValue s_jsonHeader = new MediaTypeHeaderValue("application/json");
 
             protected override async Task SerializeToStreamAsync(Stream stream, TransportContext context)
             {
-                IDisposable toDispose = null;
-                if (_gzip)
-                {
-                    toDispose = stream = new GZipStream(stream, CompressionMode.Compress, true);
-                }
-
-                using (toDispose)
-                {
-                    await _writePreamble(stream, _type);
-                    await stream.WriteAsync(_sequence);
-                    await _writePostamble(stream, _type);
-                }
+                await _writePreamble(stream, _type);
+                await stream.WriteAsync(_sequence);
+                await _writePostamble(stream, _type);
             }
 
             protected override bool TryComputeLength(out long length)
