@@ -124,7 +124,23 @@ namespace StackExchange.Metrics.Infrastructure
             {
                 var fullName = Name + SuffixesArray[i];
 
-                yield return new MetaData(fullName, MetadataNames.Rate, null, MetricType.ToString().ToLower());
+                var metricType = string.Empty;
+                switch (MetricType)
+                {
+                    case MetricType.Counter:
+                    case MetricType.CumulativeCounter:
+                        metricType = "counter";
+                        break;
+                    case MetricType.Gauge:
+                        metricType = "gauge";
+                        break;
+                    default:
+                        metricType = MetricType.ToString().ToLower();
+                        break;
+
+                }
+
+                yield return new MetaData(fullName, MetadataNames.Rate, null, metricType);
 
                 var desc = GetDescription(i);
                 if (!string.IsNullOrEmpty(desc))
