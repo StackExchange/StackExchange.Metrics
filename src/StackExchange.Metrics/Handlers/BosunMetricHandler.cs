@@ -4,6 +4,7 @@ using System;
 using System.Buffers;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Net.Http;
 using System.Text;
 using System.Text.Json;
@@ -137,12 +138,13 @@ namespace StackExchange.Metrics.Handlers
             if (reading.Timestamp > s_maximumTimestamp)
                 throw new Exception($"Bosun cannot serialize metrics dated after {s_maximumTimestamp}.");
 
-            // Bosun treats counters somewhat differently than other providers
-            // it expects a monotonically increasing value and calculates rates, etc.
-            // based upon that value. Here we store the total value and use that when
-            // serializing!
+            var readingToWrite = reading;
             if (reading.Type == MetricType.Counter)
             {
+                // Bosun treats counters somewhat differently than other providers
+                // it expects a monotonically increasing value and calculates rates, etc.
+                // based upon that value. Here we store the total value and use that when
+                // serializing!
                 var metricKey = new MetricKey(reading.Name, reading.Tags);
                 if (!_counterValues.TryGetValue(metricKey, out var value))
                 {
@@ -151,12 +153,29 @@ namespace StackExchange.Metrics.Handlers
 
                 _counterValues[metricKey] = value + reading.Value;
             }
+            else if (reading.Type == MetricType.CumulativeCounter)
+            {
+                // Bosun requires that cumulative counters go via tsdbrelay. This
+                // enforces a constraint whereby the host tag should not be present
+                // on the incoming metric. Remove it here so that it doesn't throw a 500
+                if (reading.Tags.ContainsKey("host"))
+                {
+                    readingToWrite = new MetricReading(
+                        reading.Name,
+                        reading.Type,
+                        reading.Suffix,
+                        reading.Value,
+                        reading.Tags.Where(x => x.Key != "host").ToDictionary(x => x.Key, x => x.Value),
+                        reading.Timestamp
+                    );
+                }
+            }
 
             writer.Write(s_comma);
 
             using (var utfWriter = new Utf8JsonWriter(writer))
             {
-                JsonSerializer.Serialize(utfWriter, reading, _jsonOptions);
+                JsonSerializer.Serialize(utfWriter, readingToWrite, _jsonOptions);
             }
         }
 
