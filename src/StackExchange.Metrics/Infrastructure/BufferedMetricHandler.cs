@@ -193,13 +193,13 @@ namespace StackExchange.Metrics.Infrastructure
                         {
                             // posting to the endpoint failed
                             // loop until we reach our limit or until we succeed
-                            Debug.WriteLine($"BosunReporter: Sending to the endpoint failed. Retry {retries} of {maxRetries}.");
+                            Debug.WriteLine($"StackExchange.Metrics: Sending to the endpoint failed. Retry {retries} of {maxRetries}.");
                             await Task.Delay(delayBetweenRetries);
                         }
-                        catch (Exception)
+                        catch (Exception ex)
                         {
-                            Debug.WriteLine($"BosunReporter: Sending to the endpoint failed. Maximum retries reached.");
-                            throw;
+                            Debug.WriteLine("StackExchange.Metrics: Sending to the endpoint failed. Maximum retries reached.");
+                            throw new MetricPostException(ex);
                         }
                     }
                 }
