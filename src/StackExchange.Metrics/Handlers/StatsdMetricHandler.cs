@@ -14,16 +14,10 @@ using System.Threading.Tasks;
 namespace StackExchange.Metrics.Handlers
 {
     /// <summary>
-    /// Implements <see cref="BufferedMetricHandler" /> by sending data to a DataDog agent.
+    /// Implements <see cref="BufferedMetricHandler" /> by sending data to a statsd endpoint.
     /// </summary>
-    public class DataDogStatsdMetricHandler : BufferedMetricHandler
+    public class StatsdMetricHandler : BufferedMetricHandler
     {
-        string _host;
-        ushort _port;
-        ValueTask<ClientSocketData> _clientSocketDataTask;
-        PayloadTypeMetadata _metricMetadata;
-        PayloadTypeMetadata _metadataMetadata;
-
         const int ValueDecimals = 5;
         static readonly byte[] s_counter = Encoding.UTF8.GetBytes("c");
         static readonly byte[] s_gauge = Encoding.UTF8.GetBytes("g");
@@ -34,20 +28,28 @@ namespace StackExchange.Metrics.Handlers
         static readonly byte[] s_comma = Encoding.UTF8.GetBytes(",");
         static readonly StandardFormat s_valueFormat = StandardFormat.Parse("F" + ValueDecimals);
 
+        string _host;
+        ushort _port;
+        ValueTask<ClientSocketData> _clientSocketDataTask;
+        PayloadTypeMetadata _metricMetadata;
+        PayloadTypeMetadata _metadataMetadata;
+
         /// <summary>
-        /// Constructs a new <see cref="DataDogStatsdMetricHandler" /> pointing at the specified <see cref="Uri" />.
+        /// Constructs a new <see cref="StatsdMetricHandler" /> pointing at the specified host and port.
         /// </summary>
         /// <param name="host">
-        /// Host of a DataDog agent.
+        /// Host of a statsd endpoint.
         /// </param>
         /// <param name="port">
-        /// Port of a DataDog agent.
+        /// Port of a stats endpoint.
         /// </param>
-        public DataDogStatsdMetricHandler(string host, ushort port)
+        public StatsdMetricHandler(string host, ushort port)
         {
             _host = host;
             _port = port;
             _clientSocketDataTask = CreateClientSocketDataAsync();
+            // make sure our statsd data doesn't tear over packets
+            MaxPayloadSize = 1400;
         }
 
         /// <summary>
@@ -86,7 +88,7 @@ namespace StackExchange.Metrics.Handlers
         {
             if (payloadType == PayloadType.Metadata)
             {
-                // DataDog's statsd implementation doesn't know how to handle metadata!
+                // statsd implementations don't know how to handle metadata!
                 return default;
             }
 
@@ -117,7 +119,7 @@ namespace StackExchange.Metrics.Handlers
             }
 
             // UTF-8 formatted as follows:
-            // {metric}:{value}|{unit}|{tag},{tag}
+            // {metric}:{value}|{unit}|#{tag},{tag}
 
             // exit early if we don't support the metric
             byte[] unit;
@@ -282,13 +284,7 @@ namespace StackExchange.Metrics.Handlers
             if (IPAddress.TryParse(_host, out IPAddress ip))
             {
                 return new ValueTask<ClientSocketData>(
-                    new ClientSocketData(
-                        new Socket(ip.AddressFamily, SocketType.Dgram, ProtocolType.Udp),
-                        new SocketAwaitableEventArgs
-                        {
-                            RemoteEndPoint = new IPEndPoint(ip, _port)
-                        }
-                    )
+                    new ClientSocketData(new IPEndPoint(ip, _port))
                 );
             }
 
@@ -313,13 +309,7 @@ namespace StackExchange.Metrics.Handlers
                     endpoint = new IPEndPoint(hostAddress.MapToIPv4(), _port);
                 }
 
-                return new ClientSocketData(
-                    new Socket(endpoint.AddressFamily, SocketType.Dgram, ProtocolType.Udp),
-                    new SocketAwaitableEventArgs
-                    {
-                        RemoteEndPoint = endpoint
-                    }
-                );
+                return new ClientSocketData(endpoint);
             }
         }
 
@@ -346,8 +336,31 @@ namespace StackExchange.Metrics.Handlers
                     return;
                 }
 
+                if (buffer.IsEmpty)
+                {
+                    return;
+                }
 
-                socketArgs.BufferList = GetBufferList(buffer);
+                if (buffer.IsSingleSegment)
+                {
+                    var segment = buffer.First.GetArray();
+                    if (socketArgs.BufferList != null)
+                    {
+                        socketArgs.BufferList = null;
+                    }
+
+                    socketArgs.SetBuffer(segment.Array, segment.Offset, segment.Count);
+                }
+                else
+                {
+                    if (socketArgs.Buffer != null)
+                    {
+                        socketArgs.SetBuffer(null, 0, 0);
+                    }
+
+                    socketArgs.BufferList = GetBufferList(buffer);
+                }
+
                 if (!socket.SendToAsync(socketArgs))
                 {
                     socketArgs.Complete();
@@ -357,9 +370,14 @@ namespace StackExchange.Metrics.Handlers
                 {
                     await socketArgs;
                 }
-                catch
+                catch (Exception ex)
                 {
-                    // reset the args
+                    // reset the args so we can try again
+                    _clientSocketDataTask = new ValueTask<ClientSocketData>(
+                        new ClientSocketData(socketArgs.RemoteEndPoint)
+                    );
+
+                    // clean-up after ourselves
                     try
                     {
                         using (socketArgs)
@@ -367,10 +385,18 @@ namespace StackExchange.Metrics.Handlers
                         {
                         }
                     }
-                    finally
+                    catch { }
+
+                    // HACK: this is a transient error, retry it without logging
+                    if (ex is SocketException socketException && socketException.SocketErrorCode == SocketError.AddressFamilyNotSupported)
                     {
-                        _clientSocketDataTask = CreateClientSocketDataAsync();
+                        throw new MetricPostException(ex)
+                        {
+                            SkipExceptionHandler = true
+                        };
                     }
+
+                    // otherwise re-throw to notify callers we couldn't successfuly send
                     throw;
                 }
             }
@@ -396,14 +422,42 @@ namespace StackExchange.Metrics.Handlers
 
         private readonly struct ClientSocketData
         {
-            public ClientSocketData(Socket socket, SocketAwaitableEventArgs args)
+            public ClientSocketData(EndPoint endpoint)
             {
-                Socket = socket;
-                Args = args;
+                Socket = CreateSocket(endpoint);
+                Args = new SocketAwaitableEventArgs
+                {
+                    RemoteEndPoint = endpoint
+                };
             }
 
             public Socket Socket { get; }
             public SocketAwaitableEventArgs Args { get; }
+
+            private static Socket CreateSocket(EndPoint endpoint)
+            {
+                var socket = new Socket(endpoint.AddressFamily, SocketType.Dgram, ProtocolType.Udp);
+                if (endpoint is IPEndPoint ipEndpoint && IPAddress.IsLoopback(ipEndpoint.Address))
+                {
+                    if (ipEndpoint.AddressFamily == AddressFamily.InterNetwork)
+                    {
+                        socket.Bind(new IPEndPoint(IPAddress.Loopback, 0));
+                    }
+                    else if (ipEndpoint.AddressFamily == AddressFamily.InterNetworkV6)
+                    {
+                        socket.Bind(new IPEndPoint(IPAddress.IPv6Loopback, 0));
+                    }
+                }
+                else if (endpoint.AddressFamily == AddressFamily.InterNetwork)
+                {
+                    socket.Bind(new IPEndPoint(IPAddress.Any, 0));
+                }
+                else if (endpoint.AddressFamily == AddressFamily.InterNetworkV6)
+                {
+                    socket.Bind(new IPEndPoint(IPAddress.IPv6Any, 0));
+                }
+                return socket;
+            }
         }
     }
 }

@@ -132,7 +132,12 @@ namespace StackExchange.Metrics.Infrastructure
                 {
                     sw.Stop();
                     info.Exception = ex;
-                    exceptionHandler?.Invoke(new MetricPostException(ex));
+                    if (!(ex is MetricPostException))
+                    {
+                        ex = new MetricPostException(ex);
+                    }
+
+                    exceptionHandler?.Invoke(ex);
                     throw;
                 }
                 finally

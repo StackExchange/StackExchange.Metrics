@@ -9,23 +9,15 @@ namespace StackExchange.Metrics
     /// </summary>
     public class MetricPostException : Exception
     {
-        /// <summary>
-        /// The status code returned by Bosun.
-        /// </summary>
-        public HttpStatusCode? StatusCode { get; }
-
-        internal MetricPostException(HttpStatusCode statusCode, string responseBody, Exception innerException)
-            : base("Posting to the Bosun API failed with status code " + statusCode, innerException)
-        {
-            Data["ResponseBody"] = responseBody;
-            Data["StatusCode"] = $"{(int)statusCode} ({statusCode})";
-            StatusCode = statusCode;
-        }
-
         internal MetricPostException(Exception innerException)
-            : base("Posting to the Bosun API failed. Bosun did not respond.", innerException)
+            : base("Posting to the metrics endpoint failed.", innerException)
         {
         }
+
+        /// <summary>
+        /// Gets or sets a value indicating
+        /// </summary>
+        internal bool SkipExceptionHandler { get; set; }
     }
 
     /// <summary>

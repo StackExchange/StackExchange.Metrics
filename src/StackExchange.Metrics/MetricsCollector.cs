@@ -711,14 +711,13 @@ namespace StackExchange.Metrics
         {
             if (ex is MetricPostException post)
             {
+                if (post.SkipExceptionHandler)
+                {
+                    return false;
+                }
+
                 if (ThrowOnPostFail)
                     return true;
-
-                if (post.StatusCode.HasValue)
-                {
-                    var status = (int)post.StatusCode;
-                    return status < 500 || status >= 600; // always want to send the exception when it's a non-500
-                }
 
                 return false;
             }

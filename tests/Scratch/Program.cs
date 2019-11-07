@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Net;
 using System.Net.Http;
 using System.Net.Sockets;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using StackExchange.Metrics;
@@ -45,13 +46,12 @@ namespace Scratch
             {
                 Endpoints = new MetricEndpoint[] {
                     //new MetricEndpoint(LocalEndpointKey, localHandler),
-                    //new MetricEndpoint("Test HTTP 1", new TestBosunMetricHandler(new Uri("http://127.0.0.1/"))),
-                    //new MetricEndpoint("Test HTTP 2", new TestSignalFxHandler(new Uri("http://127.0.0.1/"))),
                     //new MetricEndpoint("Test UDP", new TestUdpMetricHandler(s_cancellationTokenSource.Token) { MaxPayloadSize = 320 }),
                     //new MetricEndpoint("Bosun (no URL)", new BosunMetricHandler(null)),
                     //new MetricEndpoint("Bosun", new BosunMetricHandler(new Uri("http://devbosun.ds.stackexchange.com/"))),
                     //new MetricEndpoint("DataDog Agent", new DataDogStatsdMetricHandler("dogstatsd.datadog.svc.ny-intkube.k8s", 8125)),
-                    //new MetricEndpoint("SignalFx Agent", new SignalFxMetricHandler(new Uri("http://sfxgateway.signalfx.svc.ny-intkube.k8s:18080"))),
+                    //new MetricEndpoint("SignalFx Agent", new SignalFxMetricHandler(new Uri("http://sfxgateway.signalfx.svc.ny-intkube.k8s.ds.stackexchange.com:18080"))),
+                    new MetricEndpoint("SignalFx StatsD Agent", new SignalFxMetricHandler(new Uri("udp://[::1]:8125")) { } ),
                     //new MetricEndpoint("DataDog Cloud", new DataDogMetricHandler(new Uri("https://api.datadoghq.com/"), "{API_KEY}", "{APP_KEY}")),
                     //new MetricEndpoint("DataDog Cloud (no URL)", new DataDogMetricHandler(null, "{API_KEY}", "{APP_KEY}")),
                     //new MetricEndpoint("SignalFx Cloud", new SignalFxMetricHandler(new Uri("https://ingest.us1.signalfx.com/"), "{API_KEY}")),
@@ -67,6 +67,18 @@ namespace Scratch
             };
 
             var collector = new MetricsCollector(options);
+            foreach (var endpoint in collector.Endpoints)
+            {
+                switch (endpoint.Handler)
+                {
+                    case BosunMetricHandler bosunHandler:
+                        Console.WriteLine($"{endpoint.Name}: {bosunHandler.BaseUri?.AbsoluteUri ?? "null"}");
+                        break;
+                    case SignalFxMetricHandler signalFxHandler:
+                        Console.WriteLine($"{endpoint.Name}: {signalFxHandler.BaseUri?.AbsoluteUri ?? "null"}");
+                        break;
+                }
+            }
 
             collector.BeforeSerialization += () => Console.WriteLine("BosunReporter: Running metrics snapshot.");
             collector.AfterSerialization += info => Console.WriteLine($"BosunReporter: Metric Snapshot wrote {info.Count} metrics ({info.BytesWritten} bytes) to {info.Endpoint} in {info.Duration.TotalMilliseconds.ToString("0.##")}ms");
@@ -263,16 +275,7 @@ namespace Scratch
         protected override HttpClient CreateHttpClient() => new HttpClient(new TestHttpHandler(TimeSpan.FromMilliseconds(300)));
     }
 
-    class TestSignalFxHandler : SignalFxMetricHandler
-    {
-        public TestSignalFxHandler(Uri baseUri) : base(baseUri)
-        {
-        }
-
-        protected override HttpClient CreateHttpClient() => new HttpClient(new TestHttpHandler(TimeSpan.FromMilliseconds(10)));
-    }
-
-    class TestUdpMetricHandler : DataDogStatsdMetricHandler
+    class TestUdpMetricHandler : StatsdMetricHandler
     {
         public TestUdpMetricHandler(CancellationToken cancellationToken) : base(IPAddress.Loopback.ToString(), 1234)
         {
@@ -286,7 +289,8 @@ namespace Scratch
                     {
                         try
                         {
-                            udpClient.Receive(ref ipEndpoint);
+                            var bytes = udpClient.Receive(ref ipEndpoint);
+                            Console.Write(Encoding.UTF8.GetString(bytes));
                         }
                         catch { }
                     }
