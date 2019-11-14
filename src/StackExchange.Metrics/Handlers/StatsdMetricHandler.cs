@@ -81,6 +81,7 @@ namespace StackExchange.Metrics.Handlers
         /// <inheritdoc />
         protected override void PrepareSequence(ref ReadOnlySequence<byte> sequence, PayloadType payloadType)
         {
+            sequence = sequence.Trim('\n');
         }
 
         /// <inheritdoc />
