@@ -203,8 +203,18 @@ namespace StackExchange.Metrics.Infrastructure
                         }
                         catch (Exception ex)
                         {
+                            if (ex is MetricPostException postException)
+                            {
+                                // make sure a completely unhandled transient exception is not skipped
+                                postException.SkipExceptionHandler = false;
+                            }
+                            else
+                            {
+                                postException = new MetricPostException(ex);
+                            }
+
                             Debug.WriteLine("StackExchange.Metrics: Sending to the endpoint failed. Maximum retries reached.");
-                            throw new MetricPostException(ex);
+                            throw postException;
                         }
                     }
                 }
@@ -309,16 +319,6 @@ namespace StackExchange.Metrics.Infrastructure
             }
 
             return metadata;
-        }
-
-        private BufferWriter<byte>[] CreateBufferWriters()
-        {
-            var bufferWriters = new BufferWriter<byte>[s_payloadTypes.Length];
-            for (var i = 0; i < s_payloadTypes.Length; i++)
-            {
-                bufferWriters[i] = CreateBufferWriter(s_payloadTypes[i]);
-            }
-            return bufferWriters;
         }
 
         private class Batch : IMetricBatch
