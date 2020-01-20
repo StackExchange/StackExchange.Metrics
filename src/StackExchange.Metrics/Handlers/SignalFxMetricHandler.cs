@@ -16,7 +16,7 @@ namespace StackExchange.Metrics.Handlers
     /// </summary>
     public class SignalFxMetricHandler : IMetricHandler
     {
-        BufferedMetricHandler _activeHandler;
+        IMetricHandler _activeHandler;
         Uri _baseUri;
         string _accessToken;
 
@@ -62,8 +62,21 @@ namespace StackExchange.Metrics.Handlers
         /// </summary>
         public long MaxPayloadCount
         {
-            get => _activeHandler.MaxPayloadCount;
-            set => _activeHandler.MaxPayloadCount = value;
+            get
+            {
+                if (_activeHandler is BufferedMetricHandler bufferedHandler)
+                {
+                    return bufferedHandler.MaxPayloadCount;
+                }
+                return 0;
+            }
+            set
+            {
+                if (_activeHandler is BufferedMetricHandler bufferedHandler)
+                {
+                    bufferedHandler.MaxPayloadCount = value;
+                }
+            }
         }
 
         /// <summary>
@@ -93,7 +106,7 @@ namespace StackExchange.Metrics.Handlers
 
         /// <inheritdoc />
         public ValueTask FlushAsync(TimeSpan delayBetweenRetries, int maxRetries, Action<AfterSendInfo> afterSend, Action<Exception> exceptionHandler)
-            => _activeHandler.FlushAsync(delayBetweenRetries, maxRetries, afterSend, exceptionHandler);
+            => _activeHandler?.FlushAsync(delayBetweenRetries, maxRetries, afterSend, exceptionHandler) ?? default(ValueTask);
 
         /// <inheritdoc />
         public void SerializeMetadata(IEnumerable<MetaData> metadata) => _activeHandler.SerializeMetadata(metadata);
@@ -101,30 +114,28 @@ namespace StackExchange.Metrics.Handlers
         /// <inheritdoc />
         public void SerializeMetric(in MetricReading reading) => _activeHandler.SerializeMetric(reading);
 
-        private BufferedMetricHandler GetHandler()
+        private IMetricHandler GetHandler()
         {
-            var handler = default(BufferedMetricHandler);
+            if (_baseUri == null)
+            {
+                return NoOpMetricHandler.Instance;
+            }
+
             if (_baseUri.Scheme == "udp")
             {
-                handler = new StatsdMetricHandler(_baseUri.Host, (ushort)_baseUri.Port);
+                return new StatsdMetricHandler(_baseUri.Host, (ushort)_baseUri.Port);
             }
-            else if (_baseUri.Scheme == Uri.UriSchemeHttp || _baseUri.Scheme == Uri.UriSchemeHttps)
+
+            if (_baseUri.Scheme == Uri.UriSchemeHttp || _baseUri.Scheme == Uri.UriSchemeHttps)
             {
                 if (_accessToken != null)
                 {
-                    handler = new JsonMetricHandler(_baseUri, _accessToken);
+                    return new JsonMetricHandler(_baseUri, _accessToken);
                 }
-                else
-                {
-                    handler = new JsonMetricHandler(_baseUri);
-                }
-            }
-            else
-            {
-                throw new ArgumentOutOfRangeException(nameof(_baseUri), $"URI scheme {_baseUri.Scheme} is not supported.");
+                return new JsonMetricHandler(_baseUri);
             }
 
-            return handler;
+            throw new ArgumentOutOfRangeException(nameof(_baseUri), $"URI scheme {_baseUri.Scheme} is not supported.");
         }
 
         /// <summary>
