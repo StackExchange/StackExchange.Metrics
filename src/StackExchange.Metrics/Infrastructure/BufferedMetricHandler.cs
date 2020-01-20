@@ -40,7 +40,7 @@ namespace StackExchange.Metrics.Infrastructure
         /// </summary>
         public long MaxPayloadCount { get; set; } = 240;
 
-        /// <ineritdoc />
+        /// <inheritdoc />
         public IMetricBatch BeginBatch() => new Batch(this);
 
         private void SerializeMetric(PayloadType payloadType, PayloadTypeMetadata payloadMetadata, in MetricReading reading)
