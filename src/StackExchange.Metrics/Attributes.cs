@@ -1,5 +1,8 @@
 ﻿using StackExchange.Metrics.Metrics;
 using System;
+using System.Runtime.CompilerServices;
+
+[assembly: InternalsVisibleTo("StackExchange.Metrics.Tests")]
 
 namespace StackExchange.Metrics
 {
