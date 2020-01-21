@@ -85,10 +85,12 @@ namespace StackExchange.Metrics.Tests
             await Task.Run(
                 () =>
                 {
+                    output.WriteLine("Starting UdpClient");
+
                     var localEndpoint = new IPEndPoint(IPAddress.Loopback, port);
                     using (var udpClient = new UdpClient(localEndpoint))
                     {
-                        udpClient.Client.ReceiveTimeout = 200;
+                        udpClient.Client.ReceiveTimeout = 500;
 
                         while (!cancellationToken.IsCancellationRequested)
                         {
