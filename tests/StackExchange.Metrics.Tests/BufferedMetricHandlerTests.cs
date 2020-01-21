@@ -228,18 +228,12 @@ namespace StackExchange.Metrics.Tests
             protected override void SerializeMetric(IBufferWriter<byte> writer, in MetricReading reading)
             {
                 var chunk = GetNextChunk(PayloadType.Counter);
-
-                void Write(string value)
-                {
-
-                }
-
                 var bytes = Encoding.UTF8.GetBytes(SerializeMetric(reading));
                 chunk.AddRange(bytes);
                 writer.Write(bytes);
             }
 
-            protected virtual string SerializeMetric(in MetricReading reading)
+            protected new virtual string SerializeMetric(in MetricReading reading)
             {
                 var sb = new StringBuilder();
                 sb.Append(reading.NameWithSuffix);
