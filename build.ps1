@@ -16,6 +16,7 @@ $projectsToBuild = @(
 )
 
 $testsToRun = @(
+    'StackExchange.Metrics.Tests'
 )
 
 if ($PullRequestNumber) {
