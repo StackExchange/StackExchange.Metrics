@@ -31,35 +31,27 @@ namespace StackExchange.Metrics.Tests
         [InlineData(9.1234457d)]
         public async Task UdpUri_Counter_ReceivesValidStatsd(double value)
         {
-            // delay because UDP gets all weird otherwise
-            await Task.Delay(200);
-
             var port = (ushort)_rng.Next(1024, 65535);
             var handler = new StatsdMetricHandler("127.0.0.1", port);
-            using (var cancellationTokenSource = new CancellationTokenSource())
-            {
-                var utcNow = DateTime.UtcNow;
-                var reading = new MetricReading("test.metrics", MetricType.Counter, string.Empty, value, new Dictionary<string, string> { ["host"] = "test!" }, utcNow);
-                var listenerTask = ReceiveStatsdOverUdpAsync(port, cancellationTokenSource.Token, _output);
+            var utcNow = DateTime.UtcNow;
+            var reading = new MetricReading("test.metrics", MetricType.Counter, string.Empty, value, new Dictionary<string, string> { ["host"] = "test!" }, utcNow);
+            var listenerTask = ReceiveStatsdOverUdpAsync(port, _output);
 
-                // expected format: {metric}:{value}|{unit}|#{tag},{tag}
-                // so for this counter: "test.metrics:1|c|#host:test!
-                handler.SerializeMetric(reading);
-                await handler.FlushAsync(
-                    TimeSpan.Zero, 0, e => _output.WriteLine($"{e.BytesWritten} bytes written"), ex => _output.WriteLine(ex.ToString())
-                );
+            // expected format: {metric}:{value}|{unit}|#{tag},{tag}
+            // so for this counter: "test.metrics:1|c|#host:test!
+            handler.SerializeMetric(reading);
+            await handler.FlushAsync(
+                TimeSpan.Zero, 0, e => _output.WriteLine($"{e.BytesWritten} bytes written"), ex => _output.WriteLine(ex.ToString())
+            );
 
-                cancellationTokenSource.Cancel();
+            // make sure the data we received matches the statsd for the bytes we sent!
+            var actualBytes = await listenerTask;
+            var expectedBytes = ToStatsd(reading);
 
-                // make sure the data we received matches the statsd for the bytes we sent!
-                var actualBytes = await listenerTask;
-                var expectedBytes = ToStatsd(reading);
+            _output.WriteLine($"Actual:\t\t{string.Join(" ", actualBytes.Select(x => $"{x:x2}"))}");
+            _output.WriteLine($"Expected:\t{string.Join(" ", expectedBytes.Select(x => $"{x:x2}"))}");
 
-                _output.WriteLine($"Actual:\t\t{string.Join(" ", actualBytes.Select(x => $"{x:x2}"))}");
-                _output.WriteLine($"Expected:\t{string.Join(" ", expectedBytes.Select(x => $"{x:x2}"))}");
-
-                Assert.Equal(expectedBytes, actualBytes);
-            }
+            Assert.Equal(expectedBytes, actualBytes);
         }
 
         public static byte[] ToStatsd(in MetricReading reading)
@@ -79,10 +71,11 @@ namespace StackExchange.Metrics.Tests
             );
         }
 
-        public static async Task<byte[]> ReceiveStatsdOverUdpAsync(ushort port, CancellationToken cancellationToken, ITestOutputHelper output)
+        public static Task<byte[]> ReceiveStatsdOverUdpAsync(ushort port, ITestOutputHelper output)
         {
-            var bytesReceived = new List<byte>();
-            await Task.Run(
+            var tcs = new TaskCompletionSource<byte[]>();
+            var resetEvent = new ManualResetEventSlim(false);
+            Task.Run(
                 () =>
                 {
                     output.WriteLine("Starting UdpClient");
@@ -92,24 +85,27 @@ namespace StackExchange.Metrics.Tests
                     {
                         udpClient.Client.ReceiveTimeout = 500;
 
-                        while (!cancellationToken.IsCancellationRequested)
+                        var remoteEndpoint = new IPEndPoint(IPAddress.Loopback, 0);
+                        try
                         {
-                            var remoteEndpoint = new IPEndPoint(IPAddress.Loopback, 0);
-                            try
+                            resetEvent.Set();
+                            output.WriteLine($"Listening on {localEndpoint}");
+                            var buffer = udpClient.Receive(ref remoteEndpoint);
+                            output.WriteLine($"Received {buffer.Length} bytes from {remoteEndpoint}");
+                            if (buffer.Length > 0)
                             {
-                                output.WriteLine($"Listening on {localEndpoint}");
-                                bytesReceived.AddRange(udpClient.Receive(ref remoteEndpoint));
-                                output.WriteLine($"Received {bytesReceived.Count} bytes from {remoteEndpoint}");
+                                tcs.SetResult(buffer);
                             }
-                            catch (Exception ex)
-                            {
-                                output.WriteLine(ex.ToString());
-                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            tcs.SetException(ex);
                         }
                     }
                 });
 
-            return bytesReceived.ToArray();
+            resetEvent.Wait();
+            return tcs.Task;
         }
     }
 }
