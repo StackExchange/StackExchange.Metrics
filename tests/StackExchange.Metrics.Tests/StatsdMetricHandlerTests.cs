@@ -32,7 +32,7 @@ namespace StackExchange.Metrics.Tests
         public async Task UdpUri_Counter_ReceivesValidStatsd(double value)
         {
             // delay because UDP gets all weird otherwise
-            await Task.Delay(200);
+            await Task.Delay(500);
 
             var port = (ushort)_rng.Next(1024, 65535);
             var handler = new StatsdMetricHandler("127.0.0.1", port);
