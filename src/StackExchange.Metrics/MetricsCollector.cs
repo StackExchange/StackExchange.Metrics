@@ -41,7 +41,6 @@ namespace StackExchange.Metrics
 
         readonly Task _flushTask;
         readonly Task _reportingTask;
-        readonly TimeSpan _delayBetweenRetries;
         readonly int _maxRetries;
 
         internal Dictionary<Type, List<MetricTag>> TagsByTypeCache = new Dictionary<Type, List<MetricTag>>();
@@ -68,6 +67,10 @@ namespace StackExchange.Metrics
         /// The length of time between flush operations to an endpoint.
         /// </summary>
         public TimeSpan FlushInterval { get; }
+        /// <summary>
+        /// The length of time to wait before retrying a failed flush operation to an endpoint.
+        /// </summary>
+        public TimeSpan RetryInterval { get; }
         /// <summary>
         /// Allows you to specify a function which takes a property name and returns a tag name. This may be useful if you want to convert PropertyName to
         /// property_name or similar transformations. This function does not apply to any tag names which are set manually via the MetricTag attribute.
@@ -131,10 +134,6 @@ namespace StackExchange.Metrics
         public MetricsCollector(MetricsCollectorOptions options)
         {
             ExceptionHandler = options.ExceptionHandler;
-
-            if (options.SnapshotInterval < TimeSpan.FromSeconds(1))
-                throw new InvalidOperationException("options.SnapshotInterval cannot be less than one second");
-
             MetricsNamePrefix = options.MetricsNamePrefix ?? "";
             if (MetricsNamePrefix != "" && !MetricValidation.IsValidMetricName(MetricsNamePrefix))
                 throw new Exception("\"" + MetricsNamePrefix + "\" is not a valid metric name prefix.");
@@ -145,11 +144,11 @@ namespace StackExchange.Metrics
             ThrowOnQueueFull = options.ThrowOnQueueFull;
             ReportingInterval = options.SnapshotInterval;
             FlushInterval = options.FlushInterval;
+            RetryInterval = options.RetryInterval;
             PropertyToTagName = options.PropertyToTagName;
             TagValueConverter = options.TagValueConverter;
             DefaultTags = ValidateDefaultTags(options.DefaultTags);
 
-            _delayBetweenRetries = TimeSpan.FromSeconds(10);
             _maxRetries = 3;
             _shutdownTokenSource = new CancellationTokenSource();
 
@@ -577,20 +576,20 @@ namespace StackExchange.Metrics
             if (isCalledFromTimer && ShutdownCalled) // don't perform timer actions if we're shutting down
                 return;
 
-            try
+            if (_endpoints.Length == 0)
             {
-                if (_endpoints.Length == 0)
-                {
-                    Debug.WriteLine("BosunReporter: BosunUrl is null. Dropping data.");
-                    return;
-                }
+                Debug.WriteLine("StackExchange.Metrics: No endpoints. Dropping data.");
+                return;
+            }
 
-                foreach (var endpoint in _endpoints)
-                {
-                    Debug.WriteLine($"BosunReporter: Flushing metrics for {endpoint.Name}");
+            foreach (var endpoint in _endpoints)
+            {
+                Debug.WriteLine($"StackExchange.Metrics: Flushing metrics for {endpoint.Name}");
 
+                try
+                {
                     await endpoint.Handler.FlushAsync(
-                        _delayBetweenRetries,
+                        RetryInterval,
                         _maxRetries,
                         // Use Task.Run here to invoke the event listeners asynchronously.
                         // We're inside a lock, so calling the listeners synchronously would put us at risk of a deadlock.
@@ -611,11 +610,11 @@ namespace StackExchange.Metrics
                         ex => SendExceptionToHandler(ex)
                     );
                 }
-            }
-            catch (Exception ex)
-            {
-                // this should never actually hit, but it's a nice safeguard since an uncaught exception on a background thread will crash the process.
-                SendExceptionToHandler(ex);
+                catch (Exception ex)
+                {
+                    // this will be hit if a sending operation repeatedly fails
+                    SendExceptionToHandler(ex);
+                }
             }
         }
 

@@ -44,6 +44,12 @@ namespace StackExchange.Metrics
         /// The length of time between flushing metrics to an endpoint. Defaults to 1 seconds.
         /// </summary>
         public TimeSpan FlushInterval { get; set; } = TimeSpan.FromSeconds(1);
+
+        /// <summary>
+        /// The length of time to wait when flushing metrics to an endpoint fails. Defaults to 5 seconds.
+        /// </summary>
+        public TimeSpan RetryInterval { get; set; } = TimeSpan.FromSeconds(5);
+
         /// <summary>
         /// Allows you to specify a function which takes a property name and returns a tag name. This may be useful if you want to convert PropertyName to
         /// property_name or similar transformations. This function does not apply to any tag names which are set manually via the BosunTag attribute.
