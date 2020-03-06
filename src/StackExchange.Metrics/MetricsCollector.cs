@@ -11,7 +11,7 @@ using System.Threading.Tasks;
 namespace StackExchange.Metrics
 {
     /// <summary>
-    /// The primary class for BosunReporter. Use this class to create metrics for reporting to Bosun.
+    /// The primary class for collecting metrics. Use this class to create metrics for reporting to various metric handlers.
     /// </summary>
     public partial class MetricsCollector
     {
@@ -52,12 +52,12 @@ namespace StackExchange.Metrics
         /// </summary>
         public string MetricsNamePrefix { get; }
         /// <summary>
-        /// If true, BosunReporter will generate an exception every time posting to the Bosun API fails with a server error (response code 5xx).
+        /// If true, we will generate an exception every time posting to the a metrics endpoint fails with a server error (response code 5xx).
         /// </summary>
         public bool ThrowOnPostFail { get; set; }
         /// <summary>
-        /// If true, BosunReporter will generate an exception when the metric queue is full. This would most commonly be caused by an extended outage of the
-        /// Bosun API. It is an indication that data is likely being lost.
+        /// If true, we will generate an exception when the metric queue is full. This would most commonly be caused by an extended outage of the
+        /// a metric handler. It is an indication that data is likely being lost.
         /// </summary>
         public bool ThrowOnQueueFull { get; set; }
         /// <summary>
@@ -70,7 +70,7 @@ namespace StackExchange.Metrics
         public TimeSpan FlushInterval { get; }
         /// <summary>
         /// Allows you to specify a function which takes a property name and returns a tag name. This may be useful if you want to convert PropertyName to
-        /// property_name or similar transformations. This function does not apply to any tag names which are set manually via the BosunTag attribute.
+        /// property_name or similar transformations. This function does not apply to any tag names which are set manually via the MetricTag attribute.
         /// </summary>
         public Func<string, string> PropertyToTagName { get; }
         /// <summary>
@@ -81,7 +81,7 @@ namespace StackExchange.Metrics
         public TagValueConverterDelegate TagValueConverter { get; }
         /// <summary>
         /// A list of tag names/values which will be automatically inculuded on every metric. The IgnoreDefaultTags attribute can be used on classes inheriting
-        /// from BosunMetric to exclude default tags. If an inherited class has a conflicting BosunTag field, it will override the default tag value. Default
+        /// from MetricBase to exclude default tags. If an inherited class has a conflicting MetricTag field, it will override the default tag value. Default
         /// tags will generally not be included in metadata.
         /// </summary>
         public ReadOnlyDictionary<string, string> DefaultTags { get; private set; }
@@ -92,25 +92,7 @@ namespace StackExchange.Metrics
         public bool ShutdownCalled => _shutdownTokenSource?.IsCancellationRequested ?? true;
 
         /// <summary>
-        /// Total number of data points successfully sent fo Bosun. This includes external counter data points.
-        /// </summary>
-        public long TotalMetricsPosted { get; private set; }
-        /// <summary>
-        /// The number of times an HTTP POST to one of Bosun's metrics endpoints succeeded. This includes external counter POSTs.
-        /// </summary>
-        public int PostSuccessCount { get; private set; }
-        /// <summary>
-        /// The number of times an HTTP POST to Bosun's metrics endpoints failed. This includes external counter POSTs.
-        /// </summary>
-        public int PostFailCount { get; private set; }
-
-        /// <summary>
-        /// The last time metadata was sent to Bosun, or null if metadata has not been sent yet.
-        /// </summary>
-        public DateTime? LastMetadataFlushTime => _lastMetadataFlushTime == DateTime.MinValue ? (DateTime?)null : _lastMetadataFlushTime;
-
-        /// <summary>
-        /// Exceptions which occur on a background thread within BosunReporter will be passed to this delegate.
+        /// Exceptions which occur on a background thread within the collector will be passed to this delegate.
         /// </summary>
         public Action<Exception> ExceptionHandler { get; }
 
@@ -125,7 +107,7 @@ namespace StackExchange.Metrics
         /// </summary>
         public event Action<AfterSerializationInfo> AfterSerialization;
         /// <summary>
-        /// An event called immediately after metrics are posted to the Bosun API. It includes an argument with information about the POST.
+        /// An event called immediately after metrics are posted to a metric handler. It includes an argument with information about the POST.
         /// </summary>
         public event Action<AfterSendInfo> AfterSend;
 
@@ -140,8 +122,8 @@ namespace StackExchange.Metrics
         public IEnumerable<MetricEndpoint> Endpoints => _endpoints.AsEnumerable();
 
         /// <summary>
-        /// Instantiates a new collector (the primary class of BosunReporter). You should typically only instantiate one collector for the lifetime of your
-        /// application. It will manage the serialization of metrics and sending data to Bosun.
+        /// Instantiates a new collector. You should typically only instantiate one collector for the lifetime of your
+        /// application. It will manage the serialization of metrics and sending data to metric handlers.
         /// </summary>
         /// <param name="options">
         /// <see cref="MetricsCollectorOptions" /> representing the options to use for this collector.
@@ -246,13 +228,13 @@ namespace StackExchange.Metrics
             foreach (var key in defaultTags.Keys.ToArray())
             {
                 if (!MetricValidation.IsValidTagName(key))
-                    throw new Exception($"\"{key}\" is not a valid Bosun tag name.");
+                    throw new Exception($"\"{key}\" is not a valid tag name.");
 
                 if (TagValueConverter != null)
                     defaultTags[key] = TagValueConverter(key, defaultTags[key]);
 
                 if (!MetricValidation.IsValidTagValue(defaultTags[key]))
-                    throw new Exception($"\"{defaultTags[key]}\" is not a valid Bosun tag value.");
+                    throw new Exception($"\"{defaultTags[key]}\" is not a valid tag value.");
             }
 
             return new ReadOnlyDictionary<string, string>(defaultTags);
@@ -294,7 +276,7 @@ namespace StackExchange.Metrics
 
                 if (!type.IsSubclassOf(typeof(MetricBase)))
                 {
-                    throw new Exception($"Cannot bind metric \"{name}\" to Type {type.FullName}. It does not inherit from BosunMetric.");
+                    throw new Exception($"Cannot bind metric \"{name}\" to Type {type.FullName}. It does not inherit from MetricBase.");
                 }
 
                 _rootNameToInfo[name] = new RootMetricInfo { Type = type, Unit = unit };
@@ -527,7 +509,7 @@ namespace StackExchange.Metrics
         /// </summary>
         public void Shutdown()
         {
-            Debug.WriteLine("BosunReporter: Shutting down MetricsCollector.");
+            Debug.WriteLine("StackExchange.Metrics: Shutting down MetricsCollector.");
             _shutdownTokenSource.Cancel();
             _shutdownTokenSource = null;
 
@@ -671,10 +653,10 @@ namespace StackExchange.Metrics
 
         void SerializeMetadata(MetricEndpoint endpoint, IEnumerable<MetaData> metadata)
         {
-            Debug.WriteLine("BosunReporter: Serializing metadata.");
+            Debug.WriteLine("StackExchange.Metrics: Serializing metadata.");
             endpoint.Handler.SerializeMetadata(metadata);
             _lastMetadataFlushTime = DateTime.UtcNow;
-            Debug.WriteLine("BosunReporter: Serialized metadata.");
+            Debug.WriteLine("StackExchange.Metrics: Serialized metadata.");
         }
 
         IReadOnlyList<MetaData> GatherMetaData()
