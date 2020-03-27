@@ -4,6 +4,7 @@ using StackExchange.Metrics.Handlers;
 using StackExchange.Metrics.Metrics;
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -22,34 +23,43 @@ namespace Scratch
         {
             _cancellationTokenSource = new CancellationTokenSource();
 
-            var emptyOptions = new MetricsCollectorOptions(ex => Console.WriteLine(ex))
+            var emptyOptions = new MetricsCollectorOptions
             {
+                ExceptionHandler = ex => Console.WriteLine(ex),
                 Endpoints = Array.Empty<MetricEndpoint>(),
-                DefaultTags = new Dictionary<string, string> { { "host", NameTransformers.Sanitize(Environment.MachineName.ToLower()) } },
+                DefaultTags = new Dictionary<string, string> {
+                    { "host", NameTransformers.Sanitize(Environment.MachineName.ToLower()) }
+                }.ToImmutableDictionary(),
                 MetricsNamePrefix = "benchmark1",
                 SnapshotInterval = TimeSpan.FromSeconds(1),
                 ThrowOnQueueFull = false,
             };
 
-            var httpOptions = new MetricsCollectorOptions(ex => Console.WriteLine(ex))
+            var httpOptions = new MetricsCollectorOptions
             {
+                ExceptionHandler = ex => Console.WriteLine(ex),
                 Endpoints = new[]
                 {
                     new MetricEndpoint("Benchmark", new SignalFxMetricHandler(new Uri("http://127.0.0.1/")))
                 },
-                DefaultTags = new Dictionary<string, string> { { "host", NameTransformers.Sanitize(Environment.MachineName.ToLower()) } },
+                DefaultTags = new Dictionary<string, string> {
+                    { "host", NameTransformers.Sanitize(Environment.MachineName.ToLower()) }
+                }.ToImmutableDictionary(),
                 MetricsNamePrefix = "benchmark1",
                 SnapshotInterval = TimeSpan.FromSeconds(1),
                 ThrowOnQueueFull = false,
             };
 
-            var udpOptions = new MetricsCollectorOptions(ex => Console.WriteLine(ex))
+            var udpOptions = new MetricsCollectorOptions
             {
+                ExceptionHandler = ex => Console.WriteLine(ex),
                 Endpoints = new[]
                 {
                     new MetricEndpoint("Benchmark", new TestUdpMetricHandler(_cancellationTokenSource.Token) { MaxPayloadSize = 100 })
                 },
-                DefaultTags = new Dictionary<string, string> { { "host", NameTransformers.Sanitize(Environment.MachineName.ToLower()) } },
+                DefaultTags = new Dictionary<string, string> {
+                    { "host", NameTransformers.Sanitize(Environment.MachineName.ToLower()) }
+                }.ToImmutableDictionary(),
                 MetricsNamePrefix = "benchmark1",
                 SnapshotInterval = TimeSpan.FromSeconds(1),
                 ThrowOnQueueFull = false,

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Net;
 using System.Net.Http;
@@ -34,16 +35,16 @@ namespace Scratch
             const string LocalEndpointKey = "Local";
 
             var localHandler = new LocalMetricHandler();
-            var options = new MetricsCollectorOptions(exception =>
-            {
-                Console.WriteLine("Hey, there was an exception.");
-                Console.WriteLine(exception);
-                foreach (var key in exception.Data.Keys)
+            var options = new MetricsCollectorOptions{
+                ExceptionHandler = ex =>
                 {
-                    Console.WriteLine($"{key}={exception.Data[key]}");
-                }
-            })
-            {
+                    Console.WriteLine("Hey, there was an exception.");
+                    Console.WriteLine(ex);
+                    foreach (var key in ex.Data.Keys)
+                    {
+                        Console.WriteLine($"{key}={ex.Data[key]}");
+                    }
+                },
                 Endpoints = new MetricEndpoint[] {
                     //new MetricEndpoint(LocalEndpointKey, localHandler),
                     //new MetricEndpoint("Test UDP", new TestUdpMetricHandler(s_cancellationTokenSource.Token) { MaxPayloadSize = 320 }),
@@ -60,7 +61,9 @@ namespace Scratch
                 SnapshotInterval = TimeSpan.FromSeconds(10),
                 PropertyToTagName = NameTransformers.CamelToLowerSnakeCase,
                 TagValueConverter = (name, value) => name == "converted" ? value.ToLowerInvariant() : value,
-                DefaultTags = new Dictionary<string, string> { {"host", NameTransformers.Sanitize(Environment.MachineName.ToLower())} }
+                DefaultTags = new Dictionary<string, string> {
+                    {"host", NameTransformers.Sanitize(Environment.MachineName.ToLower())}
+                }.ToImmutableDictionary()
             };
 
             var collector = new MetricsCollector(options);

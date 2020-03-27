@@ -1,7 +1,7 @@
 ﻿using StackExchange.Metrics.Infrastructure;
 using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
+using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
@@ -13,7 +13,7 @@ namespace StackExchange.Metrics
     /// <summary>
     /// The primary class for collecting metrics. Use this class to create metrics for reporting to various metric handlers.
     /// </summary>
-    public partial class MetricsCollector
+    public partial class MetricsCollector : IMetricsCollector
     {
         class RootMetricInfo
         {
@@ -24,7 +24,8 @@ namespace StackExchange.Metrics
         readonly object _metricsLock = new object();
         // all of the first-class names which have been claimed (excluding suffixes in aggregate gauges)
         readonly Dictionary<string, RootMetricInfo> _rootNameToInfo = new Dictionary<string, RootMetricInfo>();
-        readonly MetricEndpoint[] _endpoints;
+        readonly ImmutableArray<MetricEndpoint> _endpoints;
+        readonly ImmutableArray<IMetricSet> _sets;
         // this dictionary is to avoid duplicate metrics
         Dictionary<MetricKey, MetricBase> _rootNameAndTagsToMetric = new Dictionary<MetricKey, MetricBase>(MetricKeyComparer.Default);
 
@@ -87,7 +88,7 @@ namespace StackExchange.Metrics
         /// from MetricBase to exclude default tags. If an inherited class has a conflicting MetricTag field, it will override the default tag value. Default
         /// tags will generally not be included in metadata.
         /// </summary>
-        public ReadOnlyDictionary<string, string> DefaultTags { get; private set; }
+        public IReadOnlyDictionary<string, string> DefaultTags { get; private set; }
 
         /// <summary>
         /// True if <see cref="Shutdown"/> has been called on this collector.
@@ -125,6 +126,11 @@ namespace StackExchange.Metrics
         public IEnumerable<MetricEndpoint> Endpoints => _endpoints.AsEnumerable();
 
         /// <summary>
+        /// Enumerable of all sets managed by this collector.
+        /// </summary>
+        public IEnumerable<IMetricSet> Sets => _sets.AsEnumerable();
+
+        /// <summary>
         /// Instantiates a new collector. You should typically only instantiate one collector for the lifetime of your
         /// application. It will manage the serialization of metrics and sending data to metric handlers.
         /// </summary>
@@ -133,12 +139,13 @@ namespace StackExchange.Metrics
         /// </param>
         public MetricsCollector(MetricsCollectorOptions options)
         {
-            ExceptionHandler = options.ExceptionHandler;
+            ExceptionHandler = options.ExceptionHandler ?? (_ => { });
             MetricsNamePrefix = options.MetricsNamePrefix ?? "";
             if (MetricsNamePrefix != "" && !MetricValidation.IsValidMetricName(MetricsNamePrefix))
                 throw new Exception("\"" + MetricsNamePrefix + "\" is not a valid metric name prefix.");
 
-            _endpoints = options.Endpoints?.ToArray() ?? Array.Empty<MetricEndpoint>();
+            _endpoints = options.Endpoints?.ToImmutableArray() ?? ImmutableArray<MetricEndpoint>.Empty;
+            _sets = options.Sets?.ToImmutableArray() ?? ImmutableArray<IMetricSet>.Empty;
 
             ThrowOnPostFail = options.ThrowOnPostFail;
             ThrowOnQueueFull = options.ThrowOnQueueFull;
@@ -151,6 +158,12 @@ namespace StackExchange.Metrics
 
             _maxRetries = 3;
             _shutdownTokenSource = new CancellationTokenSource();
+
+            // initialize any metric sets
+            foreach (var set in _sets)
+            {
+                set.Initialize(this);
+            }
 
             // start continuous queue-flushing
             _flushTask = Task.Run(
@@ -218,25 +231,23 @@ namespace StackExchange.Metrics
             return false;
         }
 
-        ReadOnlyDictionary<string, string> ValidateDefaultTags(Dictionary<string, string> tags)
+        IReadOnlyDictionary<string, string> ValidateDefaultTags(IReadOnlyDictionary<string, string> tags)
         {
-            var defaultTags = tags == null
-                ? new Dictionary<string, string>()
-                : new Dictionary<string, string>(tags);
-
+            var defaultTags = tags?.ToImmutableDictionary() ?? ImmutableDictionary<string, string>.Empty;
+            var defaultTagBuilder = defaultTags.ToBuilder();
             foreach (var key in defaultTags.Keys.ToArray())
             {
                 if (!MetricValidation.IsValidTagName(key))
                     throw new Exception($"\"{key}\" is not a valid tag name.");
 
                 if (TagValueConverter != null)
-                    defaultTags[key] = TagValueConverter(key, defaultTags[key]);
+                    defaultTagBuilder[key] = TagValueConverter(key, defaultTags[key]);
 
                 if (!MetricValidation.IsValidTagValue(defaultTags[key]))
                     throw new Exception($"\"{defaultTags[key]}\" is not a valid tag value.");
             }
 
-            return new ReadOnlyDictionary<string, string>(defaultTags);
+            return defaultTagBuilder.ToImmutable();
         }
 
         /// <summary>
@@ -527,6 +538,12 @@ namespace StackExchange.Metrics
             {
                 if (BeforeSerialization != null && BeforeSerialization.GetInvocationList().Length != 0)
                     BeforeSerialization();
+
+                // snapshot any metric sets
+                foreach (var set in _sets)
+                {
+                    set.Snapshot();
+                }
 
                 IReadOnlyList<MetaData> metadata = Array.Empty<MetaData>();
                 if (_hasNewMetadata || DateTime.UtcNow - _lastMetadataFlushTime >= TimeSpan.FromDays(1))

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -59,12 +60,12 @@ namespace StackExchange.Metrics.Tests
             };
 
             var collector = new MetricsCollector(
-                new MetricsCollectorOptions(_ => { })
+                new MetricsCollectorOptions
                 {
                     DefaultTags = new Dictionary<string, string>
                     {
                         ["host"] = Environment.MachineName
-                    },
+                    }.ToImmutableDictionary(),
                     Endpoints = new[]
                     {
                         new MetricEndpoint("Failed", failHandler),
