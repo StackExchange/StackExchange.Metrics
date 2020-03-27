@@ -1,6 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Text;
+using Microsoft.Extensions.DependencyInjection;
 using StackExchange.Metrics.Handlers;
 using StackExchange.Metrics.Infrastructure;
 using StackExchange.Metrics.Metrics;
@@ -70,6 +69,33 @@ namespace StackExchange.Metrics.DependencyInjection
             var handler = new SignalFxMetricHandler(baseUri, accessToken);
             configure?.Invoke(handler);
             return builder.AddEndpoint("SignalFx", handler);
+        }
+
+        /// <summary>
+        /// Exceptions which occur on a background thread will be passed to the delegate specified here.
+        /// </summary>
+        public static IMetricsCollectorBuilder UseExceptionHandler(this IMetricsCollectorBuilder builder, Action<Exception> handler)
+        {
+            builder.Options.ExceptionHandler = handler;
+            return builder;
+        }
+
+        /// <summary>
+        /// Instantiates and adds an <see cref="IMetricSet" /> to the collector.
+        /// </summary>
+        public static IMetricsCollectorBuilder AddSet<T>(this IMetricsCollectorBuilder builder) where T : class, IMetricSet
+        {
+            builder.Services.AddTransient<IMetricSet, T>();
+            return builder;
+        }
+
+        /// <summary>
+        /// Adds an <see cref="IMetricSet" /> to the collector.
+        /// </summary>
+        public static IMetricsCollectorBuilder AddSet<T>(this IMetricsCollectorBuilder builder, T set) where T : class, IMetricSet
+        {
+            builder.Services.AddTransient<IMetricSet>(_ => set);
+            return builder;
         }
     }
 }
