@@ -1,8 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup Label="Build">
-    <TargetFrameworks>netstandard2.0</TargetFrameworks>
-    <Description>A thread-safe C# .NET client for reporting metrics to various providers, including Bosun, SignalFx and DataDog.</Description>
+    <TargetFrameworks>netstandard2.0;netcoreapp3.1</TargetFrameworks>
     <Copyright />
     <PackageTags>metrics</PackageTags>
     <LangVersion>latest</LangVersion>
@@ -30,6 +29,9 @@
     <PackageReference Include="Pipelines.Sockets.Unofficial" Version="2.0.25" />
     <PackageReference Include="System.Buffers" Version="4.5.0" />
     <PackageReference Include="System.Text.Json" Version="4.6.0-preview8.19405.3" />
+    <PackageReference Include="Pipelines.Sockets.Unofficial" Version="2.1.1" />
+    <PackageReference Include="System.Buffers" Version="4.5.1" />
+    <PackageReference Include="System.Text.Json" Version="4.7.1" />
   </ItemGroup>
 
 </Project>
