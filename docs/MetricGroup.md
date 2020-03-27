@@ -1,6 +1,6 @@
 # MetricGroup
 
-Because one of the goals of BosunReporter.NET is to encourage using tags to differentiate subsets of the same data (instead of separate metric names), metric groups are built into the library. A metric group is a collection of metrics with the same name, but with different tag values. For example, let's say we have a counter which counts every request. We might want to tag this counter to indicate how many requests were successful versus how many encountered an error.
+Because one of the goals of StackExchange.Metrics is to encourage using tags to differentiate subsets of the same data (instead of separate metric names), metric groups are built into the library. A metric group is a collection of metrics with the same name, but with different tag values. For example, let's say we have a counter which counts every request. We might want to tag this counter to indicate how many requests were successful versus how many encountered an error.
 
 Let's start by defining an enum of the result types we want to track.
 
@@ -8,7 +8,7 @@ Let's start by defining an enum of the result types we want to track.
 public enum Result
 {
 	Error,
-	Success
+	Success,
 }
 ```
 
@@ -17,7 +17,7 @@ Then we'll create a class for our counter.
 ```csharp
 public class RequestCounter : Counter
 {
-	[BosunTag]
+	[MetricTag]
 	public readonly Result Result;
 	public RequestCounter(Result result) { Result = result; }
 }
@@ -33,8 +33,7 @@ var requestCounter = collector.GetMetricGroup<Result, RequestCounter>(
                                 result => new RequestCounter(result)); // factory
 
 // MetricGroup.Add() creates a metric if it does not already exist, and returns that metric.
-// Best-practice is to call Add() as close to application-startup as possible to avoid 
-// "Unknown" Bosun alerts.
+// Best-practice is to call Add() as close to application-startup as possible
 requestCounter.Add(Result.Success);
 requestCounter.Add(Result.Error);
 
@@ -53,9 +52,9 @@ You can also create metric groups which is differentiated by more than one tag (
 ```csharp
 public ThreeTagCounter : Counter
 {
-	[BosunTag] public readonly string One;
-	[BosunTag] public readonly string Two;
-	[BosunTag] public readonly SomeEnum Three;
+	[MetricTag] public readonly string One;
+	[MetricTag] public readonly string Two;
+	[MetricTag] public readonly SomeEnum Three;
 	
 	public ThreeTagCounter(string one, int two, SomeEnum three)
 	{
