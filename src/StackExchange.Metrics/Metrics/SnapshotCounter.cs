@@ -4,7 +4,7 @@ using System;
 namespace StackExchange.Metrics.Metrics
 {
     /// <summary>
-    /// Calls a user-provided Func&lt;long?&gt; to get the current counter value each time metrics are going to be posted to the Bosun API.
+    /// Calls a user-provided Func&lt;long?&gt; to get the current counter value each time metrics are going to be posted to a metrics handler.
     /// See https://github.com/StackExchange/StackExchange.Metrics/blob/master/docs/MetricTypes.md#snapshotcounter
     /// </summary>
     public class SnapshotCounter : MetricBase

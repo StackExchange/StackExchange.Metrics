@@ -5,7 +5,7 @@ namespace StackExchange.Metrics.Metrics
 {
     /// <summary>
     /// Similar to a SnapshotCounter, it calls a user provided Func&lt;double?&gt; to get the current gauge value each time metrics are going to be posted to
-    /// the Bosun API. See https://github.com/StackExchange/StackExchange.Metrics/blob/master/docs/MetricTypes.md#snapshotgauge
+    /// a metrics handler. See https://github.com/StackExchange/StackExchange.Metrics/blob/master/docs/MetricTypes.md#snapshotgauge
     /// </summary>
     public class SnapshotGauge : MetricBase
     {

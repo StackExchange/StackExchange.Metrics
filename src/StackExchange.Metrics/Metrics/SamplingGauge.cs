@@ -5,7 +5,7 @@ using System.Threading;
 namespace StackExchange.Metrics.Metrics
 {
     /// <summary>
-    /// Record as often as you want, but only the last value recorded before the reporting interval is sent to Bosun (it samples the current value).
+    /// Record as often as you want, but only the last value recorded before the reporting interval is sent to an endpoint (it samples the current value).
     /// See https://github.com/StackExchange/StackExchange.Metrics/blob/master/docs/MetricTypes.md#samplinggauge
     /// </summary>
     public class SamplingGauge : MetricBase
