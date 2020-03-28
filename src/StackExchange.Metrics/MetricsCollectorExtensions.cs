@@ -70,6 +70,7 @@ namespace StackExchange.Metrics
                     await textWriter.WriteAsync(reading.Type.ToString());
                     await textWriter.WriteAsync(", Tags = [");
 
+                    bool firstTag = false;
                     foreach (var tag in reading.Tags)
                     {
                         // Skip excluded tags
@@ -78,10 +79,17 @@ namespace StackExchange.Metrics
                             continue;
                         }
 
+                        if (!firstTag)
+                        {
+                            firstTag = false;
+                        }
+                        else
+                        {
+                            await textWriter.WriteAsync(", ");
+                        }
                         await textWriter.WriteAsync(tag.Key);
                         await textWriter.WriteAsync(" = ");
                         await textWriter.WriteAsync(tag.Value);
-                        await textWriter.WriteAsync(", ");
                     }
 
                     await textWriter.WriteLineAsync("]");
