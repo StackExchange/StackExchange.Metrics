@@ -59,6 +59,7 @@ namespace StackExchange.Metrics.Infrastructure
                         processId = process.Id;
                     }
 
+                    // most of this lifted from dotnet Tye: https://github.com/dotnet/tye/blob/master/src/Microsoft.Tye.Hosting.Diagnostics/DiagnosticsCollector.cs
                     while (!_cancellationTokenSource.IsCancellationRequested)
                     {
                         if (_eventSources.IsDefaultOrEmpty)
@@ -122,7 +123,7 @@ namespace StackExchange.Metrics.Infrastructure
                             }
                         }
 
-                        using var _ = cancellationToken.Register(() => StopSession());
+                        using var _ = _cancellationTokenSource.Token.Register(() => StopSession());
 
                         try
                         {
@@ -132,9 +133,9 @@ namespace StackExchange.Metrics.Infrastructure
                                 {
                                     try
                                     {
-                                    // Metrics
-                                    if (traceEvent.EventName.Equals("EventCounters"))
-                                    {
+                                        // Metrics
+                                        if (traceEvent.EventName.Equals("EventCounters"))
+                                        {
                                             var payloadVal = (IDictionary<string, object>)traceEvent.PayloadValue(0);
                                             var eventPayload = (IDictionary<string, object>)payloadVal["Payload"];
                                             var providerName = traceEvent.ProviderName;
@@ -198,7 +199,6 @@ namespace StackExchange.Metrics.Infrastructure
             {
                 _cancellationTokenSource.Cancel();
                 _cancellationTokenSource.Dispose();
-                _cancellationTokenSource = null;
             }
 
             await _reportingTask;
