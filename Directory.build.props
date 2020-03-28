@@ -10,7 +10,7 @@
     <MSBuildWarningsAsMessages>NETSDK1069</MSBuildWarningsAsMessages>
     <NoWarn>NU5105</NoWarn>
     <PackageProjectUrl>https://github.com/StackExchange/StackExchange.Metrics</PackageProjectUrl>
-    <PackageLicenseUrl>https://raw.github.com/StackExchange/StackExchange.Metrics/master/LICENSE.MIT</PackageLicenseUrl>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <RepositoryUrl>https://github.com/StackExchange/StackExchange.Metrics</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <DebugSymbols>true</DebugSymbols>
