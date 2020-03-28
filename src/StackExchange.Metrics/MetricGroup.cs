@@ -127,8 +127,7 @@ namespace StackExchange.Metrics
         /// <returns>The metric.</returns>
         public TMetric Add(T1 tag1)
         {
-            bool isNew;
-            return Add(tag1, out isNew);
+            return Add(tag1, out _);
         }
 
         /// <summary>
@@ -147,14 +146,8 @@ namespace StackExchange.Metrics
                     return _metrics[tag1];
 
                 isNew = true;
-                TMetric metric;
-                if (WithoutPrefix)
-                    metric = _collector.GetMetricWithoutPrefix(Name, Unit, Description, _metricFactory(tag1));
-                else
-                    metric = _collector.GetMetric(Name, Unit, Description, _metricFactory(tag1));
 
-                _metrics[tag1] = metric;
-                return metric;
+                return _metrics[tag1] = _collector.GetMetric(Name, Unit, Description, _metricFactory(tag1), includePrefix: !WithoutPrefix);
             }
         }
 
@@ -331,8 +324,7 @@ namespace StackExchange.Metrics
         /// <returns>The metric.</returns>
         public TMetric Add(T1 tag1, T2 tag2)
         {
-            bool isNew;
-            return Add(tag1, tag2, out isNew);
+            return Add(tag1, tag2, out _);
         }
 
         /// <summary>
@@ -352,14 +344,7 @@ namespace StackExchange.Metrics
                     return _metrics[key];
 
                 isNew = true;
-                TMetric metric;
-                if (WithoutPrefix)
-                    metric = _collector.GetMetricWithoutPrefix(Name, Unit, Description, _metricFactory(tag1, tag2));
-                else
-                    metric = _collector.GetMetric(Name, Unit, Description, _metricFactory(tag1, tag2));
-
-                _metrics[key] = metric;
-                return metric;
+                return _metrics[key] = _collector.GetMetric(Name, Unit, Description, _metricFactory(tag1, tag2), includePrefix: !WithoutPrefix);
             }
         }
 
@@ -515,8 +500,7 @@ namespace StackExchange.Metrics
         /// <returns>The metric.</returns>
         public TMetric Add(T1 tag1, T2 tag2, T3 tag3)
         {
-            bool isNew;
-            return Add(tag1, tag2, tag3, out isNew);
+            return Add(tag1, tag2, tag3, out _);
         }
 
         /// <summary>
@@ -536,14 +520,7 @@ namespace StackExchange.Metrics
                     return _metrics[key];
 
                 isNew = true;
-                TMetric metric;
-                if (WithoutPrefix)
-                    metric = _collector.GetMetricWithoutPrefix(Name, Unit, Description, _metricFactory(tag1, tag2, tag3));
-                else
-                    metric = _collector.GetMetric(Name, Unit, Description, _metricFactory(tag1, tag2, tag3));
-
-                _metrics[key] = metric;
-                return metric;
+                return _metrics[key] = _collector.GetMetric(Name, Unit, Description, _metricFactory(tag1, tag2, tag3), includePrefix: !WithoutPrefix);
             }
         }
 
@@ -699,8 +676,7 @@ namespace StackExchange.Metrics
         /// <returns>The metric.</returns>
         public TMetric Add(T1 tag1, T2 tag2, T3 tag3, T4 tag4)
         {
-            bool isNew;
-            return Add(tag1, tag2, tag3, tag4, out isNew);
+            return Add(tag1, tag2, tag3, tag4, out _);
         }
 
         /// <summary>
@@ -720,14 +696,7 @@ namespace StackExchange.Metrics
                     return _metrics[key];
 
                 isNew = true;
-                TMetric metric;
-                if (WithoutPrefix)
-                    metric = _collector.GetMetricWithoutPrefix(Name, Unit, Description, _metricFactory(tag1, tag2, tag3, tag4));
-                else
-                    metric = _collector.GetMetric(Name, Unit, Description, _metricFactory(tag1, tag2, tag3, tag4));
-
-                _metrics[key] = metric;
-                return metric;
+                return _metrics[key] = _collector.GetMetric(Name, Unit, Description, _metricFactory(tag1, tag2, tag3, tag4), includePrefix: !WithoutPrefix);
             }
         }
 
@@ -883,8 +852,7 @@ namespace StackExchange.Metrics
         /// <returns>The metric.</returns>
         public TMetric Add(T1 tag1, T2 tag2, T3 tag3, T4 tag4, T5 tag5)
         {
-            bool isNew;
-            return Add(tag1, tag2, tag3, tag4, tag5, out isNew);
+            return Add(tag1, tag2, tag3, tag4, tag5, out _);
         }
 
         /// <summary>
@@ -904,14 +872,7 @@ namespace StackExchange.Metrics
                     return _metrics[key];
 
                 isNew = true;
-                TMetric metric;
-                if (WithoutPrefix)
-                    metric = _collector.GetMetricWithoutPrefix(Name, Unit, Description, _metricFactory(tag1, tag2, tag3, tag4, tag5));
-                else
-                    metric = _collector.GetMetric(Name, Unit, Description, _metricFactory(tag1, tag2, tag3, tag4, tag5));
-
-                _metrics[key] = metric;
-                return metric;
+                return _metrics[key] = _collector.GetMetric(Name, Unit, Description, _metricFactory(tag1, tag2, tag3, tag4, tag5), includePrefix: !WithoutPrefix);
             }
         }
 
