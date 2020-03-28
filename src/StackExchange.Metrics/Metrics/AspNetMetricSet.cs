@@ -47,10 +47,10 @@ namespace StackExchange.Metrics.Metrics
             void AddCounterCallback(string name, Counter counter) => _diagnosticsCollector.AddCounterCallback(MicrosoftAspNetCoreHostingEventSourceName, name, counter.Increment);
             void AddGaugeCallback(string name, SamplingGauge gauge) => _diagnosticsCollector.AddGaugeCallback(MicrosoftAspNetCoreHostingEventSourceName, name, gauge.Record);
 
-            var requestsPerSec = collector.CreateMetric<Counter>("kestrel.requests.per_sec", "requests/sec", "Requests per second");
-            var totalRequests = collector.CreateMetric<SamplingGauge>("kestrel.requests.total", "requests", "Total requests");
-            var currentRequests = collector.CreateMetric<SamplingGauge>("kestrel.requests.current", "requests", "Currently executing requests");
-            var failedRequests = collector.CreateMetric<SamplingGauge>("kestrel.requests.failed", "requests", "Failed requests");
+            var requestsPerSec = collector.CreateMetric<Counter>("dotnet.kestrel.requests.per_sec", "requests/sec", "Requests per second", includePrefix: false);
+            var totalRequests = collector.CreateMetric<SamplingGauge>("dotnet.kestrel.requests.total", "requests", "Total requests", includePrefix: false);
+            var currentRequests = collector.CreateMetric<SamplingGauge>("dotnet.kestrel.requests.current", "requests", "Currently executing requests", includePrefix: false);
+            var failedRequests = collector.CreateMetric<SamplingGauge>("dotnet.kestrel.requests.failed", "requests", "Failed requests", includePrefix: false);
 
             AddCounterCallback("requests-per-sec", requestsPerSec);
             AddGaugeCallback("total-requests", totalRequests);

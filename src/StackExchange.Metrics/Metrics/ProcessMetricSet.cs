@@ -28,10 +28,10 @@ namespace StackExchange.Metrics.Metrics
         /// <inheritdoc/>
         public void Initialize(IMetricsCollector collector)
         {
-            _processorTime = collector.CreateMetric<SamplingGauge>("cpu.processortime", "seconds", "Total processor time");
-            _virtual = collector.CreateMetric<SamplingGauge>("mem.virtual", "bytes", "Virtual memory for the process");
-            _paged = collector.CreateMetric<SamplingGauge>("mem.paged", "bytes", "Paged memory for the process");
-            _threads = collector.CreateMetric<SamplingGauge>("cpu.threads", "threads", "Threads for the process");
+            _processorTime = collector.CreateMetric<SamplingGauge>("dotnet.cpu.processortime", "seconds", "Total processor time", includePrefix: false);
+            _virtual = collector.CreateMetric<SamplingGauge>("dotnet.mem.virtual", "bytes", "Virtual memory for the process", includePrefix: false);
+            _paged = collector.CreateMetric<SamplingGauge>("dotnet.mem.paged", "bytes", "Paged memory for the process", includePrefix: false);
+            _threads = collector.CreateMetric<SamplingGauge>("dotnet.cpu.threads", "threads", "Threads for the process", includePrefix: false);
         }
 
         /// <inheritdoc/>

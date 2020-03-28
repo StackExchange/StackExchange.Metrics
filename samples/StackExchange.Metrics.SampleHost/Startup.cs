@@ -26,10 +26,12 @@ namespace StackExchange.Metrics.SampleHost
         {
             services.AddMetricsCollector()
                 .AddDefaultSets()
+                .AddDefaultTag("role", "sample_host")
                 .UseExceptionHandler(ex => Console.WriteLine(ex))
                 .Configure(
                     o =>
                     {
+                        o.MetricsNamePrefix = "sample_host";
                         o.SnapshotInterval = TimeSpan.FromSeconds(5);
                     }
                 );
