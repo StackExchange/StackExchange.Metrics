@@ -27,9 +27,9 @@ namespace StackExchange.Metrics.Metrics
         /// <inheritdoc/>
         public void Initialize(IMetricsCollector collector)
         {
-            _gen0 = collector.CreateMetric<SamplingGauge>("mem.collections_gen0", "collections", "Number of gen-0 collections");
-            _gen1 = collector.CreateMetric<SamplingGauge>("mem.collections_gen1", "collections", "Number of gen-1 collections");
-            _gen2 = collector.CreateMetric<SamplingGauge>("mem.collections_gen2", "collections", "Number of gen-2 collections");
+            _gen0 = collector.CreateMetric<SamplingGauge>("mem.collections.gen0", "collections", "Number of gen-0 collections");
+            _gen1 = collector.CreateMetric<SamplingGauge>("mem.collections.gen1", "collections", "Number of gen-1 collections");
+            _gen2 = collector.CreateMetric<SamplingGauge>("mem.collections.gen2", "collections", "Number of gen-2 collections");
         }
 
         /// <inheritdoc/>

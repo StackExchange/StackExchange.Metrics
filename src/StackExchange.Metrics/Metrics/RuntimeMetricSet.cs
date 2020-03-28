@@ -58,23 +58,25 @@ namespace StackExchange.Metrics.Metrics
             AddGaugeCallback("working-set", workingSet);
 
             // GC
-            var heapSize = collector.CreateMetric<SamplingGauge>("mem.size_heap", "bytes", "Total number of bytes across all heaps");
-            var gen0 = collector.CreateMetric<Counter>("mem.collections_gen0", "collections", "Number of gen-0 collections");
-            var gen0Size = collector.CreateMetric<SamplingGauge>("mem.size_gen0", "bytes", "Total number of bytes in gen-0");
-            var gen1 = collector.CreateMetric<Counter>("mem.collections_gen1", "collections", "Number of gen-1 collections");
-            var gen1Size = collector.CreateMetric<SamplingGauge>("mem.size_gen1", "bytes", "Total number of bytes in gen-1");
-            var gen2 = collector.CreateMetric<Counter>("mem.collections_gen2", "collections", "Number of gen-2 collections");
-            var gen2Size = collector.CreateMetric<SamplingGauge>("mem.size_gen2", "bytes", "Total number of bytes in gen-2");
-            var lohSize = collector.CreateMetric<SamplingGauge>("mem.size_loh", "bytes", "Total number of bytes in the LOH");
+            var gen0 = collector.CreateMetric<Counter>("mem.collections.gen0", "collections", "Number of gen-0 collections");
+            var gen1 = collector.CreateMetric<Counter>("mem.collections.gen1", "collections", "Number of gen-1 collections");
+            var gen2 = collector.CreateMetric<Counter>("mem.collections.gen2", "collections", "Number of gen-2 collections");
+            var gen0Size = collector.CreateMetric<SamplingGauge>("mem.size.gen0", "bytes", "Total number of bytes in gen-0");
+            var gen1Size = collector.CreateMetric<SamplingGauge>("mem.size.gen1", "bytes", "Total number of bytes in gen-1");
+            var gen2Size = collector.CreateMetric<SamplingGauge>("mem.size.gen2", "bytes", "Total number of bytes in gen-2");
+            var heapSize = collector.CreateMetric<SamplingGauge>("mem.size.heap", "bytes", "Total number of bytes across all heaps");
+            var lohSize = collector.CreateMetric<SamplingGauge>("mem.size.loh", "bytes", "Total number of bytes in the LOH");
+            var allocRate = collector.CreateMetric<Counter>("mem.allocation_rate", "bytes/sec", "Allocation Rate (Bytes / sec)");
 
             AddGaugeCallback("gc-heap-size", heapSize);
-            AddCounterCallback("gen-0-gc-count", gen0);
             AddGaugeCallback("gen-0-size", gen0Size);
-            AddCounterCallback("gen-1-gc-count", gen1);
             AddGaugeCallback("gen-1-size", gen1Size);
-            AddCounterCallback("gen-2-gc-count", gen2);
             AddGaugeCallback("gen-2-size", gen2Size);
+            AddCounterCallback("gen-0-gc-count", gen0);
+            AddCounterCallback("gen-1-gc-count", gen1);
+            AddCounterCallback("gen-2-gc-count", gen2);
             AddGaugeCallback("loh-size", lohSize);
+            AddCounterCallback("alloc-rate", allocRate);
 
             // thread pool
             var threadPoolCount = collector.CreateMetric<SamplingGauge>("threadpool.count", "threads", "Number of threads in the threadpool");

@@ -17,9 +17,9 @@ Provides basic metrics for a .NET application. This set contains the following m
 
 Provides metrics about the garbage collector (GC). This set contains the following metrics:
 
- - `mem.collections_gen0` - number of gen-0 collections
- - `mem.collections_gen1` - number of gen-1 collections
- - `mem.collections_gen2` - number of gen-2 collections
+ - `mem.collections.gen0` - number of gen-0 collections
+ - `mem.collections.gen1` - number of gen-1 collections
+ - `mem.collections.gen2` - number of gen-2 collections
 
 ### RuntimeMetricSet (.NET Core)
 
@@ -27,14 +27,14 @@ Provides .NET Core runtime metrics which includes:
 
  - `cpu.usage` - % CPU usage
  - `mem.working_set` - working set of the process in bytes
- - `mem.size_heap` - total number of bytes across all heaps
- - `mem.size_gen0` - total number of bytes in gen-0
- - `mem.size_gen1` - total number of bytes in gen-1
- - `mem.size_gen2` - total number of bytes in gen-2
- - `mem.size_loh` - total number of bytes in the LOH
- - `mem.collection_gen0` - number of gen-0 collections
- - `mem.collection_gen1` - number of gen-1 collections
- - `mem.collection_gen2` - number of gen-2 collections
+ - `mem.size.heap` - total number of bytes across all heaps
+ - `mem.size.gen0` - total number of bytes in gen-0
+ - `mem.size.gen1` - total number of bytes in gen-1
+ - `mem.size.gen2` - total number of bytes in gen-2
+ - `mem.size.loh` - total number of bytes in the LOH
+ - `mem.collections.gen0` - number of gen-0 collections
+ - `mem.collections.gen1` - number of gen-1 collections
+ - `mem.collections.gen2` - number of gen-2 collections
  - `threadpool.count` - number of threads in the threadpool
  - `threadpool.queue_length` - number of work items queued to the threadpool
  - `timers.count` - number of active timers
