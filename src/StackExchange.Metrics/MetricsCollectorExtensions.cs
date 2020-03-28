@@ -27,10 +27,10 @@ namespace StackExchange.Metrics
                     await textWriter.WriteAsync(t.Key);
                     await textWriter.WriteAsync(" = ");
                     await textWriter.WriteAsync(t.Value);
+                    await textWriter.WriteLineAsync(string.Empty);
                 }
             }
 
-            await textWriter.WriteLineAsync("");
             await textWriter.WriteLineAsync("----");
             await textWriter.WriteLineAsync("Endpoints:");
 
@@ -70,26 +70,23 @@ namespace StackExchange.Metrics
                     await textWriter.WriteAsync(reading.Type.ToString());
                     await textWriter.WriteAsync(", Tags = [");
 
-                    bool firstTag = false;
+                    var i = 0;
                     foreach (var tag in reading.Tags)
                     {
                         // Skip excluded tags
-                        if (excludedTags.Contains(tag.Key))
+                        if (excludedTags.Contains(tag.Key) || collector.DefaultTags.ContainsKey(tag.Key))
                         {
                             continue;
                         }
 
-                        if (!firstTag)
-                        {
-                            firstTag = false;
-                        }
-                        else
-                        {
-                            await textWriter.WriteAsync(", ");
-                        }
                         await textWriter.WriteAsync(tag.Key);
                         await textWriter.WriteAsync(" = ");
                         await textWriter.WriteAsync(tag.Value);
+                        if (i++ < reading.Tags.Count - 1)
+                        {
+                            await textWriter.WriteAsync(", ");
+                        }
+
                     }
 
                     await textWriter.WriteLineAsync("]");
