@@ -471,7 +471,6 @@ namespace StackExchange.Metrics
         {
             Debug.WriteLine("StackExchange.Metrics: Shutting down MetricsCollector.");
             _shutdownTokenSource.Cancel();
-            _shutdownTokenSource = null;
 
             foreach (var endpoint in _endpoints)
             {
