@@ -1,6 +1,7 @@
 name: Build, Test & Package
 
 on:
+  pull_request:
   push:
     branches:
     - master
