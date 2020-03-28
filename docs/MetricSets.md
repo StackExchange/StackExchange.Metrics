@@ -39,6 +39,9 @@ Provides .NET Core runtime metrics which includes:
  - `threadpool.queue_length` - number of work items queued to the threadpool
  - `timers.count` - number of active timers
 
+ Note: The `mem.` generation counters are only updated when the garbage collector runs.
+ Until it runs, these counters will be zero and if allocations are low, these counters will be infrequently updated.
+
 ### AspNetMetricSet (.NET Core)
 
  - `kestrel.requests.pre_sec` - requests per second

@@ -54,6 +54,13 @@ namespace StackExchange.Metrics.SampleHost
                         ctx.Response.ContentType = "text/plain";
                         using (var streamWriter = new StreamWriter(ctx.Response.Body, Encoding.UTF8, 1024, leaveOpen: true))
                         {
+                            var r = new Random();
+                            // allocaaaaaaaaaaaaaaaaaaaaaaaate!
+                            // GC counters are only updated when collections happen - so make collections happen
+                            for (var i = 0; i < 100; i++)
+                            {
+                                var s = new string(' ', r.Next(5_000, 150_000));
+                            }
                             await collector.DumpAsync(streamWriter);
                         }
                     });
