@@ -20,13 +20,15 @@ namespace StackExchange.Metrics.Infrastructure
             return segment;
         }
 
-        internal static Task WriteAsync(this Stream stream, ReadOnlyMemory<byte> buffer)
+#if !NETCOREAPP
+        internal static ValueTask WriteAsync(this Stream stream, ReadOnlyMemory<byte> buffer)
         {
             var arraySegment = buffer.GetArray();
-            return stream.WriteAsync(arraySegment.Array, arraySegment.Offset, arraySegment.Count);
+            return new ValueTask(stream.WriteAsync(arraySegment.Array, arraySegment.Offset, arraySegment.Count));
         }
+#endif
 
-        internal static Task WriteAsync(this Stream stream, ReadOnlySequence<byte> sequence)
+        internal static ValueTask WriteAsync(this Stream stream, ReadOnlySequence<byte> sequence)
         {
             if (sequence.IsSingleSegment)
             {
@@ -35,7 +37,7 @@ namespace StackExchange.Metrics.Infrastructure
 
             return Awaited(stream, sequence);
 
-            async Task Awaited(Stream s, ReadOnlySequence<byte> seq)
+            async ValueTask Awaited(Stream s, ReadOnlySequence<byte> seq)
             {
                 foreach (var segment in seq)
                 {

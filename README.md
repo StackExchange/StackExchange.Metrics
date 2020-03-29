@@ -9,6 +9,8 @@ __[VIEW CHANGES IN StackExchange.Metrics 1.0](https://github.com/StackExchange/S
 
 ### Basic Usage
 
+#### .NET Full Framework
+
 First, create a `MetricsCollector` object. This is the top-level container which will hold all of your metrics and handle sending them to various metric endpoints. Therefore, you should only instantiate one, and make it a global singleton.
 
 ```csharp
@@ -18,16 +20,49 @@ var collector = new MetricsCollector(
         ExceptionHandler = ex => HandleException(ex),
 	    MetricsNamePrefix = "app_name.",
 	    Endpoints = new[] {
-		    new MetricEndpoint("Bosun", new BosunMetricHandler("http://bosun.mydomain.com:8070")),
-		    new MetricEndpoint("SignalFx", new SignalFxMetricHandler("https://mydomain.signalfx.com/api", "API_KEY")),
+		    new MetricEndpoint("Bosun", new BosunMetricHandler(new Uri("http://bosun.mydomain.com:8070"))),
+		    new MetricEndpoint("SignalFx", new SignalFxMetricHandler(new Uri("https://mydomain.signalfx.com/api", "API_KEY"))),
 	    },
 	    PropertyToTagName = NameTransformers.CamelToLowerSnakeCase,
 	    DefaultTags = new Dictionary<string, string> 
 		{
-            {"host", NameTransformers.Sanitize(Environment.MachineName.ToLower())}
+            {"host", NameTransformers.Sanitize(Environment.MachineName.ToLower())},
+            {"tier", "dev"}
         }
     }
 );
+```
+
+#### .NET Core
+
+For .NET Core, you can configure a `MetricsCollector` in your `Startup.cs`. 
+
+Using the snippet below will register an `IHostedService` in the service collection that manages the lifetime of the `MetricsCollector`
+and configures it with the specified 
+
+```csharp
+public class Startup
+{
+    public void ConfigureServices(IServiceCollection services)
+    {
+        services.AddMetricsCollector()
+            // add default metric sets
+            .AddDefaultSets()
+            // add additional tags across all metrics. By default we add the "host" tag
+            .AddDefaultTag("tier", "dev");
+            // add endpoints we care about. By default we add a `LocalMetricHandler` that 
+            // just maintains the latest metrics in memory (useful for debugging)
+            .AddBosunEndpoint(new Uri("http://bosun.mydomain.com:8070"))
+            .AddSignalFxEndpoint(new Uri("https://mydomain.signalfx.com/api", "API_KEY"))
+            .UseExceptionHandler(ex => HandleException(ex))
+            // tweak other parts of `MetricsCollectionOptions`
+            .Configure(
+                o => {
+                    o.SnapshotInterval = TimeSpan.FromSeconds(5);
+                }
+            )
+    }
+}
 ```
 
 > All of the available options are documented in the [MetricCollectorOptions class](https://github.com/StackExchange/StackExchange.Metrics/blob/master/src/StackExchange.Metrics/MetricCollectorOptions.cs) or the individual metric handlers:
@@ -75,7 +110,7 @@ __[Counters](https://github.com/StackExchange/StackExchange.Metrics/blob/master/
 | ---------------------------------------- | ---------------------------------------- |
 | [Counter](https://github.com/StackExchange/StackExchange.Metrics/blob/master/docs/MetricTypes.md#counter) | A general-purpose manually incremented long-integer counter. |
 | [SnapshotCounter](https://github.com/StackExchange/StackExchange.Metrics/blob/master/docs/MetricTypes.md#snapshotcounter) | Calls a user-provided `Func<long?>` to get the current counter value each time metrics are going to be posted to a metric handler. |
-| [ExternalCounter](https://github.com/StackExchange/StackExchange.Metrics/blob/master/docs/MetricTypes.md#externalcounter) | A persistent counter (no resets) for very low-volume events. |
+| [CumulativeCounter](https://github.com/StackExchange/StackExchange.Metrics/blob/master/docs/MetricTypes.md#cumulativecounter) | A persistent counter (no resets) for very low-volume events. |
 
 __[Gauges](https://github.com/StackExchange/StackExchange.Metrics/blob/master/docs/MetricTypes.md#gauges)__ describe a measurement at a point in time. A good example would be measuring how much RAM is being consumed by a process. StackExchange.Metrics provides several different built-in types of gauges in order to support different programmatic use cases.
 

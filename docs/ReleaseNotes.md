@@ -1,5 +1,31 @@
 # StackExchange.Metrics Release Notes
 
+## 2.0.0
+
+Released for .NET Standard 2.0 and .NET Core 3.1
+
+#### Support for .NET Core 3.1
+
+By explicitly targeting .NET Core 3.1 we are able to add support for configuring the `MetricsCollector` using the standard
+startup mechanisms in .NET Core.
+
+#### Support pre-packaged sets of metrics
+
+We now support a new interface `IMetricSet` that provides a way to package common sets of metrics and use them in a `MetricsCollector`. In the box we support 4 implementations:
+
+ - `ProcessMetricSet` - provides CPU time, paged memory, virtual memory and thread counts for the current process
+ - `GarbageCollectionMetricSet` - provides GC gen0, gen1 and gen2 collection metrics in .NET full framework
+ - `AspNetMetricSet` - provides request metrics for ASP.NET Core
+ - `RuntimeMetricSet` - provides CPU, memory, GC and thread pool metrics in .NET Core
+
+Metric sets can be configured using `MetricsCollectorOptions.Sets` in .NET full framework or the `AddSet` method on the `IMetricsCollectorBuilder` exposed by `AddMetricsCollector` on an `IServiceCollection`.
+
+#### Breaking Changes
+
+ - Removal of `CreateMetricWithoutPrefix` and `GetMetricWithoutPrefix` methods - replaces with `includePrefix` optional parameter.
+ - Removal of ctor with the exception handler parameter from `MetricsCollectorOptions` - in order to support the options framework in .NET Core there is now just a default ctor. Use the `UseExceptionHandler` on the `IMetricsCollectorBuilder` or assign the `ExceptionHandler` property directly
+ - 
+
 ## BosunReporter 4.0.0 => StackExchange.Metrics 1.0.0
 
 Released for .NET Standard 2.0

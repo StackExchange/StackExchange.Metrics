@@ -234,7 +234,7 @@ namespace StackExchange.Metrics.Infrastructure
         }
 
         internal IReadOnlyDictionary<string, string> GetTags(
-            ReadOnlyDictionary<string, string> defaultTags,
+            IReadOnlyDictionary<string, string> defaultTags,
             TagValueConverterDelegate tagValueConverter,
             Dictionary<Type, List<MetricTag>> tagsByTypeCache)
         {
@@ -272,7 +272,7 @@ namespace StackExchange.Metrics.Infrastructure
             return tags;
         }
 
-        List<MetricTag> GetTagsList(ReadOnlyDictionary<string, string> defaultTags, Dictionary<Type, List<MetricTag>> tagsByTypeCache)
+        List<MetricTag> GetTagsList(IReadOnlyDictionary<string, string> defaultTags, Dictionary<Type, List<MetricTag>> tagsByTypeCache)
         {
             var type = GetType();
             if (tagsByTypeCache.ContainsKey(type))

@@ -1,17 +1,26 @@
-name: Package Build CI
+name: Build, Test & Package
 
-on: [push]
+on:
+  push:
+    branches:
+    - master
+    paths:
+    - '*'
+    - '!/docs/*' # Don't run workflow when files are only in the /docs directory
 
 jobs:
   build:
-
     runs-on: windows-2019
-    
     steps:
-    - uses: actions/checkout@v1
-    - name: Setup .NET Core
-      uses: actions/setup-dotnet@v1
+    - name: Checkout code
+      uses: actions/checkout@v2
       with:
-        dotnet-version: 2.2.402
-    - name: Build with dotnet
-      run: build.cmd -CreatePackages $true
+        fetch-depth: 0
+    - name: .NET Build
+      run: dotnet build Build.csproj -c Release /p:CI=true
+    - name: .NET Test
+      run: dotnet test Build.csproj -c Release --no-build /p:CI=true
+    - name: .NET Pack
+      run: dotnet pack Build.csproj --no-build -c Release /p:PackageOutputPath=$GITHUB_WORKSPACE\.nupkgs /p:CI=true
+    - name: Push to MyGet
+      run: dotnet nuget push $GITHUB_WORKSPACE\.nupkgs\*.nupkg -s https://www.myget.org/F/stackoverflow/api/v2/package -k ${{ secrets.MYGET_API_KEY }}

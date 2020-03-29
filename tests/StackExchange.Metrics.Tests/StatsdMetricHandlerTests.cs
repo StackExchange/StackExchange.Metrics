@@ -56,15 +56,16 @@ namespace StackExchange.Metrics.Tests
 
         public static byte[] ToStatsd(in MetricReading reading)
         {
-            string ToTypeString(MetricType type) =>
+            static string ToTypeString(MetricType type) =>
                 type switch
                 {
                     MetricType.Counter => "c",
                     MetricType.CumulativeCounter => "c",
                     MetricType.Gauge => "g",
+                    _ => "?",
                 };
 
-            string ToTagString(IReadOnlyDictionary<string, string> tags) => string.Join(",", tags.Select(t => t.Key + ":" + t.Value));
+            static string ToTagString(IReadOnlyDictionary<string, string> tags) => string.Join(",", tags.Select(t => t.Key + ":" + t.Value));
 
             return Encoding.UTF8.GetBytes(
                 reading.NameWithSuffix + ":" + (reading.Value % 1 == 0 ? reading.Value.ToString("0") : reading.Value.ToString("0.00000")) + "|" + ToTypeString(reading.Type) + "|" + "#" + ToTagString(reading.Tags)
