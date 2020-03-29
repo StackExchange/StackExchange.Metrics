@@ -16,7 +16,7 @@ namespace StackExchange.Metrics
         /// </summary>
         public async static Task DumpAsync(this MetricsCollector collector, TextWriter textWriter, string[] excludedTags = null)
         {
-            excludedTags = excludedTags ?? Array.Empty<string>();
+            excludedTags ??= Array.Empty<string>();
             await textWriter.WriteLineAsync("DefaultTags:");
             var defaultTags = collector.DefaultTags;
             if (defaultTags.Count > 0)
@@ -38,16 +38,21 @@ namespace StackExchange.Metrics
             foreach (var endpoint in endpoints)
             {
                 await textWriter.WriteAsync("  ");
+                await textWriter.WriteAsync(endpoint.Name);
+                await textWriter.WriteAsync(": ");
                 switch (endpoint.Handler)
                 {
                     case BosunMetricHandler bosunHandler:
-                        await textWriter.WriteLineAsync($"{endpoint.Name}: {bosunHandler.BaseUri?.AbsoluteUri ?? "null"}");
+                        await textWriter.WriteLineAsync(bosunHandler.BaseUri?.AbsoluteUri ?? "null");
                         break;
                     case SignalFxMetricHandler signalFxHandler:
-                        await textWriter.WriteLineAsync($"{endpoint.Name}: {signalFxHandler.BaseUri?.AbsoluteUri ?? "null"}");
+                        await textWriter.WriteLineAsync(signalFxHandler.BaseUri?.AbsoluteUri ?? "null");
                         break;
                     case LocalMetricHandler h:
-                        await textWriter.WriteLineAsync($"{endpoint.Name}: Local");
+                        await textWriter.WriteLineAsync("Local");
+                        break;
+                    default:
+                        await textWriter.WriteLineAsync("Unknown");
                         break;
                 }
             }
@@ -86,7 +91,6 @@ namespace StackExchange.Metrics
                         {
                             await textWriter.WriteAsync(", ");
                         }
-
                     }
 
                     await textWriter.WriteLineAsync("]");
