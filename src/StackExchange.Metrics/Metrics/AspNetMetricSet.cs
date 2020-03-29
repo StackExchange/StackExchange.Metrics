@@ -1,5 +1,4 @@
 ﻿#if NETCOREAPP
-using System;
 using System.Collections.Generic;
 using System.Diagnostics.Tracing;
 using Microsoft.Diagnostics.NETCore.Client;

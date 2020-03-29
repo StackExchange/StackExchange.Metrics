@@ -10,6 +10,10 @@ namespace StackExchange.Metrics.Metrics
     ///  - Paged memory
     ///  - Threads
     /// </summary>
+    /// <remarks>
+    /// For where these are generated in the .NET Core runtime, see the defined counters at:
+    /// https://github.com/dotnet/runtime/blob/5eda36ed557d789d888647745782b261472b9fa3/src/libraries/System.Private.CoreLib/src/System/Diagnostics/Tracing/RuntimeEventSource.cs
+    /// </remarks>
     public sealed class ProcessMetricSet : IMetricSet
     {
         private SamplingGauge _processorTime;
