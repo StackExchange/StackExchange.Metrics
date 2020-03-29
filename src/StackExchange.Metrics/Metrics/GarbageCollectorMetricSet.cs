@@ -4,7 +4,6 @@ using StackExchange.Metrics.Infrastructure;
 
 namespace StackExchange.Metrics.Metrics
 {
-
     /// <summary>
     /// Implements <see cref="IMetricSet" /> to provide GC metrics:
     ///  - Gen0 collections
@@ -20,9 +19,7 @@ namespace StackExchange.Metrics.Metrics
         /// <summary>
         /// Constructs a new instance of <see cref="GarbageCollectorMetricSet" />.
         /// </summary>
-        public GarbageCollectorMetricSet()
-        {
-        }
+        public GarbageCollectorMetricSet() { }
 
         /// <inheritdoc/>
         public void Initialize(IMetricsCollector collector)

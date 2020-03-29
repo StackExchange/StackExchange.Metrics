@@ -7,7 +7,6 @@ using StackExchange.Metrics.Infrastructure;
 
 namespace StackExchange.Metrics.Metrics
 {
-
     /// <summary>
     /// Implements <see cref="IMetricSet" /> to provide information for
     /// ASP.NET Core applications:
@@ -59,10 +58,7 @@ namespace StackExchange.Metrics.Metrics
         }
 
         /// <inheritdoc/>
-        public void Snapshot()
-        {
-
-        }
+        public void Snapshot() { }
     }
 }
 #endif

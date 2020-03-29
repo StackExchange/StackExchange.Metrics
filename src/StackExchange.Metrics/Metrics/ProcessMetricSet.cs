@@ -3,7 +3,6 @@ using StackExchange.Metrics.Infrastructure;
 
 namespace StackExchange.Metrics.Metrics
 {
-
     /// <summary>
     /// Implements <see cref="IMetricSet" /> to provide basic process metrics:
     ///  - CPU time
@@ -21,9 +20,7 @@ namespace StackExchange.Metrics.Metrics
         /// <summary>
         /// Constructs a new instance of <see cref="ProcessMetricSet" />.
         /// </summary>
-        public ProcessMetricSet()
-        {
-        }
+        public ProcessMetricSet() { }
 
         /// <inheritdoc/>
         public void Initialize(IMetricsCollector collector)

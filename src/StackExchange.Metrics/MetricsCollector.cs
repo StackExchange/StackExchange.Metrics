@@ -15,34 +15,33 @@ namespace StackExchange.Metrics
     /// </summary>
     public partial class MetricsCollector : IMetricsCollector
     {
-        class RootMetricInfo
+        private class RootMetricInfo
         {
             public Type Type { get; set; }
             public string Unit { get; set; }
         }
 
-        readonly object _metricsLock = new object();
+        private readonly object _metricsLock = new object();
+
         // all of the first-class names which have been claimed (excluding suffixes in aggregate gauges)
-        readonly Dictionary<string, RootMetricInfo> _rootNameToInfo = new Dictionary<string, RootMetricInfo>();
-        readonly ImmutableArray<MetricEndpoint> _endpoints;
-        readonly ImmutableArray<IMetricSet> _sets;
+        private readonly Dictionary<string, RootMetricInfo> _rootNameToInfo = new Dictionary<string, RootMetricInfo>();
+        private readonly ImmutableArray<MetricEndpoint> _endpoints;
+        private readonly ImmutableArray<IMetricSet> _sets;
+
         // this dictionary is to avoid duplicate metrics
-        Dictionary<MetricKey, MetricBase> _rootNameAndTagsToMetric = new Dictionary<MetricKey, MetricBase>(MetricKeyComparer.Default);
+        private readonly Dictionary<MetricKey, MetricBase> _rootNameAndTagsToMetric = new Dictionary<MetricKey, MetricBase>(MetricKeyComparer.Default);
+        private readonly List<MetricBase> _metrics = new List<MetricBase>();
+        private bool _hasNewMetadata = false;
+        private DateTime _lastMetadataFlushTime = DateTime.MinValue;
+        private readonly CancellationTokenSource _shutdownTokenSource;
+        private readonly List<MetricBase> _metricsNeedingPreSerialize = new List<MetricBase>();
 
-        readonly List<MetricBase> _metrics = new List<MetricBase>();
-
-        bool _hasNewMetadata = false;
-        DateTime _lastMetadataFlushTime = DateTime.MinValue;
-        CancellationTokenSource _shutdownTokenSource;
-
-        readonly List<MetricBase> _metricsNeedingPreSerialize = new List<MetricBase>();
         // All of the names which have been claimed, including the metrics which may have multiple suffixes, mapped to their root metric name.
         // This is to prevent suffix collisions with other metrics.
-        readonly Dictionary<string, string> _nameAndSuffixToRootName = new Dictionary<string, string>();
-
-        readonly Task _flushTask;
-        readonly Task _reportingTask;
-        readonly int _maxRetries;
+        private readonly Dictionary<string, string> _nameAndSuffixToRootName = new Dictionary<string, string>();
+        private readonly Task _flushTask;
+        private readonly Task _reportingTask;
+        private readonly int _maxRetries;
 
         internal Dictionary<Type, List<MetricTag>> TagsByTypeCache = new Dictionary<Type, List<MetricTag>>();
 
@@ -231,7 +230,7 @@ namespace StackExchange.Metrics
             return false;
         }
 
-        IReadOnlyDictionary<string, string> ValidateDefaultTags(IReadOnlyDictionary<string, string> tags)
+        private IReadOnlyDictionary<string, string> ValidateDefaultTags(IReadOnlyDictionary<string, string> tags)
         {
             var defaultTags = tags?.ToImmutableDictionary() ?? ImmutableDictionary<string, string>.Empty;
             var defaultTagBuilder = defaultTags.ToBuilder();
@@ -347,7 +346,7 @@ namespace StackExchange.Metrics
             return GetMetricInternal(name, includePrefix, unit, description, metric, false);
         }
 
-        T GetMetricInternal<T>(string name, bool addPrefix, string unit, string description, T metric, bool mustBeNew) where T : MetricBase
+        private T GetMetricInternal<T>(string name, bool addPrefix, string unit, string description, T metric, bool mustBeNew) where T : MetricBase
         {
             if (addPrefix)
                 name = MetricsNamePrefix + name;
@@ -478,7 +477,7 @@ namespace StackExchange.Metrics
             }
         }
 
-        Task SnapshotAsync(bool isCalledFromTimer)
+        private Task SnapshotAsync(bool isCalledFromTimer)
         {
             if (isCalledFromTimer && ShutdownCalled) // don't perform timer actions if we're shutting down
                 return Task.CompletedTask;
@@ -537,7 +536,7 @@ namespace StackExchange.Metrics
             return Task.CompletedTask;
         }
 
-        async Task FlushAsync(bool isCalledFromTimer)
+        private async Task FlushAsync(bool isCalledFromTimer)
         {
             if (isCalledFromTimer && ShutdownCalled) // don't perform timer actions if we're shutting down
                 return;
@@ -584,7 +583,7 @@ namespace StackExchange.Metrics
             }
         }
 
-        void SerializeMetrics(MetricEndpoint endpoint, DateTime timestamp, out long metricsCount, out long bytesWritten)
+        private void SerializeMetrics(MetricEndpoint endpoint, DateTime timestamp, out long metricsCount, out long bytesWritten)
         {
             lock (_metricsLock)
             {
@@ -616,7 +615,7 @@ namespace StackExchange.Metrics
             }
         }
 
-        void SerializeMetadata(MetricEndpoint endpoint, IEnumerable<MetaData> metadata)
+        private void SerializeMetadata(MetricEndpoint endpoint, IEnumerable<MetaData> metadata)
         {
             Debug.WriteLine("StackExchange.Metrics: Serializing metadata.");
             endpoint.Handler.SerializeMetadata(metadata);
@@ -624,7 +623,7 @@ namespace StackExchange.Metrics
             Debug.WriteLine("StackExchange.Metrics: Serialized metadata.");
         }
 
-        IReadOnlyList<MetaData> GatherMetaData()
+        private IReadOnlyList<MetaData> GatherMetaData()
         {
             lock (_metricsLock)
             {
@@ -642,7 +641,7 @@ namespace StackExchange.Metrics
             }
         }
 
-        void SendExceptionToHandler(Exception ex)
+        private void SendExceptionToHandler(Exception ex)
         {
             if (!ShouldSendException(ex))
                 return;
@@ -654,7 +653,7 @@ namespace StackExchange.Metrics
             catch (Exception) { } // there's nothing else we can do if the user-supplied exception handler itself throws an exception
         }
 
-        bool ShouldSendException(Exception ex)
+        private bool ShouldSendException(Exception ex)
         {
             if (ex is MetricPostException post)
             {

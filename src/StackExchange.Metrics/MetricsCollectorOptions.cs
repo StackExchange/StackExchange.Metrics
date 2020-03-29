@@ -17,6 +17,12 @@ namespace StackExchange.Metrics
     public class MetricsCollectorOptions
     {
         /// <summary>
+        /// Defines initialization options for <see cref="MetricsCollector"/>.
+        /// All options are optional. However, <see cref="MetricsCollector" /> will never send metrics unless <see cref="Endpoints"/> is set.
+        /// </summary>
+        public MetricsCollectorOptions() { }
+
+        /// <summary>
         /// Exceptions which occur on a background thread will be passed to this delegate.
         /// </summary>
         public Action<Exception> ExceptionHandler { get; set; } = _ => { };
@@ -73,13 +79,5 @@ namespace StackExchange.Metrics
         /// tags will generally not be included in metadata.
         /// </summary>
         public IReadOnlyDictionary<string, string> DefaultTags { get; set; } = ImmutableDictionary<string, string>.Empty;
-
-        /// <summary>
-        /// Defines initialization options for <see cref="MetricsCollector"/>.
-        /// All options are optional. However, <see cref="MetricsCollector" /> will never send metrics unless <see cref="Endpoints"/> is set.
-        /// </summary>
-        public MetricsCollectorOptions()
-        {
-        }
     }
 }
