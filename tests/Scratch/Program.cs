@@ -122,7 +122,7 @@ namespace Scratch
                 new Thread(Run).Start(new Tuple<AggregateGauge, AggregateGauge, int>(gauge, gauge2, i));
             }
 
-            var enumCounter = collector.GetMetricGroup<SomeEnum, EnumCounter>("some_enum", "things", "Some of something");
+            var enumCounter = collector.GetMetricGroup<SomeEnum, EnumCounter>("some_enum", "things", "Some of something", includePrefix: true);
             enumCounter.PopulateFromEnum();
 
             Type t;
@@ -140,7 +140,7 @@ namespace Scratch
             var si = 0;
             var snapshot = collector.GetMetric("my_snapshot", "snappys", "Snap snap snap.", new SnapshotGauge(() => ++si % 5));
 
-            var group = collector.GetMetricGroup<string, TestGroupGauge>("test_group", "tests", "These gauges are for testing.");
+            var group = collector.GetMetricGroup<string, TestGroupGauge>("test_group", "tests", "These gauges are for testing.", includePrefix: true);
             group.Add("low").Description = "Low testing.";
             group.Add("medium").Description = "Medium testing.";
             group.Add("high").Description = "High testing.";
@@ -149,7 +149,7 @@ namespace Scratch
             var converted = collector.CreateMetric("convert_test", "units", "Checking to see if the tag value converter works.", new ConvertedTagsTestCounter("ThingsAndStuff"));
             var noHost = collector.CreateMetric<ExcludeHostCounter>("no_host", "units", "Shouldn't have a host tag.");
 
-            var externalCounter = collector.GetMetricGroup<SomeEnum, TestExternalCounter>("external.test", "units", "Should aggregate externally.");
+            var externalCounter = collector.GetMetricGroup<SomeEnum, TestExternalCounter>("external.test", "units", "Should aggregate externally.", includePrefix: true);
             externalCounter.PopulateFromEnum();
             //            var externalNoTags = collector.CreateMetric<ExternalNoTagsCounter>("external.no_tags", "units", "Shouldn't have any tags except relay.");
 
