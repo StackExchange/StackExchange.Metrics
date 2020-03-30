@@ -1,8 +1,8 @@
 ﻿using System;
-using Microsoft.Extensions.DependencyInjection;
+using StackExchange.Metrics;
 using StackExchange.Metrics.Infrastructure;
 
-namespace StackExchange.Metrics.DependencyInjection
+namespace Microsoft.Extensions.DependencyInjection
 {
     /// <summary>
     /// Builder used to configure an <see cref="IMetricsCollector" />.

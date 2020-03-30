@@ -34,7 +34,7 @@ namespace StackExchange.Metrics.DependencyInjection
 
         public IMetricsCollectorBuilder AddDefaultTag(string key, string value)
         {
-            _defaultTags.Add(key, value);
+            _defaultTags[key] = value;
             return this;
         }
 
