@@ -4,9 +4,8 @@ on:
   push:
     branches:
     - master
-    paths:
-    - '*'
-    - '!/docs/*' # Don't run workflow when files are only in the /docs directory
+    paths-ignore:
+    - 'docs/**' # Don't run workflow when files are only in the /docs directory
 
 jobs:
   build:
