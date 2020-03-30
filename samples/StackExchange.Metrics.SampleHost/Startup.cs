@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 
 namespace StackExchange.Metrics.SampleHost
 {
@@ -30,11 +31,12 @@ namespace StackExchange.Metrics.SampleHost
                 .Configure(
                     o =>
                     {
-                        o.MetricsNamePrefix = "sample_host";
+                        o.MetricsNamePrefix = "sample_host.";
                         o.SnapshotInterval = TimeSpan.FromSeconds(5);
                     }
                 );
 
+            services.AddSingleton<PerfCounters>();
             services.Configure<KestrelServerOptions>(o => o.AllowSynchronousIO = true);
         }
 
@@ -44,6 +46,13 @@ namespace StackExchange.Metrics.SampleHost
         public void Configure(IApplicationBuilder app)
         {
             app.UseRouting();
+            app.Use((ctx, next) =>
+            {
+                var perfCounters = ctx.RequestServices.GetService<PerfCounters>();
+                perfCounters.IncrementMyCounter(ctx.Request.Path, MyCounterCategory.Example_One);
+                return next();
+            });
+
             app.UseEndpoints(
                 e =>
                 {
@@ -51,7 +60,6 @@ namespace StackExchange.Metrics.SampleHost
                     e.Map("/metrics", async ctx =>
                     {
                         var collector = ctx.RequestServices.GetService<MetricsCollector>();
-
                         ctx.Response.ContentType = "text/plain";
                         using (var streamWriter = new StreamWriter(ctx.Response.Body, Encoding.UTF8, 1024, leaveOpen: true))
                         {
