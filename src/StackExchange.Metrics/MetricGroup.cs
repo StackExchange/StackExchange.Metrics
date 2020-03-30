@@ -1,6 +1,7 @@
 ﻿using StackExchange.Metrics.Infrastructure;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Reflection;
 
 namespace StackExchange.Metrics
@@ -18,25 +19,25 @@ namespace StackExchange.Metrics
         /// The delegate used to instantiate new metrics (time series) within this group. This parameter may be omitted if <typeparamref name="TMetric"/> has a
         /// constructor with the same signature as this delegate parameter.
         /// </param>
-        MetricGroup<T1, TMetric> GetMetricGroup<T1, TMetric>(string name, string unit, string description, Func<T1, TMetric> metricFactory = null) where TMetric : MetricBase;
+        /// <param name="includePrefix">Whether the <see cref="MetricsCollectorOptions.MetricsNamePrefix"/> will be prepended to the metric name.</param>
+        MetricGroup<T1, TMetric> GetMetricGroup<T1, TMetric>(string name, string unit, string description, Func<T1, TMetric> metricFactory = null, bool includePrefix = true) where TMetric : MetricBase;
 
         /// <summary>
-        /// Creates a new metric group where each individual metric (time series) is of type <typeparamref name="TMetric"/>. The preceding type parameters
-        /// describe the keys of the group, and typically represent different tag values. The global metric name prefix
-        /// <see cref="MetricsCollector.MetricsNamePrefix"/> will not be not be prepended to the metric name.
+        /// Obsolete - please use <see cref="GetMetricGroup{T1, TMetric}(string, string, string, Func{T1, TMetric}, bool)"/>
         /// </summary>
-        /// <param name="name">The metric name for all time series in this group.</param>
-        /// <param name="unit">The units for all time series in this group (e.g. "milliseconds").</param>
-        /// <param name="description">The description for all time series in the group. This will be sent to a handler as metadata.</param>
-        /// <param name="metricFactory">
-        /// The delegate used to instantiate new metrics (time series) within this group. This parameter may be omitted if <typeparamref name="TMetric"/> has a
-        /// constructor with the same signature as this delegate parameter.
-        /// </param>
+        [EditorBrowsable(EditorBrowsableState.Never)]
         MetricGroup<T1, TMetric> GetMetricGroupWithoutPrefix<T1, TMetric>(string name, string unit, string description, Func<T1, TMetric> metricFactory = null) where TMetric : MetricBase;
     }
 
     public partial class MetricsCollector
     {
+        /// <summary>
+        /// Obsolete - please use <see cref="GetMetricGroup{T1, TMetric}(string, string, string, Func{T1, TMetric}, bool)"/>
+        /// </summary>
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        public MetricGroup<T1, TMetric> GetMetricGroup<T1, TMetric>(string name, string unit, string description, Func<T1, TMetric> metricFactory = null) where TMetric : MetricBase
+            => GetMetricGroup(name, unit, description, metricFactory, includePrefix: true);
+
         /// <summary>
         /// Creates a new metric group where each individual metric (time series) is of type <typeparamref name="TMetric"/>. The preceding type parameters
         /// describe the keys of the group, and typically represent different tag values.
@@ -48,29 +49,19 @@ namespace StackExchange.Metrics
         /// The delegate used to instantiate new metrics (time series) within this group. This parameter may be omitted if <typeparamref name="TMetric"/> has a
         /// constructor with the same signature as this delegate parameter.
         /// </param>
-        public MetricGroup<T1, TMetric> GetMetricGroup<T1, TMetric>(string name, string unit, string description, Func<T1, TMetric> metricFactory = null)
+        /// <param name="includePrefix">Whether the <see cref="MetricsCollectorOptions.MetricsNamePrefix"/> will be prepended to the metric name.</param>
+        public MetricGroup<T1, TMetric> GetMetricGroup<T1, TMetric>(string name, string unit, string description, Func<T1, TMetric> metricFactory = null, bool includePrefix = true)
             where TMetric : MetricBase
         {
             return new MetricGroup<T1, TMetric>(this, name, false, unit, description, metricFactory);
         }
 
         /// <summary>
-        /// Creates a new metric group where each individual metric (time series) is of type <typeparamref name="TMetric"/>. The preceding type parameters
-        /// describe the keys of the group, and typically represent different tag values. The global metric name prefix
-        /// <see cref="MetricsCollector.MetricsNamePrefix"/> will not be not be prepended to the metric name.
+        /// Obsolete - please use <see cref="GetMetricGroup{T1, TMetric}(string, string, string, Func{T1, TMetric}, bool)"/>
         /// </summary>
-        /// <param name="name">The metric name for all time series in this group.</param>
-        /// <param name="unit">The units for all time series in this group (e.g. "milliseconds").</param>
-        /// <param name="description">The description for all time series in the group. This will be sent to a handler as metadata.</param>
-        /// <param name="metricFactory">
-        /// The delegate used to instantiate new metrics (time series) within this group. This parameter may be omitted if <typeparamref name="TMetric"/> has a
-        /// constructor with the same signature as this delegate parameter.
-        /// </param>
-        public MetricGroup<T1, TMetric> GetMetricGroupWithoutPrefix<T1, TMetric>(string name, string unit, string description, Func<T1, TMetric> metricFactory = null)
-            where TMetric : MetricBase
-        {
-            return new MetricGroup<T1, TMetric>(this, name, true, unit, description, metricFactory);
-        }
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        public MetricGroup<T1, TMetric> GetMetricGroupWithoutPrefix<T1, TMetric>(string name, string unit, string description, Func<T1, TMetric> metricFactory = null) where TMetric : MetricBase
+            => GetMetricGroup(name, unit, description, metricFactory, includePrefix: false);
     }
 
     /// <summary>
@@ -127,7 +118,8 @@ namespace StackExchange.Metrics
         /// <returns>The metric.</returns>
         public TMetric Add(T1 tag1)
         {
-            return Add(tag1, out _);
+            bool isNew;
+            return Add(tag1, out isNew);
         }
 
         /// <summary>
@@ -146,8 +138,14 @@ namespace StackExchange.Metrics
                     return _metrics[tag1];
 
                 isNew = true;
+                TMetric metric;
+                if (WithoutPrefix)
+                    metric = _collector.GetMetricWithoutPrefix(Name, Unit, Description, _metricFactory(tag1));
+                else
+                    metric = _collector.GetMetric(Name, Unit, Description, _metricFactory(tag1));
 
-                return _metrics[tag1] = _collector.GetMetric(Name, Unit, Description, _metricFactory(tag1), includePrefix: !WithoutPrefix);
+                _metrics[tag1] = metric;
+                return metric;
             }
         }
 
@@ -214,25 +212,25 @@ namespace StackExchange.Metrics
         /// The delegate used to instantiate new metrics (time series) within this group. This parameter may be omitted if <typeparamref name="TMetric"/> has a
         /// constructor with the same signature as this delegate parameter.
         /// </param>
-        MetricGroup<T1, T2, TMetric> GetMetricGroup<T1, T2, TMetric>(string name, string unit, string description, Func<T1, T2, TMetric> metricFactory = null) where TMetric : MetricBase;
+        /// <param name="includePrefix">Whether the <see cref="MetricsCollectorOptions.MetricsNamePrefix"/> will be prepended to the metric name.</param>
+        MetricGroup<T1, T2, TMetric> GetMetricGroup<T1, T2, TMetric>(string name, string unit, string description, Func<T1, T2, TMetric> metricFactory = null, bool includePrefix = true) where TMetric : MetricBase;
 
         /// <summary>
-        /// Creates a new metric group where each individual metric (time series) is of type <typeparamref name="TMetric"/>. The preceding type parameters
-        /// describe the keys of the group, and typically represent different tag values. The global metric name prefix
-        /// <see cref="MetricsCollector.MetricsNamePrefix"/> will not be not be prepended to the metric name.
+        /// Obsolete - please use <see cref="GetMetricGroup{T1, T2, TMetric}(string, string, string, Func{T1, T2, TMetric}, bool)"/>
         /// </summary>
-        /// <param name="name">The metric name for all time series in this group.</param>
-        /// <param name="unit">The units for all time series in this group (e.g. "milliseconds").</param>
-        /// <param name="description">The description for all time series in the group. This will be sent to a handler as metadata.</param>
-        /// <param name="metricFactory">
-        /// The delegate used to instantiate new metrics (time series) within this group. This parameter may be omitted if <typeparamref name="TMetric"/> has a
-        /// constructor with the same signature as this delegate parameter.
-        /// </param>
+        [EditorBrowsable(EditorBrowsableState.Never)]
         MetricGroup<T1, T2, TMetric> GetMetricGroupWithoutPrefix<T1, T2, TMetric>(string name, string unit, string description, Func<T1, T2, TMetric> metricFactory = null) where TMetric : MetricBase;
     }
 
     public partial class MetricsCollector
     {
+        /// <summary>
+        /// Obsolete - please use <see cref="GetMetricGroup{T1, T2, TMetric}(string, string, string, Func{T1, T2, TMetric}, bool)"/>
+        /// </summary>
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        public MetricGroup<T1, T2, TMetric> GetMetricGroup<T1, T2, TMetric>(string name, string unit, string description, Func<T1, T2, TMetric> metricFactory = null) where TMetric : MetricBase
+            => GetMetricGroup(name, unit, description, metricFactory, includePrefix: true);
+
         /// <summary>
         /// Creates a new metric group where each individual metric (time series) is of type <typeparamref name="TMetric"/>. The preceding type parameters
         /// describe the keys of the group, and typically represent different tag values.
@@ -244,29 +242,19 @@ namespace StackExchange.Metrics
         /// The delegate used to instantiate new metrics (time series) within this group. This parameter may be omitted if <typeparamref name="TMetric"/> has a
         /// constructor with the same signature as this delegate parameter.
         /// </param>
-        public MetricGroup<T1, T2, TMetric> GetMetricGroup<T1, T2, TMetric>(string name, string unit, string description, Func<T1, T2, TMetric> metricFactory = null)
+        /// <param name="includePrefix">Whether the <see cref="MetricsCollectorOptions.MetricsNamePrefix"/> will be prepended to the metric name.</param>
+        public MetricGroup<T1, T2, TMetric> GetMetricGroup<T1, T2, TMetric>(string name, string unit, string description, Func<T1, T2, TMetric> metricFactory = null, bool includePrefix = true)
             where TMetric : MetricBase
         {
             return new MetricGroup<T1, T2, TMetric>(this, name, false, unit, description, metricFactory);
         }
 
         /// <summary>
-        /// Creates a new metric group where each individual metric (time series) is of type <typeparamref name="TMetric"/>. The preceding type parameters
-        /// describe the keys of the group, and typically represent different tag values. The global metric name prefix
-        /// <see cref="MetricsCollector.MetricsNamePrefix"/> will not be not be prepended to the metric name.
+        /// Obsolete - please use <see cref="GetMetricGroup{T1, T2, TMetric}(string, string, string, Func{T1, T2, TMetric}, bool)"/>
         /// </summary>
-        /// <param name="name">The metric name for all time series in this group.</param>
-        /// <param name="unit">The units for all time series in this group (e.g. "milliseconds").</param>
-        /// <param name="description">The description for all time series in the group. This will be sent to a handler as metadata.</param>
-        /// <param name="metricFactory">
-        /// The delegate used to instantiate new metrics (time series) within this group. This parameter may be omitted if <typeparamref name="TMetric"/> has a
-        /// constructor with the same signature as this delegate parameter.
-        /// </param>
-        public MetricGroup<T1, T2, TMetric> GetMetricGroupWithoutPrefix<T1, T2, TMetric>(string name, string unit, string description, Func<T1, T2, TMetric> metricFactory = null)
-            where TMetric : MetricBase
-        {
-            return new MetricGroup<T1, T2, TMetric>(this, name, true, unit, description, metricFactory);
-        }
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        public MetricGroup<T1, T2, TMetric> GetMetricGroupWithoutPrefix<T1, T2, TMetric>(string name, string unit, string description, Func<T1, T2, TMetric> metricFactory = null) where TMetric : MetricBase
+            => GetMetricGroup(name, unit, description, metricFactory, includePrefix: false);
     }
 
     /// <summary>
@@ -324,7 +312,8 @@ namespace StackExchange.Metrics
         /// <returns>The metric.</returns>
         public TMetric Add(T1 tag1, T2 tag2)
         {
-            return Add(tag1, tag2, out _);
+            bool isNew;
+            return Add(tag1, tag2, out isNew);
         }
 
         /// <summary>
@@ -344,7 +333,14 @@ namespace StackExchange.Metrics
                     return _metrics[key];
 
                 isNew = true;
-                return _metrics[key] = _collector.GetMetric(Name, Unit, Description, _metricFactory(tag1, tag2), includePrefix: !WithoutPrefix);
+                TMetric metric;
+                if (WithoutPrefix)
+                    metric = _collector.GetMetricWithoutPrefix(Name, Unit, Description, _metricFactory(tag1, tag2));
+                else
+                    metric = _collector.GetMetric(Name, Unit, Description, _metricFactory(tag1, tag2));
+
+                _metrics[key] = metric;
+                return metric;
             }
         }
 
@@ -390,25 +386,25 @@ namespace StackExchange.Metrics
         /// The delegate used to instantiate new metrics (time series) within this group. This parameter may be omitted if <typeparamref name="TMetric"/> has a
         /// constructor with the same signature as this delegate parameter.
         /// </param>
-        MetricGroup<T1, T2, T3, TMetric> GetMetricGroup<T1, T2, T3, TMetric>(string name, string unit, string description, Func<T1, T2, T3, TMetric> metricFactory = null) where TMetric : MetricBase;
+        /// <param name="includePrefix">Whether the <see cref="MetricsCollectorOptions.MetricsNamePrefix"/> will be prepended to the metric name.</param>
+        MetricGroup<T1, T2, T3, TMetric> GetMetricGroup<T1, T2, T3, TMetric>(string name, string unit, string description, Func<T1, T2, T3, TMetric> metricFactory = null, bool includePrefix = true) where TMetric : MetricBase;
 
         /// <summary>
-        /// Creates a new metric group where each individual metric (time series) is of type <typeparamref name="TMetric"/>. The preceding type parameters
-        /// describe the keys of the group, and typically represent different tag values. The global metric name prefix
-        /// <see cref="MetricsCollector.MetricsNamePrefix"/> will not be not be prepended to the metric name.
+        /// Obsolete - please use <see cref="GetMetricGroup{T1, T2, T3, TMetric}(string, string, string, Func{T1, T2, T3, TMetric}, bool)"/>
         /// </summary>
-        /// <param name="name">The metric name for all time series in this group.</param>
-        /// <param name="unit">The units for all time series in this group (e.g. "milliseconds").</param>
-        /// <param name="description">The description for all time series in the group. This will be sent to a handler as metadata.</param>
-        /// <param name="metricFactory">
-        /// The delegate used to instantiate new metrics (time series) within this group. This parameter may be omitted if <typeparamref name="TMetric"/> has a
-        /// constructor with the same signature as this delegate parameter.
-        /// </param>
+        [EditorBrowsable(EditorBrowsableState.Never)]
         MetricGroup<T1, T2, T3, TMetric> GetMetricGroupWithoutPrefix<T1, T2, T3, TMetric>(string name, string unit, string description, Func<T1, T2, T3, TMetric> metricFactory = null) where TMetric : MetricBase;
     }
 
     public partial class MetricsCollector
     {
+        /// <summary>
+        /// Obsolete - please use <see cref="GetMetricGroup{T1, T2, T3, TMetric}(string, string, string, Func{T1, T2, T3, TMetric}, bool)"/>
+        /// </summary>
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        public MetricGroup<T1, T2, T3, TMetric> GetMetricGroup<T1, T2, T3, TMetric>(string name, string unit, string description, Func<T1, T2, T3, TMetric> metricFactory = null) where TMetric : MetricBase
+            => GetMetricGroup(name, unit, description, metricFactory, includePrefix: true);
+
         /// <summary>
         /// Creates a new metric group where each individual metric (time series) is of type <typeparamref name="TMetric"/>. The preceding type parameters
         /// describe the keys of the group, and typically represent different tag values.
@@ -420,29 +416,19 @@ namespace StackExchange.Metrics
         /// The delegate used to instantiate new metrics (time series) within this group. This parameter may be omitted if <typeparamref name="TMetric"/> has a
         /// constructor with the same signature as this delegate parameter.
         /// </param>
-        public MetricGroup<T1, T2, T3, TMetric> GetMetricGroup<T1, T2, T3, TMetric>(string name, string unit, string description, Func<T1, T2, T3, TMetric> metricFactory = null)
+        /// <param name="includePrefix">Whether the <see cref="MetricsCollectorOptions.MetricsNamePrefix"/> will be prepended to the metric name.</param>
+        public MetricGroup<T1, T2, T3, TMetric> GetMetricGroup<T1, T2, T3, TMetric>(string name, string unit, string description, Func<T1, T2, T3, TMetric> metricFactory = null, bool includePrefix = true)
             where TMetric : MetricBase
         {
             return new MetricGroup<T1, T2, T3, TMetric>(this, name, false, unit, description, metricFactory);
         }
 
         /// <summary>
-        /// Creates a new metric group where each individual metric (time series) is of type <typeparamref name="TMetric"/>. The preceding type parameters
-        /// describe the keys of the group, and typically represent different tag values. The global metric name prefix
-        /// <see cref="MetricsCollector.MetricsNamePrefix"/> will not be not be prepended to the metric name.
+        /// Obsolete - please use <see cref="GetMetricGroup{T1, T2, T3, TMetric}(string, string, string, Func{T1, T2, T3, TMetric}, bool)"/>
         /// </summary>
-        /// <param name="name">The metric name for all time series in this group.</param>
-        /// <param name="unit">The units for all time series in this group (e.g. "milliseconds").</param>
-        /// <param name="description">The description for all time series in the group. This will be sent to a handler as metadata.</param>
-        /// <param name="metricFactory">
-        /// The delegate used to instantiate new metrics (time series) within this group. This parameter may be omitted if <typeparamref name="TMetric"/> has a
-        /// constructor with the same signature as this delegate parameter.
-        /// </param>
-        public MetricGroup<T1, T2, T3, TMetric> GetMetricGroupWithoutPrefix<T1, T2, T3, TMetric>(string name, string unit, string description, Func<T1, T2, T3, TMetric> metricFactory = null)
-            where TMetric : MetricBase
-        {
-            return new MetricGroup<T1, T2, T3, TMetric>(this, name, true, unit, description, metricFactory);
-        }
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        public MetricGroup<T1, T2, T3, TMetric> GetMetricGroupWithoutPrefix<T1, T2, T3, TMetric>(string name, string unit, string description, Func<T1, T2, T3, TMetric> metricFactory = null) where TMetric : MetricBase
+            => GetMetricGroup(name, unit, description, metricFactory, includePrefix: false);
     }
 
     /// <summary>
@@ -500,7 +486,8 @@ namespace StackExchange.Metrics
         /// <returns>The metric.</returns>
         public TMetric Add(T1 tag1, T2 tag2, T3 tag3)
         {
-            return Add(tag1, tag2, tag3, out _);
+            bool isNew;
+            return Add(tag1, tag2, tag3, out isNew);
         }
 
         /// <summary>
@@ -520,7 +507,14 @@ namespace StackExchange.Metrics
                     return _metrics[key];
 
                 isNew = true;
-                return _metrics[key] = _collector.GetMetric(Name, Unit, Description, _metricFactory(tag1, tag2, tag3), includePrefix: !WithoutPrefix);
+                TMetric metric;
+                if (WithoutPrefix)
+                    metric = _collector.GetMetricWithoutPrefix(Name, Unit, Description, _metricFactory(tag1, tag2, tag3));
+                else
+                    metric = _collector.GetMetric(Name, Unit, Description, _metricFactory(tag1, tag2, tag3));
+
+                _metrics[key] = metric;
+                return metric;
             }
         }
 
@@ -566,25 +560,25 @@ namespace StackExchange.Metrics
         /// The delegate used to instantiate new metrics (time series) within this group. This parameter may be omitted if <typeparamref name="TMetric"/> has a
         /// constructor with the same signature as this delegate parameter.
         /// </param>
-        MetricGroup<T1, T2, T3, T4, TMetric> GetMetricGroup<T1, T2, T3, T4, TMetric>(string name, string unit, string description, Func<T1, T2, T3, T4, TMetric> metricFactory = null) where TMetric : MetricBase;
+        /// <param name="includePrefix">Whether the <see cref="MetricsCollectorOptions.MetricsNamePrefix"/> will be prepended to the metric name.</param>
+        MetricGroup<T1, T2, T3, T4, TMetric> GetMetricGroup<T1, T2, T3, T4, TMetric>(string name, string unit, string description, Func<T1, T2, T3, T4, TMetric> metricFactory = null, bool includePrefix = true) where TMetric : MetricBase;
 
         /// <summary>
-        /// Creates a new metric group where each individual metric (time series) is of type <typeparamref name="TMetric"/>. The preceding type parameters
-        /// describe the keys of the group, and typically represent different tag values. The global metric name prefix
-        /// <see cref="MetricsCollector.MetricsNamePrefix"/> will not be not be prepended to the metric name.
+        /// Obsolete - please use <see cref="GetMetricGroup{T1, T2, T3, T4, TMetric}(string, string, string, Func{T1, T2, T3, T4, TMetric}, bool)"/>
         /// </summary>
-        /// <param name="name">The metric name for all time series in this group.</param>
-        /// <param name="unit">The units for all time series in this group (e.g. "milliseconds").</param>
-        /// <param name="description">The description for all time series in the group. This will be sent to a handler as metadata.</param>
-        /// <param name="metricFactory">
-        /// The delegate used to instantiate new metrics (time series) within this group. This parameter may be omitted if <typeparamref name="TMetric"/> has a
-        /// constructor with the same signature as this delegate parameter.
-        /// </param>
+        [EditorBrowsable(EditorBrowsableState.Never)]
         MetricGroup<T1, T2, T3, T4, TMetric> GetMetricGroupWithoutPrefix<T1, T2, T3, T4, TMetric>(string name, string unit, string description, Func<T1, T2, T3, T4, TMetric> metricFactory = null) where TMetric : MetricBase;
     }
 
     public partial class MetricsCollector
     {
+        /// <summary>
+        /// Obsolete - please use <see cref="GetMetricGroup{T1, T2, T3, T4, TMetric}(string, string, string, Func{T1, T2, T3, T4, TMetric}, bool)"/>
+        /// </summary>
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        public MetricGroup<T1, T2, T3, T4, TMetric> GetMetricGroup<T1, T2, T3, T4, TMetric>(string name, string unit, string description, Func<T1, T2, T3, T4, TMetric> metricFactory = null) where TMetric : MetricBase
+            => GetMetricGroup(name, unit, description, metricFactory, includePrefix: true);
+
         /// <summary>
         /// Creates a new metric group where each individual metric (time series) is of type <typeparamref name="TMetric"/>. The preceding type parameters
         /// describe the keys of the group, and typically represent different tag values.
@@ -596,29 +590,19 @@ namespace StackExchange.Metrics
         /// The delegate used to instantiate new metrics (time series) within this group. This parameter may be omitted if <typeparamref name="TMetric"/> has a
         /// constructor with the same signature as this delegate parameter.
         /// </param>
-        public MetricGroup<T1, T2, T3, T4, TMetric> GetMetricGroup<T1, T2, T3, T4, TMetric>(string name, string unit, string description, Func<T1, T2, T3, T4, TMetric> metricFactory = null)
+        /// <param name="includePrefix">Whether the <see cref="MetricsCollectorOptions.MetricsNamePrefix"/> will be prepended to the metric name.</param>
+        public MetricGroup<T1, T2, T3, T4, TMetric> GetMetricGroup<T1, T2, T3, T4, TMetric>(string name, string unit, string description, Func<T1, T2, T3, T4, TMetric> metricFactory = null, bool includePrefix = true)
             where TMetric : MetricBase
         {
             return new MetricGroup<T1, T2, T3, T4, TMetric>(this, name, false, unit, description, metricFactory);
         }
 
         /// <summary>
-        /// Creates a new metric group where each individual metric (time series) is of type <typeparamref name="TMetric"/>. The preceding type parameters
-        /// describe the keys of the group, and typically represent different tag values. The global metric name prefix
-        /// <see cref="MetricsCollector.MetricsNamePrefix"/> will not be not be prepended to the metric name.
+        /// Obsolete - please use <see cref="GetMetricGroup{T1, T2, T3, T4, TMetric}(string, string, string, Func{T1, T2, T3, T4, TMetric}, bool)"/>
         /// </summary>
-        /// <param name="name">The metric name for all time series in this group.</param>
-        /// <param name="unit">The units for all time series in this group (e.g. "milliseconds").</param>
-        /// <param name="description">The description for all time series in the group. This will be sent to a handler as metadata.</param>
-        /// <param name="metricFactory">
-        /// The delegate used to instantiate new metrics (time series) within this group. This parameter may be omitted if <typeparamref name="TMetric"/> has a
-        /// constructor with the same signature as this delegate parameter.
-        /// </param>
-        public MetricGroup<T1, T2, T3, T4, TMetric> GetMetricGroupWithoutPrefix<T1, T2, T3, T4, TMetric>(string name, string unit, string description, Func<T1, T2, T3, T4, TMetric> metricFactory = null)
-            where TMetric : MetricBase
-        {
-            return new MetricGroup<T1, T2, T3, T4, TMetric>(this, name, true, unit, description, metricFactory);
-        }
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        public MetricGroup<T1, T2, T3, T4, TMetric> GetMetricGroupWithoutPrefix<T1, T2, T3, T4, TMetric>(string name, string unit, string description, Func<T1, T2, T3, T4, TMetric> metricFactory = null) where TMetric : MetricBase
+            => GetMetricGroup(name, unit, description, metricFactory, includePrefix: false);
     }
 
     /// <summary>
@@ -676,7 +660,8 @@ namespace StackExchange.Metrics
         /// <returns>The metric.</returns>
         public TMetric Add(T1 tag1, T2 tag2, T3 tag3, T4 tag4)
         {
-            return Add(tag1, tag2, tag3, tag4, out _);
+            bool isNew;
+            return Add(tag1, tag2, tag3, tag4, out isNew);
         }
 
         /// <summary>
@@ -696,7 +681,14 @@ namespace StackExchange.Metrics
                     return _metrics[key];
 
                 isNew = true;
-                return _metrics[key] = _collector.GetMetric(Name, Unit, Description, _metricFactory(tag1, tag2, tag3, tag4), includePrefix: !WithoutPrefix);
+                TMetric metric;
+                if (WithoutPrefix)
+                    metric = _collector.GetMetricWithoutPrefix(Name, Unit, Description, _metricFactory(tag1, tag2, tag3, tag4));
+                else
+                    metric = _collector.GetMetric(Name, Unit, Description, _metricFactory(tag1, tag2, tag3, tag4));
+
+                _metrics[key] = metric;
+                return metric;
             }
         }
 
@@ -742,25 +734,25 @@ namespace StackExchange.Metrics
         /// The delegate used to instantiate new metrics (time series) within this group. This parameter may be omitted if <typeparamref name="TMetric"/> has a
         /// constructor with the same signature as this delegate parameter.
         /// </param>
-        MetricGroup<T1, T2, T3, T4, T5, TMetric> GetMetricGroup<T1, T2, T3, T4, T5, TMetric>(string name, string unit, string description, Func<T1, T2, T3, T4, T5, TMetric> metricFactory = null) where TMetric : MetricBase;
+        /// <param name="includePrefix">Whether the <see cref="MetricsCollectorOptions.MetricsNamePrefix"/> will be prepended to the metric name.</param>
+        MetricGroup<T1, T2, T3, T4, T5, TMetric> GetMetricGroup<T1, T2, T3, T4, T5, TMetric>(string name, string unit, string description, Func<T1, T2, T3, T4, T5, TMetric> metricFactory = null, bool includePrefix = true) where TMetric : MetricBase;
 
         /// <summary>
-        /// Creates a new metric group where each individual metric (time series) is of type <typeparamref name="TMetric"/>. The preceding type parameters
-        /// describe the keys of the group, and typically represent different tag values. The global metric name prefix
-        /// <see cref="MetricsCollector.MetricsNamePrefix"/> will not be not be prepended to the metric name.
+        /// Obsolete - please use <see cref="GetMetricGroup{T1, T2, T3, T4, T5, TMetric}(string, string, string, Func{T1, T2, T3, T4, T5, TMetric}, bool)"/>
         /// </summary>
-        /// <param name="name">The metric name for all time series in this group.</param>
-        /// <param name="unit">The units for all time series in this group (e.g. "milliseconds").</param>
-        /// <param name="description">The description for all time series in the group. This will be sent to a handler as metadata.</param>
-        /// <param name="metricFactory">
-        /// The delegate used to instantiate new metrics (time series) within this group. This parameter may be omitted if <typeparamref name="TMetric"/> has a
-        /// constructor with the same signature as this delegate parameter.
-        /// </param>
+        [EditorBrowsable(EditorBrowsableState.Never)]
         MetricGroup<T1, T2, T3, T4, T5, TMetric> GetMetricGroupWithoutPrefix<T1, T2, T3, T4, T5, TMetric>(string name, string unit, string description, Func<T1, T2, T3, T4, T5, TMetric> metricFactory = null) where TMetric : MetricBase;
     }
 
     public partial class MetricsCollector
     {
+        /// <summary>
+        /// Obsolete - please use <see cref="GetMetricGroup{T1, T2, T3, T4, T5, TMetric}(string, string, string, Func{T1, T2, T3, T4, T5, TMetric}, bool)"/>
+        /// </summary>
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        public MetricGroup<T1, T2, T3, T4, T5, TMetric> GetMetricGroup<T1, T2, T3, T4, T5, TMetric>(string name, string unit, string description, Func<T1, T2, T3, T4, T5, TMetric> metricFactory = null) where TMetric : MetricBase
+            => GetMetricGroup(name, unit, description, metricFactory, includePrefix: true);
+
         /// <summary>
         /// Creates a new metric group where each individual metric (time series) is of type <typeparamref name="TMetric"/>. The preceding type parameters
         /// describe the keys of the group, and typically represent different tag values.
@@ -772,29 +764,19 @@ namespace StackExchange.Metrics
         /// The delegate used to instantiate new metrics (time series) within this group. This parameter may be omitted if <typeparamref name="TMetric"/> has a
         /// constructor with the same signature as this delegate parameter.
         /// </param>
-        public MetricGroup<T1, T2, T3, T4, T5, TMetric> GetMetricGroup<T1, T2, T3, T4, T5, TMetric>(string name, string unit, string description, Func<T1, T2, T3, T4, T5, TMetric> metricFactory = null)
+        /// <param name="includePrefix">Whether the <see cref="MetricsCollectorOptions.MetricsNamePrefix"/> will be prepended to the metric name.</param>
+        public MetricGroup<T1, T2, T3, T4, T5, TMetric> GetMetricGroup<T1, T2, T3, T4, T5, TMetric>(string name, string unit, string description, Func<T1, T2, T3, T4, T5, TMetric> metricFactory = null, bool includePrefix = true)
             where TMetric : MetricBase
         {
             return new MetricGroup<T1, T2, T3, T4, T5, TMetric>(this, name, false, unit, description, metricFactory);
         }
 
         /// <summary>
-        /// Creates a new metric group where each individual metric (time series) is of type <typeparamref name="TMetric"/>. The preceding type parameters
-        /// describe the keys of the group, and typically represent different tag values. The global metric name prefix
-        /// <see cref="MetricsCollector.MetricsNamePrefix"/> will not be not be prepended to the metric name.
+        /// Obsolete - please use <see cref="GetMetricGroup{T1, T2, T3, T4, T5, TMetric}(string, string, string, Func{T1, T2, T3, T4, T5, TMetric}, bool)"/>
         /// </summary>
-        /// <param name="name">The metric name for all time series in this group.</param>
-        /// <param name="unit">The units for all time series in this group (e.g. "milliseconds").</param>
-        /// <param name="description">The description for all time series in the group. This will be sent to a handler as metadata.</param>
-        /// <param name="metricFactory">
-        /// The delegate used to instantiate new metrics (time series) within this group. This parameter may be omitted if <typeparamref name="TMetric"/> has a
-        /// constructor with the same signature as this delegate parameter.
-        /// </param>
-        public MetricGroup<T1, T2, T3, T4, T5, TMetric> GetMetricGroupWithoutPrefix<T1, T2, T3, T4, T5, TMetric>(string name, string unit, string description, Func<T1, T2, T3, T4, T5, TMetric> metricFactory = null)
-            where TMetric : MetricBase
-        {
-            return new MetricGroup<T1, T2, T3, T4, T5, TMetric>(this, name, true, unit, description, metricFactory);
-        }
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        public MetricGroup<T1, T2, T3, T4, T5, TMetric> GetMetricGroupWithoutPrefix<T1, T2, T3, T4, T5, TMetric>(string name, string unit, string description, Func<T1, T2, T3, T4, T5, TMetric> metricFactory = null) where TMetric : MetricBase
+            => GetMetricGroup(name, unit, description, metricFactory, includePrefix: false);
     }
 
     /// <summary>
@@ -852,7 +834,8 @@ namespace StackExchange.Metrics
         /// <returns>The metric.</returns>
         public TMetric Add(T1 tag1, T2 tag2, T3 tag3, T4 tag4, T5 tag5)
         {
-            return Add(tag1, tag2, tag3, tag4, tag5, out _);
+            bool isNew;
+            return Add(tag1, tag2, tag3, tag4, tag5, out isNew);
         }
 
         /// <summary>
@@ -872,7 +855,14 @@ namespace StackExchange.Metrics
                     return _metrics[key];
 
                 isNew = true;
-                return _metrics[key] = _collector.GetMetric(Name, Unit, Description, _metricFactory(tag1, tag2, tag3, tag4, tag5), includePrefix: !WithoutPrefix);
+                TMetric metric;
+                if (WithoutPrefix)
+                    metric = _collector.GetMetricWithoutPrefix(Name, Unit, Description, _metricFactory(tag1, tag2, tag3, tag4, tag5));
+                else
+                    metric = _collector.GetMetric(Name, Unit, Description, _metricFactory(tag1, tag2, tag3, tag4, tag5));
+
+                _metrics[key] = metric;
+                return metric;
             }
         }
 
