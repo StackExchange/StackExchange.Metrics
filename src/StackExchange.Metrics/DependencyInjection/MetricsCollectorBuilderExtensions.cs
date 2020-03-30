@@ -4,7 +4,7 @@ using StackExchange.Metrics.Handlers;
 using StackExchange.Metrics.Infrastructure;
 using StackExchange.Metrics.Metrics;
 
-namespace StackExchange.Metrics.DependencyInjection
+namespace Microsoft.Extensions.DependencyInjection
 {
     /// <summary>
     /// Extension methods for <see cref="IMetricsCollectorBuilder" />.
