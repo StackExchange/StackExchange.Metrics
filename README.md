@@ -7,6 +7,14 @@ A thread-safe C# .NET client for reporting metrics to various providers, includi
 
 __[VIEW CHANGES IN StackExchange.Metrics 1.0](https://github.com/StackExchange/StackExchange.Metrics/blob/master/docs/ReleaseNotes.md)__
 
+#### Package Status
+
+MyGet Pre-release feed: https://www.myget.org/gallery/stackoverflow
+
+| Package | NuGet Stable | NuGet Pre-release | Downloads | MyGet |
+| ------- | ------------ | ----------------- | --------- | ----- |
+| [StackExchange.Metrics](https://www.nuget.org/packages/StackExchange.Metrics/) | [![StackExchange.Metrics](https://img.shields.io/nuget/v/StackExchange.Metrics.svg)](https://www.nuget.org/packages/StackExchange.Metrics/) | [![StackExchange.Metrics](https://img.shields.io/nuget/vpre/StackExchange.Metrics.svg)](https://www.nuget.org/packages/StackExchange.Metrics/) | [![StackExchange.Metrics](https://img.shields.io/nuget/dt/StackExchange.Metrics.svg)](https://www.nuget.org/packages/StackExchange.Metrics/) | [![StackExchange.Metrics MyGet](https://img.shields.io/myget/stackoverflow/vpre/StackExchange.Metrics.svg)](https://www.myget.org/feed/stackoverflow/package/nuget/StackExchange.Metrics) |
+
 ### Basic Usage
 
 #### .NET Full Framework
