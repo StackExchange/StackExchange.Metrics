@@ -202,23 +202,12 @@ namespace StackExchange.Metrics
                     }
                 });
         }
-
         /// <summary>
-        /// Attempts to get basic information about a metric, by name. The global prefix <see cref="MetricsNamePrefix"/> is prepended to the name before
-        /// attempting to retrieve the info. Returns false if no metric by that name exists.
+        /// Attempts to get basic information about a metric, by name. Returns false if no metric by that name exists.
         /// </summary>
-        public bool TryGetMetricInfo(string name, out Type type, out string unit)
+        public bool TryGetMetricInfo(string name, out Type type, out string unit, bool includePrefix = true)
         {
-            return TryGetMetricWithoutPrefixInfo(MetricsNamePrefix + name, out type, out unit);
-        }
-
-        /// <summary>
-        /// Attempts to get basic information about a metric, by name. The global prefix <see cref="MetricsNamePrefix"/> is NOT applied to the name. Return
-        /// false if no metric by that name exists.
-        /// </summary>
-        public bool TryGetMetricWithoutPrefixInfo(string name, out Type type, out string unit)
-        {
-            if (_rootNameToInfo.TryGetValue(name, out var rmi))
+            if (_rootNameToInfo.TryGetValue(includePrefix ? MetricsNamePrefix + name : name, out var rmi))
             {
                 type = rmi.Type;
                 unit = rmi.Unit;
@@ -252,20 +241,14 @@ namespace StackExchange.Metrics
         /// <summary>
         /// Binds a given metric name to a specific data model. Metrics with this name will only be allowed to use the type <paramref name="type"/>. Calling
         /// this method is usually not necessary. A metric will be bound to the type that it is first instantiated with.
-        /// 
-        /// The global prefix <see cref="MetricsNamePrefix"/> is prepended to the name before attempting to bind the metric.
         /// </summary>
-        public void BindMetric(string name, string unit, Type type)
+        public void BindMetric(string name, string unit, Type type, bool includePrefix = true)
         {
-            BindMetricWithoutPrefix(MetricsNamePrefix + name, unit, type);
-        }
+            if (includePrefix)
+            {
+                name = MetricsNamePrefix + name;
+            }
 
-        /// <summary>
-        /// Binds a given metric name to a specific data model. Metrics with this name will only be allowed to use the type <paramref name="type"/>. Calling
-        /// this method is usually not necessary. A metric will be bound to the type that it is first instantiated with.
-        /// </summary>
-        public void BindMetricWithoutPrefix(string name, string unit, Type type)
-        {
             lock (_metricsLock)
             {
                 if (_rootNameToInfo.TryGetValue(name, out var rmi))
