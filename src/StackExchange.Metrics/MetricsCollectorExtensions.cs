@@ -81,6 +81,7 @@ namespace StackExchange.Metrics
                         // Skip excluded tags
                         if (excludedTags.Contains(tag.Key) || collector.DefaultTags.ContainsKey(tag.Key))
                         {
+                            i++;
                             continue;
                         }
 
