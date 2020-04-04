@@ -1,7 +1,6 @@
 # StackExchange.Metrics
 
-[![NuGet version](https://badge.fury.io/nu/StackExchange.Metrics.svg)](http://badge.fury.io/nu/StackExchange.Metrics)
-[![Build status](https://ci.appveyor.com/api/projects/status/98pw56cuf3wuhe2l/branch/master?svg=true)](https://ci.appveyor.com/project/StackExchange/StackExchange.Metrics/branch/master)
+![Build status](https://github.com/StackExchange/StackExchange.Metrics/workflows/Build,%20Test%20&%20Package/badge.svg)
 
 A thread-safe C# .NET client for reporting metrics to various providers, including [Bosun (Time Series Alerting Framework)](http://bosun.org) and SignalFx. This library is more than a simple wrapper around relevant APIs. It is designed to encourage best-practices while making it easy to create counters and gauges, including multi-aggregate gauges. It automatically reports metrics on an interval and handles temporary API or network outages using a re-try queue.
 
