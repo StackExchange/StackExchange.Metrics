@@ -166,7 +166,7 @@ namespace StackExchange.Metrics.Infrastructure
 
         /// <summary>
         /// Called when metrics should be serialized to a payload. You must call <see cref="WriteValue"/> in order for anything to be serialized.
-        ///  
+        ///
         /// This is called in serial with all other metrics, so DO NOT do anything computationally expensive in this method. If you need to do expensive
         /// computations (e.g. sorting a bunch of data), do it in <see cref="PreSerialize"/> which is called in parallel prior to this method.
         /// </summary>
@@ -241,7 +241,7 @@ namespace StackExchange.Metrics.Infrastructure
             var tags = new Dictionary<string, string>();
             foreach (var tag in GetTagsList(defaultTags, tagsByTypeCache))
             {
-                var value = tag.IsFromDefault ? defaultTags[tag.Name] : tag.FieldInfo.GetValue(this)?.ToString();
+                var value = tag.IsFromDefault ? defaultTags[tag.Name] : tag.GetValue(this);
                 if (tagValueConverter != null)
                     value = tagValueConverter(tag.Name, value);
 
@@ -251,12 +251,12 @@ namespace StackExchange.Metrics.Infrastructure
                         continue;
 
                     throw new InvalidOperationException(
-                        $"null is not a valid tag value for {GetType().FullName}.{tag.FieldInfo.Name}. This tag was declared as non-optional.");
+                        $"null is not a valid tag value for {GetType().FullName}.{tag.MemberInfo.Name}. This tag was declared as non-optional.");
                 }
                 if (!MetricValidation.IsValidTagValue(value))
                 {
                     throw new InvalidOperationException(
-                        $"Invalid value for tag {GetType().FullName}.{tag.FieldInfo.Name}. \"{value}\" is not a valid tag value. " +
+                        $"Invalid value for tag {GetType().FullName}.{tag.MemberInfo.Name}. \"{value}\" is not a valid tag value. " +
                         $"Only characters in the regex class [a-zA-Z0-9\\-_./] are allowed.");
                 }
 
