@@ -8,8 +8,24 @@ on:
     - 'docs/**' # Don't run workflow when files are only in the /docs directory
 
 jobs:
-  build:
-    runs-on: windows-2019
+  build-ubuntu:
+    runs-on: ubuntu-latest
+    if: "!contains(github.event.head_commit.message, 'ci skip')"
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+      with:
+        fetch-depth: 0
+    - uses: actions/setup-dotnet@v1
+      with:
+          dotnet-version: '3.1.201'
+    - name: .NET Build
+      run: dotnet build Build.csproj -c Release /p:CI=true
+    - name: .NET Test
+      run: dotnet test Build.csproj -c Release --no-build /p:CI=true
+  build-windows:
+    needs: build-ubuntu
+    runs-on: windows-latest
     if: "!contains(github.event.head_commit.message, 'ci skip')"
     steps:
     - name: Checkout code
@@ -20,6 +36,7 @@ jobs:
       run: dotnet build Build.csproj -c Release /p:CI=true
     - name: .NET Test
       run: dotnet test Build.csproj -c Release --no-build /p:CI=true
+    steps:
     - name: .NET Pack
       run: dotnet pack Build.csproj --no-build -c Release /p:PackageOutputPath=${env:GITHUB_WORKSPACE}\.nupkgs /p:CI=true
     - name: Push to MyGet
