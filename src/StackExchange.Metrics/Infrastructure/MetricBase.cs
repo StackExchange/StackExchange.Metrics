@@ -1,7 +1,6 @@
 ﻿using StackExchange.Metrics.Metrics;
 using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
@@ -46,7 +45,7 @@ namespace StackExchange.Metrics.Infrastructure
         internal int SuffixCount => SuffixesArray.Length;
 
         IReadOnlyDictionary<string, string> _tags;
-        internal IReadOnlyDictionary<string, string> Tags => _tags ?? (_tags = GetTags(Collector.DefaultTags, Collector.TagValueConverter, Collector.TagsByTypeCache));
+        internal IReadOnlyDictionary<string, string> Tags => _tags ??= GetTags(Collector.DefaultTags, Collector.TagValueConverter, Collector.PropertyToTagName, Collector.TagsByTypeCache);
 
         string _name;
         readonly object _nameLock = new object();
@@ -166,7 +165,7 @@ namespace StackExchange.Metrics.Infrastructure
 
         /// <summary>
         /// Called when metrics should be serialized to a payload. You must call <see cref="WriteValue"/> in order for anything to be serialized.
-        ///  
+        ///
         /// This is called in serial with all other metrics, so DO NOT do anything computationally expensive in this method. If you need to do expensive
         /// computations (e.g. sorting a bunch of data), do it in <see cref="PreSerialize"/> which is called in parallel prior to this method.
         /// </summary>
@@ -236,12 +235,13 @@ namespace StackExchange.Metrics.Infrastructure
         internal IReadOnlyDictionary<string, string> GetTags(
             IReadOnlyDictionary<string, string> defaultTags,
             TagValueConverterDelegate tagValueConverter,
+            Func<string, string> propertyToTagConverter,
             Dictionary<Type, List<MetricTag>> tagsByTypeCache)
         {
             var tags = new Dictionary<string, string>();
-            foreach (var tag in GetTagsList(defaultTags, tagsByTypeCache))
+            foreach (var tag in GetTagsList(defaultTags, propertyToTagConverter, tagsByTypeCache))
             {
-                var value = tag.IsFromDefault ? defaultTags[tag.Name] : tag.FieldInfo.GetValue(this)?.ToString();
+                var value = tag.IsFromDefault ? defaultTags[tag.Name] : tag.GetValue(this);
                 if (tagValueConverter != null)
                     value = tagValueConverter(tag.Name, value);
 
@@ -251,12 +251,12 @@ namespace StackExchange.Metrics.Infrastructure
                         continue;
 
                     throw new InvalidOperationException(
-                        $"null is not a valid tag value for {GetType().FullName}.{tag.FieldInfo.Name}. This tag was declared as non-optional.");
+                        $"null is not a valid tag value for {GetType().FullName}.{tag.MemberInfo.Name}. This tag was declared as non-optional.");
                 }
                 if (!MetricValidation.IsValidTagValue(value))
                 {
                     throw new InvalidOperationException(
-                        $"Invalid value for tag {GetType().FullName}.{tag.FieldInfo.Name}. \"{value}\" is not a valid tag value. " +
+                        $"Invalid value for tag {GetType().FullName}.{tag.MemberInfo.Name}. \"{value}\" is not a valid tag value. " +
                         $"Only characters in the regex class [a-zA-Z0-9\\-_./] are allowed.");
                 }
 
@@ -272,20 +272,20 @@ namespace StackExchange.Metrics.Infrastructure
             return tags;
         }
 
-        List<MetricTag> GetTagsList(IReadOnlyDictionary<string, string> defaultTags, Dictionary<Type, List<MetricTag>> tagsByTypeCache)
+        List<MetricTag> GetTagsList(IReadOnlyDictionary<string, string> defaultTags, Func<string, string> propertyToTagConverter, Dictionary<Type, List<MetricTag>> tagsByTypeCache)
         {
             var type = GetType();
             if (tagsByTypeCache.ContainsKey(type))
                 return tagsByTypeCache[type];
 
             // build list of tag members of the current type
-            var fields = type.GetFields();
+            var members = type.GetMembers();
             var tags = new List<MetricTag>();
-            foreach (var f in fields)
+            foreach (var member in members)
             {
-                var metricTag = f.GetCustomAttribute<MetricTagAttribute>();
+                var metricTag = member.GetCustomAttribute<MetricTagAttribute>();
                 if (metricTag != null)
-                    tags.Add(new MetricTag(f, metricTag, Collector.PropertyToTagName));
+                    tags.Add(new MetricTag(member, metricTag, propertyToTagConverter));
             }
 
             // get default tags

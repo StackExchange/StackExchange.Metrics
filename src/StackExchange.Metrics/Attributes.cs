@@ -9,7 +9,7 @@ namespace StackExchange.Metrics
     /// <summary>
     /// Marks a field as a Bosun tag.
     /// </summary>
-    [AttributeUsage(AttributeTargets.Field)]
+    [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property, AllowMultiple = false, Inherited = false)]
     public class MetricTagAttribute : Attribute
     {
         /// <summary>

@@ -87,7 +87,7 @@ namespace StackExchange.Metrics
         /// from MetricBase to exclude default tags. If an inherited class has a conflicting MetricTag field, it will override the default tag value. Default
         /// tags will generally not be included in metadata.
         /// </summary>
-        public IReadOnlyDictionary<string, string> DefaultTags { get; private set; }
+        public IReadOnlyDictionary<string, string> DefaultTags { get; }
 
         /// <summary>
         /// True if <see cref="Shutdown"/> has been called on this collector.
