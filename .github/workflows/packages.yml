@@ -36,7 +36,6 @@ jobs:
       run: dotnet build Build.csproj -c Release /p:CI=true
     - name: .NET Test
       run: dotnet test Build.csproj -c Release --no-build /p:CI=true
-    steps:
     - name: .NET Pack
       run: dotnet pack Build.csproj --no-build -c Release /p:PackageOutputPath=${env:GITHUB_WORKSPACE}\.nupkgs /p:CI=true
     - name: Push to MyGet
