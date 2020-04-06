@@ -4,7 +4,7 @@
 
 A thread-safe C# .NET client for reporting metrics to various providers, including [Bosun (Time Series Alerting Framework)](http://bosun.org) and SignalFx. This library is more than a simple wrapper around relevant APIs. It is designed to encourage best-practices while making it easy to create counters and gauges, including multi-aggregate gauges. It automatically reports metrics on an interval and handles temporary API or network outages using a re-try queue.
 
-__[VIEW CHANGES IN StackExchange.Metrics 1.0](https://github.com/StackExchange/StackExchange.Metrics/blob/master/docs/ReleaseNotes.md)__
+__[VIEW CHANGES IN StackExchange.Metrics 2.0](https://github.com/StackExchange/StackExchange.Metrics/blob/master/docs/ReleaseNotes.md)__
 
 #### Package Status
 
@@ -45,7 +45,7 @@ var collector = new MetricsCollector(
 For .NET Core, you can configure a `MetricsCollector` in your `Startup.cs`. 
 
 Using the snippet below will register an `IHostedService` in the service collection that manages the lifetime of the `MetricsCollector`
-and configures it with the specified 
+and configures it with the specified endpoints, metric sets and tags.
 
 ```csharp
 public class Startup
