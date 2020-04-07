@@ -64,14 +64,14 @@ namespace StackExchange.Metrics.Tests
             try
             {
                 // we should have received one event here
-                Assert.True(resetEvent.WaitOne(TimeSpan.FromSeconds(1)));
+                Assert.True(resetEvent.WaitOne(TimeSpan.FromSeconds(1)), "Did not receive initial counter metric value");
                 Assert.Equal(1, callCount);
 
                 // increment the counter
                 CustomEventSource.Instance.IncrementCounter();
 
                 // shoulda received another event!
-                Assert.True(resetEvent.WaitOne(TimeSpan.FromSeconds(1)));
+                Assert.True(resetEvent.WaitOne(TimeSpan.FromSeconds(2)), "Did not receive updated counter metric value");
                 Assert.Equal(2, callCount);
             }
             finally
@@ -124,14 +124,14 @@ namespace StackExchange.Metrics.Tests
             try
             {
                 // we should have received one event here
-                Assert.True(resetEvent.WaitOne(TimeSpan.FromSeconds(1)));
+                Assert.True(resetEvent.WaitOne(TimeSpan.FromSeconds(1)), "Did not receive initial gauge metric value");
                 Assert.Equal(1, callCount);
 
                 // update the gauge
                 CustomEventSource.Instance.UpdateGauge();
 
                 // shoulda received another event!
-                Assert.True(resetEvent.WaitOne(TimeSpan.FromSeconds(1)));
+                Assert.True(resetEvent.WaitOne(TimeSpan.FromSeconds(2)), "Did not receive updated gauge metric value");
                 Assert.Equal(2, callCount);
             }
             finally
