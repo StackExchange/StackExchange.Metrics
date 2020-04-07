@@ -79,7 +79,7 @@ namespace StackExchange.Metrics.Tests
                 }
             );
 
-            Assert.True(exceptionThrown.Wait(TimeSpan.FromMilliseconds(200)), "Exception handler was not invoked");
+            Assert.True(exceptionThrown.Wait(TimeSpan.FromSeconds(1)), "Exception handler was not invoked");
         }
 
         private class TestMetricSet : IMetricSet
