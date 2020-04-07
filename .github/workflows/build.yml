@@ -20,9 +20,9 @@ jobs:
       with:
           dotnet-version: '3.1.201'
     - name: .NET Build
-      run: dotnet build Build.csproj -c Release /p:CI=true
+      run: dotnet build Build.csproj -c Release --nologo /p:CI=true
     - name: .NET Test
-      run: dotnet test Build.csproj -c Release --no-build /p:CI=true
+      run: dotnet test Build.csproj -c Release --no-build --nologo /p:CI=true
   build-windows:
     runs-on: windows-latest
     if: "!contains(github.event.head_commit.message, 'ci skip')"
@@ -32,6 +32,6 @@ jobs:
       with:
         fetch-depth: 0
     - name: .NET Build
-      run: dotnet build Build.csproj -c Release /p:CI=true
+      run: dotnet build Build.csproj -c Release --nologo /p:CI=true
     - name: .NET Test
-      run: dotnet test Build.csproj -c Release --no-build /p:CI=true
+      run: dotnet test Build.csproj -c Release --no-build --nologo /p:CI=true

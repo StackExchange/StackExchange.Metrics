@@ -44,7 +44,7 @@ namespace Microsoft.Extensions.DependencyInjection
         /// <summary>
         /// Adds a Bosun endpoint to the collector.
         /// </summary>
-        public static IMetricsCollectorBuilder AddBosunEndpoint(this IMetricsCollectorBuilder builder, Uri baseUri, Action<BosunMetricHandler> configure)
+        public static IMetricsCollectorBuilder AddBosunEndpoint(this IMetricsCollectorBuilder builder, Uri baseUri, Action<BosunMetricHandler> configure = null)
         {
             var handler = new BosunMetricHandler(baseUri);
             configure?.Invoke(handler);
