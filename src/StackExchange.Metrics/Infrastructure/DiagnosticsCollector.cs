@@ -26,6 +26,7 @@ namespace StackExchange.Metrics.Infrastructure
         private ImmutableArray<EventPipeProvider> _eventSources = ImmutableArray<EventPipeProvider>.Empty;
         private CancellationTokenSource _cancellationTokenSource;
         private Task _reportingTask;
+        private TaskCompletionSource<object> _reportingStarted;
 
         public DiagnosticsCollector(ILogger<DiagnosticsCollector> logger)
         {
@@ -47,9 +48,12 @@ namespace StackExchange.Metrics.Infrastructure
             _gaugeCallbacks = _gaugeCallbacks.SetItem((provider, name), action);
         }
 
+        public Task WaitUntilProcessing() => _reportingStarted.Task;
+
         Task IHostedService.StartAsync(CancellationToken cancellationToken)
         {
             _cancellationTokenSource = new CancellationTokenSource();
+            _reportingStarted = new TaskCompletionSource<object>();
             _reportingTask = Task.Run(
                 async () =>
                 {
@@ -111,13 +115,13 @@ namespace StackExchange.Metrics.Infrastructure
                             // On Unix platforms, we may actually get a PNSE since the pipe is gone with the process, and Runtime Client Library
                             // does not know how to distinguish a situation where there is no pipe to begin with, or where the process has exited
                             // before dotnet-counters and got rid of a pipe that once existed.
-                            // Since we are catching this in StopMonitor() we know that the pipe once existed (otherwise the exception would've 
+                            // Since we are catching this in StopMonitor() we know that the pipe once existed (otherwise the exception would've
                             // been thrown in StartMonitor directly)
                             catch (PlatformNotSupportedException)
                             {
                             }
                             // If the process has already exited, a ServerNotAvailableException will be thrown.
-                            // This can always race with tye shutting down and a process being restarted on exiting.
+                            // This can always race with shutting down and a process being restarted on exiting.
                             catch (ServerNotAvailableException)
                             {
                             }
@@ -131,6 +135,11 @@ namespace StackExchange.Metrics.Infrastructure
                             {
                                 source.Dynamic.All += traceEvent =>
                                 {
+                                    if (!_reportingStarted.Task.IsCompleted)
+                                    {
+                                        _reportingStarted.SetResult(null);
+                                    }
+
                                     try
                                     {
                                         // Metrics
@@ -202,6 +211,10 @@ namespace StackExchange.Metrics.Infrastructure
             }
 
             await _reportingTask;
+            if (!_reportingStarted.Task.IsCompleted)
+            {
+                _reportingStarted.SetCanceled();
+            }
         }
     }
 }
