@@ -29,11 +29,11 @@ namespace StackExchange.Metrics.Tests
             try
             {
                 // make sure initialization happened
-                await Task.WhenAny(metricSet.InitializeTask, Task.Delay(100));
+                await Task.WhenAny(metricSet.InitializeTask, Task.Delay(1000));
                 Assert.True(metricSet.InitializeTask.IsCompleted, "Metric set was not initialized");
 
                 // and then make sure we actually got snapshotted!
-                await Task.WhenAny(metricSet.SnapshotTask, Task.Delay(100));
+                await Task.WhenAny(metricSet.SnapshotTask, Task.Delay(1000));
                 Assert.True(metricSet.SnapshotTask.IsCompleted, "Metric set was not snapshotted");
             }
             finally
