@@ -136,7 +136,7 @@ Metric groups allow you to easily setup metrics which share the same name, but w
 
 ### Metric sets
 
-Metric sets are pre-packaged sets of metrics that are useful across different applications. [See Documentation]([See Documentation](https://github.com/StackExchange/StackExchange.Metrics/blob/master/docs/MetricSet.md) for further details.
+Metric sets are pre-packaged sets of metrics that are useful across different applications. [See Documentation](https://github.com/StackExchange/StackExchange.Metrics/blob/master/docs/MetricSet.md) for further details.
 
 ## Implementation Notes
 
