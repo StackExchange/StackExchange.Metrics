@@ -5,8 +5,6 @@ VisualStudioVersion = 16.0.29306.81
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "StackExchange.Metrics", "src\StackExchange.Metrics\StackExchange.Metrics.csproj", "{9D6C3CB4-C01A-4335-8C69-347A335F24D1}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Scratch", "tests\Scratch\Scratch.csproj", "{1CE60D86-9385-41FE-AEB8-427180FEFB6D}"
-EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{447B6C2F-9B2C-4325-8BEB-FB6B7A079A15}"
 	ProjectSection(SolutionItems) = preProject
 		.gitattributes = .gitattributes
@@ -30,6 +28,10 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "samples", "samples", "{EC09
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "StackExchange.Metrics.SampleHost", "samples\StackExchange.Metrics.SampleHost\StackExchange.Metrics.SampleHost.csproj", "{2D471133-028C-4346-B6A3-EC58B5643ECB}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "benchmarks", "benchmarks", "{A20841A7-5CB3-46CE-A5F0-80D5CE68D3C4}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "StackExchange.Metrics.Benchmarks", "benchmarks\StackExchange.Metrics.Benchmarks\StackExchange.Metrics.Benchmarks.csproj", "{FFED97CE-3EBC-4E4D-BAB3-8BFB5D6A3210}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -40,10 +42,6 @@ Global
 		{9D6C3CB4-C01A-4335-8C69-347A335F24D1}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{9D6C3CB4-C01A-4335-8C69-347A335F24D1}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{9D6C3CB4-C01A-4335-8C69-347A335F24D1}.Release|Any CPU.Build.0 = Release|Any CPU
-		{1CE60D86-9385-41FE-AEB8-427180FEFB6D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{1CE60D86-9385-41FE-AEB8-427180FEFB6D}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{1CE60D86-9385-41FE-AEB8-427180FEFB6D}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{1CE60D86-9385-41FE-AEB8-427180FEFB6D}.Release|Any CPU.Build.0 = Release|Any CPU
 		{58B2EDE5-0EB4-46BC-BFB8-4B103F02E0A5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{58B2EDE5-0EB4-46BC-BFB8-4B103F02E0A5}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{58B2EDE5-0EB4-46BC-BFB8-4B103F02E0A5}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -52,15 +50,19 @@ Global
 		{2D471133-028C-4346-B6A3-EC58B5643ECB}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{2D471133-028C-4346-B6A3-EC58B5643ECB}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{2D471133-028C-4346-B6A3-EC58B5643ECB}.Release|Any CPU.Build.0 = Release|Any CPU
+		{FFED97CE-3EBC-4E4D-BAB3-8BFB5D6A3210}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FFED97CE-3EBC-4E4D-BAB3-8BFB5D6A3210}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FFED97CE-3EBC-4E4D-BAB3-8BFB5D6A3210}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FFED97CE-3EBC-4E4D-BAB3-8BFB5D6A3210}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{9D6C3CB4-C01A-4335-8C69-347A335F24D1} = {D877841E-FCD9-4222-ACD7-7B7FE1C03778}
-		{1CE60D86-9385-41FE-AEB8-427180FEFB6D} = {9D1086EB-5440-414D-87B6-E8318670A1F6}
 		{58B2EDE5-0EB4-46BC-BFB8-4B103F02E0A5} = {9D1086EB-5440-414D-87B6-E8318670A1F6}
 		{2D471133-028C-4346-B6A3-EC58B5643ECB} = {EC09332A-A10B-4DC4-9D6A-29BDDE8557E7}
+		{FFED97CE-3EBC-4E4D-BAB3-8BFB5D6A3210} = {A20841A7-5CB3-46CE-A5F0-80D5CE68D3C4}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {10BDE042-930B-4E4D-90F6-00358BAC6A52}

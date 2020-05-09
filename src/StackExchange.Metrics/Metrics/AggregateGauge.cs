@@ -1,27 +1,24 @@
-﻿using StackExchange.Metrics.Infrastructure;
-using System;
+﻿using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
-using System.Linq;
-using System.Reflection;
+using StackExchange.Metrics.Infrastructure;
 
 namespace StackExchange.Metrics.Metrics
 {
     /// <summary>
-    /// Aggregates data points (min, max, avg, median, etc) before sending them to a handler. Good for recording high-volume events. You must inherit from this
-    /// class in order to use it. See https://github.com/StackExchange/StackExchange.Metrics/blob/master/docs/MetricTypes.md#aggregategauge
+    /// Aggregates data points (min, max, avg, median, etc) before sending them to a handler. Good for recording high-volume events.
+    /// See https://github.com/StackExchange/StackExchange.Metrics/blob/master/docs/MetricTypes.md#aggregategauge
     /// </summary>
-    public abstract class AggregateGauge : MetricBase
+    public sealed class AggregateGauge : MetricBase
     {
         enum SnapshotReportingMode
         {
             None,
             CountOnly,
-            All
+            All,
         }
-
-        static readonly Dictionary<Type, GaugeAggregatorStrategy> s_aggregatorsByTypeCache = new Dictionary<Type, GaugeAggregatorStrategy>();
 
         /// <summary>
         /// A delegate which backs the <see cref="MinimumEvents"/> property.
@@ -29,8 +26,8 @@ namespace StackExchange.Metrics.Metrics
         public static Func<int> GetDefaultMinimumEvents { get; set; } = () => 1;
 
         readonly object _recordLock = new object();
-        readonly double[] _percentiles;
-        readonly string[] _suffixes;
+        readonly ImmutableArray<double> _percentiles;
+        readonly ImmutableArray<string> _suffixes;
 
         readonly bool _trackMean;
         readonly bool _specialCaseMax;
@@ -50,25 +47,13 @@ namespace StackExchange.Metrics.Metrics
         int _count = 0;
 
         /// <summary>
-        /// The type of metric (gauge, in this case).
+        /// Instantiates a new <see cref="AggregateGauge"/>.
         /// </summary>
-        public override MetricType MetricType => MetricType.Gauge;
-
-        /// <summary>
-        /// Determines the minimum number of events which need to be recorded in any given reporting interval
-        /// before they will be aggregated and reported. If this threshold is not met, the recorded data points
-        /// will be discarded at the end of the reporting interval.
-        /// </summary>
-        public virtual int MinimumEvents => GetDefaultMinimumEvents();
-
-        /// <summary>
-        /// Protected constructor for calling from child classes.
-        /// </summary>
-        protected AggregateGauge()
+        public AggregateGauge(IEnumerable<GaugeAggregator> aggregators, string name, string unit, string description, MetricSourceOptions options, ImmutableDictionary<string, string> tags = null) : base(name, unit, description, options, tags)
         {
-            var strategy = GetAggregatorStategy();
+            var strategy = new GaugeAggregatorStrategy(aggregators.ToImmutableArray());
             // denormalize these for one less level of indirection
-            _percentiles= strategy.Percentiles;
+            _percentiles = strategy.Percentiles;
             _suffixes = strategy.Suffixes;
             _trackMean = strategy.TrackMean;
             _specialCaseMin = strategy.SpecialCaseMin;
@@ -85,12 +70,16 @@ namespace StackExchange.Metrics.Metrics
         }
 
         /// <summary>
-        /// See <see cref="MetricBase.GetImmutableSuffixesArray"/>
+        /// The type of metric (gauge, in this case).
         /// </summary>
-        protected override string[] GetImmutableSuffixesArray()
-        {
-            return _suffixes;
-        }
+        public override MetricType MetricType => MetricType.Gauge;
+
+        /// <summary>
+        /// Determines the minimum number of events which need to be recorded in any given reporting interval
+        /// before they will be aggregated and reported. If this threshold is not met, the recorded data points
+        /// will be discarded at the end of the reporting interval.
+        /// </summary>
+        public int MinimumEvents => GetDefaultMinimumEvents();
 
         /// <summary>
         /// Records a data point on the aggregate gauge. This will likely not be sent to Bosun as an individual datapoint. Instead, it will be aggregated with
@@ -98,8 +87,6 @@ namespace StackExchange.Metrics.Metrics
         /// </summary>
         public void Record(double value)
         {
-            AssertAttached();
-
             lock (_recordLock)
             {
                 _count++;
@@ -128,33 +115,40 @@ namespace StackExchange.Metrics.Metrics
             }
         }
 
-        /// <summary>
-        /// See <see cref="MetricBase.GetDescription"/>
-        /// </summary>
-        public override string GetDescription(int suffixIndex)
+        /// <inheritdoc/>
+        protected override IEnumerable<SuffixMetadata> GetSuffixMetadata()
         {
-            if (!string.IsNullOrEmpty(Description))
+            for (var i = 0; i < _percentiles.Length; i++)
             {
-                switch (PercentileToAggregateMode(_percentiles[suffixIndex]))
+                var name = Name + _suffixes[i];
+                var description = Description;
+                switch (PercentileToAggregateMode(_percentiles[i]))
                 {
                     case AggregateMode.Last:
-                        return Description + " (last)";
+                        description += " (last)";
+                        break;
                     case AggregateMode.Average:
-                        return Description + " (average)";
+                        description += " (average)";
+                        break;
                     case AggregateMode.Max:
-                        return Description + " (maximum)";
+                        description += " (maximum)";
+                        break;
                     case AggregateMode.Min:
-                        return Description + " (minimum)";
+                        description += " (minimum)";
+                        break;
                     case AggregateMode.Median:
-                        return Description + " (median)";
+                        description += " (median)";
+                        break;
                     case AggregateMode.Percentile:
-                        return Description + " (" + DoubleToPercentileString(_percentiles[suffixIndex]) + ")";
+                        description += " (" + DoubleToPercentileString(_percentiles[i]) + ")";
+                        break;
                     case AggregateMode.Count:
-                        return Description + " (count of the number of events recorded)";
+                        description += " (count of the number of events recorded)";
+                        break;
                 }
-            }
 
-            return Description;
+                yield return new SuffixMetadata(name, Unit, description);
+            }
         }
 
         static string DoubleToPercentileString(double pct)
@@ -180,33 +174,6 @@ namespace StackExchange.Metrics.Metrics
             }
 
             return ip + ending + " percentile";
-        }
-
-        /// <summary>
-        /// See <see cref="MetricBase.Serialize"/>
-        /// </summary>
-        protected override void Serialize(IMetricBatch writer, DateTime now)
-        {
-            var mode = _snapshotReportingMode;
-            if (mode == SnapshotReportingMode.None)
-                return;
-
-            var countOnly = mode == SnapshotReportingMode.CountOnly;
-            for (var i = 0; i < _percentiles.Length; i++)
-            {
-                if (countOnly && PercentileToAggregateMode(_percentiles[i]) != AggregateMode.Count)
-                    continue;
-
-                WriteValue(writer, _snapshot[i], now, i);
-            }
-        }
-
-        /// <summary>
-        /// See <see cref="MetricBase.PreSerialize"/>
-        /// </summary>
-        protected override void PreSerialize()
-        {
-            CaptureSnapshot();
         }
 
         void CaptureSnapshot()
@@ -318,49 +285,6 @@ namespace StackExchange.Metrics.Metrics
             }
         }
 
-        GaugeAggregatorStrategy GetAggregatorStategy()
-        {
-            var type = GetType();
-            if (s_aggregatorsByTypeCache.ContainsKey(type))
-                return s_aggregatorsByTypeCache[type];
-
-            lock (s_aggregatorsByTypeCache)
-            {
-                if (s_aggregatorsByTypeCache.ContainsKey(type))
-                    return s_aggregatorsByTypeCache[type];
-
-                var attributes = GetGaugeAggregatorAttributes(type);
-
-                var hash = new HashSet<string>();
-                foreach (var attr in attributes)
-                {
-                    if (hash.Contains(attr.Suffix))
-                        throw new Exception($"{type.FullName} has more than one gauge aggregator with the name \"{attr.Suffix}\".");
-
-                    hash.Add(attr.Suffix);
-                }
-
-                return s_aggregatorsByTypeCache[type] = new GaugeAggregatorStrategy(attributes);
-            }
-        }
-
-        static GaugeAggregatorAttribute[] GetGaugeAggregatorAttributes(Type type)
-        {
-            // Each aggregate gauge needs at least one aggregator defined with the GaugeAggregator attribute. If a gauge doesn't define any aggregators of its
-            // own, it is allowed to inherit its parent's aggregators. If the gauge defines its own aggregators, then its parent's aggregators are ignored.
-            var t = type;
-            while (t != null && t != typeof(object))
-            {
-                var aggregators = t.GetCustomAttributes<GaugeAggregatorAttribute>(false).ToArray();
-                if (aggregators.Length > 0)
-                    return aggregators;
-
-                t = t.BaseType;
-            }
-
-            throw new Exception(type.FullName + " has no GaugeAggregator attributes. All gauges must have at least one.");
-        }
-
         [SuppressMessage("ReSharper", "CompareOfFloatsByEqualityOperator")]
         internal static AggregateMode PercentileToAggregateMode(double percentile)
         {
@@ -424,33 +348,64 @@ namespace StackExchange.Metrics.Metrics
             }
         }
 
+        /// <inheritdoc/>
+        public override void WriteReadings(IMetricReadingBatch batch, DateTime timestamp)
+        {
+            CaptureSnapshot();
+
+            var mode = _snapshotReportingMode;
+            if (mode == SnapshotReportingMode.None)
+            {
+                return;
+            }
+
+            var countOnly = mode == SnapshotReportingMode.CountOnly;
+            var suffixes = Suffixes;
+            for (var i = 0; i < _percentiles.Length; i++)
+            {
+                if (countOnly && PercentileToAggregateMode(_percentiles[i]) != AggregateMode.Count)
+                {
+                    continue;
+                }
+
+                batch.Add(
+                    CreateReading(suffixes[i], _snapshot[i], timestamp)
+                );
+            }
+        }
+
         class GaugeAggregatorStrategy
         {
-            public readonly double[] Percentiles;
-            public readonly string[] Suffixes;
-
-            public readonly bool UseList;
-            public readonly bool SpecialCaseMax;
-            public readonly bool SpecialCaseMin;
-            public readonly bool SpecialCaseLast;
-            public readonly bool TrackMean;
-            public readonly bool ReportCount;
+            public ImmutableArray<double> Percentiles { get; }
+            public ImmutableArray<string> Suffixes { get; }
+            public bool UseList { get; }
+            public bool SpecialCaseMax { get; }
+            public bool SpecialCaseMin { get; }
+            public bool SpecialCaseLast { get; }
+            public bool TrackMean { get; }
+            public bool ReportCount { get; }
 
             [SuppressMessage("ReSharper", "CompareOfFloatsByEqualityOperator")]
-            public GaugeAggregatorStrategy(GaugeAggregatorAttribute[] aggregators)
+            public GaugeAggregatorStrategy(ImmutableArray<GaugeAggregator> aggregators)
             {
-                Percentiles = new double[aggregators.Length];
-                Suffixes = new string[aggregators.Length];
+                var percentiles = ImmutableArray.CreateBuilder<double>(aggregators.Length);
+                var suffixes = ImmutableArray.CreateBuilder<string>(aggregators.Length);
 
-                var i = 0;
                 var arbitraryPercentagesCount = 0;
+                var knownSuffixes = new HashSet<string>();
                 foreach (var r in aggregators)
                 {
+                    if (knownSuffixes.Contains(r.Suffix))
+                    {
+                        throw new ArgumentException($"More than one gauge aggregator with the name \"{r.Suffix}\".", nameof(aggregators));
+                    }
+
+                    knownSuffixes.Add(r.Suffix);
+
                     var percentile = r.Percentile;
 
-                    Percentiles[i] = percentile;
-                    Suffixes[i] = r.Suffix;
-                    i++;
+                    percentiles.Add(percentile);
+                    suffixes.Add(r.Suffix);
 
                     if (percentile < 0)
                     {
@@ -488,6 +443,9 @@ namespace StackExchange.Metrics.Metrics
                     SpecialCaseMax = false;
                     SpecialCaseMin = false;
                 }
+
+                Percentiles = percentiles.MoveToImmutable();
+                Suffixes = suffixes.MoveToImmutable();
             }
         }
     }
@@ -529,11 +487,45 @@ namespace StackExchange.Metrics.Metrics
     }
 
     /// <summary>
-    /// Applies an <see cref="AggregateMode"/> to an <see cref="AggregateGauge"/>.
+    /// Represents the metadata for different kinds of <see cref="AggregateGauge"/> measurements.
     /// </summary>
-    [AttributeUsage(AttributeTargets.Class, AllowMultiple = true)]
-    public class GaugeAggregatorAttribute : Attribute
+    public readonly struct GaugeAggregator
     {
+        /// <summary>
+        /// Gets a <see cref="GaugeAggregator"/> that represents the mean value recorded in a given interval.
+        /// </summary>
+        public static readonly GaugeAggregator Average = new GaugeAggregator(AggregateMode.Average);
+        /// <summary>
+        /// Gets a <see cref="GaugeAggregator"/> that represents the median value recorded in a given interval.
+        /// </summary>
+        public static readonly GaugeAggregator Median = new GaugeAggregator(AggregateMode.Median);
+        /// <summary>
+        /// Gets a <see cref="GaugeAggregator"/> that represents the 95% percentile recorded in a given interval.
+        /// </summary>
+        public static readonly GaugeAggregator Percentile_95 = new GaugeAggregator(AggregateMode.Percentile, 0.95);
+        /// <summary>
+        /// Gets a <see cref="GaugeAggregator"/> that represents the 99% percentile recorded in a given interval.
+        /// </summary>
+        public static readonly GaugeAggregator Percentile_99 = new GaugeAggregator(AggregateMode.Percentile, 0.99);
+        /// <summary>
+        /// Gets a <see cref="GaugeAggregator"/> that represents the maximum value recorded in a given interval.
+        /// </summary>
+        public static readonly GaugeAggregator Max = new GaugeAggregator(AggregateMode.Max);
+        /// <summary>
+        /// Gets a <see cref="GaugeAggregator"/> that represents the minimum value recorded in a given interval.
+        /// </summary>
+        public static readonly GaugeAggregator Min = new GaugeAggregator(AggregateMode.Min);
+        /// <summary>
+        /// Gets a <see cref="GaugeAggregator"/> that represents the count of values recorded in a given interval.
+        /// </summary>
+        public static readonly GaugeAggregator Count = new GaugeAggregator(AggregateMode.Count);
+        /// <summary>
+        /// Gets an <see cref="IEnumerable{T}"/> of <see cref="GaugeAggregator"/> that are typically used.
+        /// </summary>
+        public static readonly IEnumerable<GaugeAggregator> Default = ImmutableArray.Create(
+            Average, Median, Percentile_95, Percentile_99, Max, Min, Count
+        );
+
         /// <summary>
         /// The aggregator mode.
         /// </summary>
@@ -551,7 +543,7 @@ namespace StackExchange.Metrics.Metrics
         /// Applies an <see cref="AggregateMode"/> to an <see cref="AggregateGauge"/>.
         /// </summary>
         /// <param name="mode">The aggregate mode. Don't use AggregateMode.Percentile with this constructor.</param>
-        public GaugeAggregatorAttribute(AggregateMode mode) : this(mode, null, double.NaN)
+        public GaugeAggregator(AggregateMode mode) : this(mode, null, double.NaN)
         {
         }
 
@@ -560,7 +552,7 @@ namespace StackExchange.Metrics.Metrics
         /// </summary>
         /// <param name="mode">The aggregate mode. Don't use AggregateMode.Percentile with this constructor.</param>
         /// <param name="suffix">Overrides the default suffix for the aggregate mode.</param>
-        public GaugeAggregatorAttribute(AggregateMode mode, string suffix) : this(mode, suffix, double.NaN)
+        public GaugeAggregator(AggregateMode mode, string suffix) : this(mode, suffix, double.NaN)
         {
         }
 
@@ -571,7 +563,7 @@ namespace StackExchange.Metrics.Metrics
         /// <param name="percentile">
         /// The percentile represented as a double. For example, 0.95 = 95th percentile. Using more than two digits is not recommended.
         /// </param>
-        public GaugeAggregatorAttribute(AggregateMode mode, double percentile) : this(mode, null, percentile)
+        public GaugeAggregator(AggregateMode mode, double percentile) : this(mode, null, percentile)
         {
         }
 
@@ -581,7 +573,7 @@ namespace StackExchange.Metrics.Metrics
         /// <param name="percentile">
         /// The percentile represented as a double. For example, 0.95 = 95th percentile. Using more than two digits is not recommended.
         /// </param>
-        public GaugeAggregatorAttribute(double percentile) : this(AggregateMode.Percentile, null, percentile)
+        public GaugeAggregator(double percentile) : this(AggregateMode.Percentile, null, percentile)
         {
         }
 
@@ -594,7 +586,7 @@ namespace StackExchange.Metrics.Metrics
         /// The percentile represented as a double. For example, 0.95 = 95th percentile. Using more than two digits is not recommended. In order to use this
         /// argument, <paramref name="mode"/> must be AggregateMode.Percentile.
         /// </param>
-        public GaugeAggregatorAttribute(AggregateMode mode, string suffix, double percentile)
+        public GaugeAggregator(AggregateMode mode, string suffix, double percentile)
         {
             AggregateMode = mode;
             Percentile = AggregateGauge.AggregateModeToPercentileAndSuffix(mode, percentile, out var defaultSuffix);

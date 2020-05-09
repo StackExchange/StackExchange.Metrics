@@ -19,14 +19,14 @@ namespace StackExchange.Metrics.Tests
         public void NullUri_Serialization_DoesNotThrow()
         {
             var handler = new SignalFxMetricHandler(null);
-            handler.SerializeMetric(new MetricReading("test.metric", MetricType.Counter, string.Empty, 1d, ImmutableDictionary<string, string>.Empty, DateTime.UtcNow));
+            handler.SerializeMetric(new MetricReading("test.metric", MetricType.Counter, 1d, ImmutableDictionary<string, string>.Empty, DateTime.UtcNow));
         }
 
         [Fact]
         public async Task NullUri_Flush_DoesNotThrow()
         {
             var handler = new SignalFxMetricHandler(null);
-            handler.SerializeMetric(new MetricReading("test.metric", MetricType.Counter, string.Empty, 1d, ImmutableDictionary<string, string>.Empty, DateTime.UtcNow));
+            handler.SerializeMetric(new MetricReading("test.metric", MetricType.Counter, 1d, ImmutableDictionary<string, string>.Empty, DateTime.UtcNow));
             await handler.FlushAsync(TimeSpan.Zero, 0, _ => { }, _ => { });
         }
 

@@ -1,6 +1,7 @@
-﻿using StackExchange.Metrics.Infrastructure;
-using System;
+﻿using System;
+using System.Collections.Immutable;
 using System.Threading;
+using StackExchange.Metrics.Infrastructure;
 
 namespace StackExchange.Metrics.Metrics
 {
@@ -8,14 +9,16 @@ namespace StackExchange.Metrics.Metrics
     /// Record as often as you want, but only the last value recorded before the reporting interval is sent to an endpoint (it samples the current value).
     /// See https://github.com/StackExchange/StackExchange.Metrics/blob/master/docs/MetricTypes.md#samplinggauge
     /// </summary>
-    public class SamplingGauge : MetricBase
+    public sealed class SamplingGauge : MetricBase
     {
-        double _value = double.NaN;
+        private double _value = double.NaN;
 
         /// <summary>
-        /// The current value of the gauge.
+        /// Instantiates a new sampling gauge.
         /// </summary>
-        public double CurrentValue => _value;
+        internal SamplingGauge(string name, string unit, string description, MetricSourceOptions options, ImmutableDictionary<string, string> tags = null) : base(name, unit, description, options, tags)
+        {
+        }
 
         /// <summary>
         /// The type of metric (gauge, in this case).
@@ -23,24 +26,22 @@ namespace StackExchange.Metrics.Metrics
         public override MetricType MetricType => MetricType.Gauge;
 
         /// <summary>
-        /// See <see cref="MetricBase.Serialize"/>
-        /// </summary>
-        protected override void Serialize(IMetricBatch writer, DateTime now)
-        {
-            var value = _value;
-            if (double.IsNaN(value))
-                return;
-
-            WriteValue(writer, value, now);
-        }
-
-        /// <summary>
         /// Records the current value of the gauge. Use Double.NaN to disable this gauge.
         /// </summary>
-        public void Record(double value)
+        public void Record(double value) => Interlocked.Exchange(ref _value, value);
+
+        /// <inheritdoc/>
+        public override void WriteReadings(IMetricReadingBatch batch, DateTime timestamp)
         {
-            AssertAttached();
-            Interlocked.Exchange(ref _value, value);
+            var value = Interlocked.Exchange(ref _value, double.NaN);
+            if (double.IsNaN(value))
+            {
+                return;
+            }
+
+            batch.Add(
+                CreateReading(value, timestamp)
+            );
         }
     }
 }

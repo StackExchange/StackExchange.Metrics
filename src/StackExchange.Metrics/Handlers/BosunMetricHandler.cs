@@ -163,9 +163,8 @@ namespace StackExchange.Metrics.Handlers
                     readingToWrite = new MetricReading(
                         reading.Name,
                         reading.Type,
-                        reading.Suffix,
                         reading.Value,
-                        reading.Tags.Where(x => x.Key != "host").ToDictionary(x => x.Key, x => x.Value),
+                        reading.Tags.Remove("host"),
                         reading.Timestamp
                     );
                 }
@@ -180,7 +179,7 @@ namespace StackExchange.Metrics.Handlers
         }
 
         /// <inheritdoc />
-        protected override void SerializeMetadata(IBufferWriter<byte> writer, IEnumerable<MetaData> metadata)
+        protected override void SerializeMetadata(IBufferWriter<byte> writer, IEnumerable<Metadata> metadata)
         {
             if (_metadataUri == null)
             {
@@ -232,7 +231,7 @@ namespace StackExchange.Metrics.Handlers
                 case PayloadType.Metadata:
                     return _metadataMetadata ?? (_metadataMetadata = CreatePayloadTypeMetadata());
                 default:
-                    throw new ArgumentOutOfRangeException(nameof(payloadType));
+                    throw new ArgumentOutOfRangeException(nameof(payloadType), $"Unsupport payload type: {payloadType}");
             }
         }
 
@@ -265,7 +264,7 @@ namespace StackExchange.Metrics.Handlers
                 }
 
                 writer.WriteStartObject(); // {
-                writer.WriteString(s_metricProperty, reading.NameWithSuffix); // "metric": "name"
+                writer.WriteString(s_metricProperty, reading.Name); // "metric": "name"
                 writer.WriteNumber(s_valueProperty, value); // ,"value": 1.23
                 if (reading.Tags.Count > 0)
                 {

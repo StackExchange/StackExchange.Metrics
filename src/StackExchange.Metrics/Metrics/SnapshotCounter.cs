@@ -1,5 +1,6 @@
-﻿using StackExchange.Metrics.Infrastructure;
-using System;
+﻿using System;
+using System.Collections.Immutable;
+using StackExchange.Metrics.Infrastructure;
 
 namespace StackExchange.Metrics.Metrics
 {
@@ -7,9 +8,9 @@ namespace StackExchange.Metrics.Metrics
     /// Calls a user-provided Func&lt;long?&gt; to get the current counter value each time metrics are going to be posted to a metrics handler.
     /// See https://github.com/StackExchange/StackExchange.Metrics/blob/master/docs/MetricTypes.md#snapshotcounter
     /// </summary>
-    public class SnapshotCounter : MetricBase
+    public sealed class SnapshotCounter : MetricBase
     {
-        readonly Func<long?> _getCountFunc;
+        private readonly Func<long?> _getCountFunc;
 
         /// <summary>
         /// The type of metric (counter, in this case).
@@ -20,32 +21,28 @@ namespace StackExchange.Metrics.Metrics
         /// Initializes a new snapshot counter. The counter will call <paramref name="getCountFunc"/> at each reporting interval in order to get the current
         /// value.
         /// </summary>
-        public SnapshotCounter(Func<long?> getCountFunc)
+        internal SnapshotCounter(Func<long?> getCountFunc, string name, string unit, string description, MetricSourceOptions options, ImmutableDictionary<string, string> tags = null) : base(name, unit, description, options, tags)
         {
             if (getCountFunc == null)
+            {
                 throw new ArgumentNullException("getCountFunc");
+            }
 
             _getCountFunc = getCountFunc;
         }
 
-        /// <summary>
-        /// See <see cref="MetricBase.Serialize"/>
-        /// </summary>
-        protected override void Serialize(IMetricBatch writer, DateTime now)
+        /// <inheritdoc/>
+        public override void WriteReadings(IMetricReadingBatch batch, DateTime timestamp)
         {
-            var val = GetValue();
-            if (!val.HasValue)
+            var val = _getCountFunc();
+            if (!val.HasValue || val.Value == 0)
+            {
                 return;
+            }
 
-            WriteValue(writer, val.Value, now);
-        }
-
-        /// <summary>
-        /// Returns the current value which should be reported for the counter.
-        /// </summary>
-        public virtual long? GetValue()
-        {
-            return _getCountFunc();
+            batch.Add(
+                CreateReading(val.Value, timestamp)
+            );
         }
     }
 }

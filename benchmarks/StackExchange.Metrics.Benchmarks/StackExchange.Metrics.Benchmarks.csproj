@@ -1,35 +1,33 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <RootNamespace>Scratch</RootNamespace>
-    <AssemblyName>Scratch</AssemblyName>
+    <PlatformTarget>AnyCPU</PlatformTarget>
     <OutputType>Exe</OutputType>
-    <TargetFrameworks>netcoreapp3.1;net472</TargetFrameworks>
-    <LangVersion>latest</LangVersion>
+    <TargetFrameworks>net472;netcoreapp3.1</TargetFrameworks>
     <IsPackable>false</IsPackable>
+    <RestoreAdditionalProjectSources>https://www.myget.org/F/stackoverflow/api/v3/index.json</RestoreAdditionalProjectSources>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(OS)' != 'Windows_NT' AND '$(TargetFramework)'== 'net472'">
     <FrameworkPathOverride>$(NuGetPackageRoot)microsoft.targetingpack.netframework.v4.7.2/1.0.0/lib/net472/</FrameworkPathOverride>
-    <RestoreAdditionalProjectSources>https://dotnet.myget.org/F/dotnet-core/api/v3/index.json</RestoreAdditionalProjectSources>
+    <RestoreAdditionalProjectSources>$(RestoreAdditionalProjectSources);https://dotnet.myget.org/F/dotnet-core/api/v3/index.json</RestoreAdditionalProjectSources>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="BenchmarkDotNet" Version="0.11.5" />
+    <PackageReference Include="BenchmarkDotNet" Version="0.12.1" />
+    <PackageReference Include="BenchmarkDotNet.Diagnostics.Windows" Version="0.12.1" />
+    <PackageReference Include="BosunReporter" Version="$(UseBosunReporter)" Condition="'$(UseBosunReporter)' != ''" />
+    <ProjectReference Include="..\..\src\StackExchange.Metrics\StackExchange.Metrics.csproj" />
   </ItemGroup>
 
   <ItemGroup Condition="'$(TargetFramework)' == 'net472' ">
     <Reference Include="System.Net.Http" />
   </ItemGroup>
-  
+
   <ItemGroup Condition="'$(OS)' != 'Windows_NT' AND '$(TargetFramework)' == 'net472' ">
     <PackageReference Include="Microsoft.TargetingPack.NETFramework.v4.7.2" Version="1.0.0" ExcludeAssets="All" PrivateAssets="All" />
     <Reference Include="netstandard" />
     <Reference Include="System.Runtime" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="..\..\src\StackExchange.Metrics\StackExchange.Metrics.csproj" />
   </ItemGroup>
   
 </Project>

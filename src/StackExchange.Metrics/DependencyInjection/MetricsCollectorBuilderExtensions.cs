@@ -1,5 +1,6 @@
 ﻿using System;
-using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using StackExchange.Metrics;
 using StackExchange.Metrics.Handlers;
 using StackExchange.Metrics.Infrastructure;
 using StackExchange.Metrics.Metrics;
@@ -12,33 +13,40 @@ namespace Microsoft.Extensions.DependencyInjection
     public static class MetricsCollectorBuilderExtensions
     {
         /// <summary>
-        /// Adds the default built-in <see cref="IMetricSet" /> implementations to the collector.
+        /// Adds the default built-in <see cref="MetricSource" /> implementations to the collector.
         /// </summary>
-        public static IMetricsCollectorBuilder AddDefaultSets(this IMetricsCollectorBuilder builder)
+        public static IMetricsCollectorBuilder AddDefaultSources(this IMetricsCollectorBuilder builder)
         {
-            return builder.AddProcessMetricSet()
+            return builder.AddProcessMetricSource()
 #if NETCOREAPP
-                .AddAspNetMetricSet()
-                .AddRuntimeMetricSet()
+                .AddAspNetMetricSource()
+                .AddRuntimeMetricSource()
+#else
+                .AddGarbageCollectorMetricSource();
 #endif
             ;
         }
 
         /// <summary>
-        /// Adds a <see cref="ProcessMetricSet" /> to the collector.
+        /// Adds a <see cref="ProcessMetricSource" /> to the collector.
         /// </summary>
-        public static IMetricsCollectorBuilder AddProcessMetricSet(this IMetricsCollectorBuilder builder) => builder.AddSet<ProcessMetricSet>();
+        public static IMetricsCollectorBuilder AddProcessMetricSource(this IMetricsCollectorBuilder builder) => builder.AddSource<ProcessMetricSource>();
 
 #if NETCOREAPP
         /// <summary>
-        /// Adds a <see cref="RuntimeMetricSet" /> to the collector.
+        /// Adds a <see cref="RuntimeMetricSource" /> to the collector.
         /// </summary>
-        public static IMetricsCollectorBuilder AddRuntimeMetricSet(this IMetricsCollectorBuilder builder) => builder.AddSet<RuntimeMetricSet>();
+        public static IMetricsCollectorBuilder AddRuntimeMetricSource(this IMetricsCollectorBuilder builder) => builder.AddSource<RuntimeMetricSource>();
 
         /// <summary>
-        /// Adds a <see cref="AspNetMetricSet" /> to the collector.
+        /// Adds a <see cref="AspNetMetricSource" /> to the collector.
         /// </summary>
-        public static IMetricsCollectorBuilder AddAspNetMetricSet(this IMetricsCollectorBuilder builder) => builder.AddSet<AspNetMetricSet>();
+        public static IMetricsCollectorBuilder AddAspNetMetricSource(this IMetricsCollectorBuilder builder) => builder.AddSource<AspNetMetricSource>();
+#else
+        /// <summary>
+        /// Adds a <see cref="GarbageCollectorMetricSource" /> to the collector.
+        /// </summary>
+        public static IMetricsCollectorBuilder AddGarbageCollectorMetricSource(this IMetricsCollectorBuilder builder) => builder.AddSource<GarbageCollectorMetricSource>();
 #endif
 
         /// <summary>
@@ -81,20 +89,22 @@ namespace Microsoft.Extensions.DependencyInjection
         }
 
         /// <summary>
-        /// Instantiates and adds an <see cref="IMetricSet" /> to the collector.
+        /// Registers an <see cref="MetricSource" /> for use with the collector.
         /// </summary>
-        public static IMetricsCollectorBuilder AddSet<T>(this IMetricsCollectorBuilder builder) where T : class, IMetricSet
+        public static IMetricsCollectorBuilder AddSource<T>(this IMetricsCollectorBuilder builder) where T : MetricSource
         {
-            builder.Services.AddTransient<IMetricSet, T>();
+            builder.Services.AddSingleton<T>();
+            builder.Services.AddSingleton<MetricSource>(s => s.GetService<T>());
             return builder;
         }
 
         /// <summary>
-        /// Adds an <see cref="IMetricSet" /> to the collector.
+        /// Registers an <see cref="MetricSource" /> for use with the collector.
         /// </summary>
-        public static IMetricsCollectorBuilder AddSet<T>(this IMetricsCollectorBuilder builder, T set) where T : class, IMetricSet
+        public static IMetricsCollectorBuilder AddSource<T>(this IMetricsCollectorBuilder builder, T source) where T : MetricSource
         {
-            builder.Services.AddTransient<IMetricSet>(_ => set);
+            builder.Services.AddSingleton<T>(source);
+            builder.Services.AddSingleton<MetricSource>(s => s.GetService<T>());
             return builder;
         }
     }

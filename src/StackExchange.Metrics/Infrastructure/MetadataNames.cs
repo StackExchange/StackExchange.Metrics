@@ -1,7 +1,7 @@
 ﻿namespace StackExchange.Metrics.Infrastructure
 {
     /// <summary>
-    /// Well-known names for <see cref="MetaData" />.
+    /// Well-known names for <see cref="Metadata" />.
     /// </summary>
     public static class MetadataNames
     {

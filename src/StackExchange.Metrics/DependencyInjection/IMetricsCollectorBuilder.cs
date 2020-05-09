@@ -23,10 +23,7 @@ namespace Microsoft.Extensions.DependencyInjection
         /// Adds a <see cref="MetricEndpoint" /> to the collector.
         /// </summary>
         IMetricsCollectorBuilder AddEndpoint(string name, IMetricHandler handler);
-        /// <summary>
-        /// Adds a default tag to the collector.
-        /// </summary>
-        IMetricsCollectorBuilder AddDefaultTag(string name, string key);
+
         /// <summary>
         /// Configures options for the collector.
         /// </summary>

@@ -1,5 +1,6 @@
 ﻿using StackExchange.Metrics.Infrastructure;
 using System;
+using System.Collections.Immutable;
 using System.Threading;
 
 namespace StackExchange.Metrics.Metrics
@@ -8,19 +9,9 @@ namespace StackExchange.Metrics.Metrics
     /// A general-purpose manually incremented long-integer counter.
     /// See https://github.com/StackExchange/StackExchange.Metrics/blob/master/docs/MetricTypes.md#counter
     /// </summary>
-    public class Counter : MetricBase
+    public sealed class Counter : MetricBase
     {
-        long _countSnapshot;
-
-        /// <summary>
-        /// The underlying field for <see cref="Value"/>. This allows for direct manipulation via Interlocked methods.
-        /// </summary>
-        long _count;
-
-        /// <summary>
-        /// The current value of the counter. This will reset to zero at each reporting interval.
-        /// </summary>
-        public long Value => _count;
+        private long _count;
 
         /// <summary>
         /// The metric type (counter, in this case).
@@ -28,39 +19,29 @@ namespace StackExchange.Metrics.Metrics
         public override MetricType MetricType => MetricType.Counter;
 
         /// <summary>
-        /// Instantiates a new counter. You should typically use a method on <see cref="MetricsCollector"/>, such as CreateMetric, instead of instantiating
-        /// directly via this constructor.
+        /// Instantiates a new counter.
         /// </summary>
-        public Counter()
+        internal Counter(string name, string unit, string description, MetricSourceOptions options, ImmutableDictionary<string, string> tags = null) : base(name, unit, description, options, tags)
         {
         }
 
         /// <summary>
         /// Increments the counter by <paramref name="amount"/>. This method is thread-safe.
         /// </summary>
-        public void Increment(long amount = 1)
-        {
-            AssertAttached();
-            Interlocked.Add(ref _count, amount);
-        }
+        public void Increment(long amount = 1) => Interlocked.Add(ref _count, amount);
 
-        /// <summary>
-        /// See <see cref="MetricBase.Serialize"/>
-        /// </summary>
-        protected override void Serialize(IMetricBatch writer, DateTime now)
+        /// <inheritdoc/>
+        public override void WriteReadings(IMetricReadingBatch batch, DateTime timestamp)
         {
-            if (_countSnapshot > 0)
+            var countSnapshot = Interlocked.Exchange(ref _count, 0);
+            if (countSnapshot == 0)
             {
-                WriteValue(writer, _countSnapshot, now);
+                return;
             }
-        }
 
-        /// <summary>
-        /// See <see cref="MetricBase.PreSerialize"/>
-        /// </summary>
-        protected override void PreSerialize()
-        {
-            _countSnapshot = Interlocked.Exchange(ref _count, 0);
+            batch.Add(
+                CreateReading(countSnapshot, timestamp)
+            );
         }
     }
 }

@@ -1,4 +1,4 @@
-using Microsoft.Extensions.DependencyInjection;
+﻿using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -69,20 +69,7 @@ namespace StackExchange.Metrics.Tests
         }
 
         [Fact]
-        public void MetricsService_IsAddedAsSingleton()
-        {
-            var services = CreateServices();
-            services.AddMetricsCollector();
-
-            Assert.Contains(
-                services,
-                descriptor => descriptor.Lifetime == ServiceLifetime.Singleton &&
-                              descriptor.ServiceType == typeof(MetricsService)
-            );
-        }
-
-        [Fact]
-        public void MetricsService_IsAddedAsHostedService()
+        public void MetricsCollector_IsAddedAsHostedService()
         {
             var services = CreateServices();
             services.AddMetricsCollector();
@@ -91,7 +78,7 @@ namespace StackExchange.Metrics.Tests
 
             var hostedServices = serviceProvider.GetServices<IHostedService>();
 
-            Assert.Contains(hostedServices, x => x is MetricsService);
+            Assert.Contains(hostedServices, x => x is MetricsCollector);
         }
 
         [Fact]

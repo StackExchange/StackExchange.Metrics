@@ -1,9 +1,9 @@
-﻿using StackExchange.Metrics.Infrastructure;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using StackExchange.Metrics.Infrastructure;
 
 namespace StackExchange.Metrics.Handlers
 {
@@ -108,7 +108,7 @@ namespace StackExchange.Metrics.Handlers
         }
 
         /// <inheritdoc />
-        public IMetricBatch BeginBatch() => new Batch(this);
+        public IMetricReadingBatch BeginBatch() => new Batch(this);
 
         /// <inheritdoc />
         public ValueTask FlushAsync(TimeSpan delayBetweenRetries, int maxRetries, Action<AfterSendInfo> afterSend, Action<Exception> exceptionHandler)
@@ -130,7 +130,7 @@ namespace StackExchange.Metrics.Handlers
         }
 
         /// <inheritdoc />
-        public void SerializeMetadata(IEnumerable<MetaData> metadata)
+        public void SerializeMetadata(IEnumerable<Metadata> metadata)
         {
             lock (_metadataLock)
             {
@@ -175,7 +175,7 @@ namespace StackExchange.Metrics.Handlers
         {
         }
 
-        private class Batch : IMetricBatch
+        private class Batch : IMetricReadingBatch
         {
             private readonly LocalMetricHandler _handler;
 
@@ -188,15 +188,11 @@ namespace StackExchange.Metrics.Handlers
             public long MetricsWritten { get; private set; }
 
             /// <inheritdoc />
-            public void SerializeMetric(in MetricReading reading)
+            public void Add(in MetricReading reading)
             {
                 _handler.SerializeMetric(reading);
                 MetricsWritten++;
                 BytesWritten = 0;
-            }
-
-            public void Dispose()
-            {
             }
         }
     }

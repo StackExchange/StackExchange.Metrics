@@ -13,7 +13,7 @@ namespace StackExchange.Metrics.Handlers
         {
         }
 
-        public IMetricBatch BeginBatch() => NoOpBatch.Instance;
+        public IMetricReadingBatch BeginBatch() => NoOpBatch.Instance;
 
         public void Dispose()
         {
@@ -21,7 +21,7 @@ namespace StackExchange.Metrics.Handlers
 
         public ValueTask FlushAsync(TimeSpan delayBetweenRetries, int maxRetries, Action<AfterSendInfo> afterSend, Action<Exception> exceptionHandler) => default;
 
-        public void SerializeMetadata(IEnumerable<MetaData> metadata)
+        public void SerializeMetadata(IEnumerable<Metadata> metadata)
         {
         }
 
@@ -29,7 +29,7 @@ namespace StackExchange.Metrics.Handlers
         {
         }
 
-        private class NoOpBatch : IMetricBatch
+        private class NoOpBatch : IMetricReadingBatch
         {
             public static readonly NoOpBatch Instance = new NoOpBatch();
 
@@ -41,11 +41,7 @@ namespace StackExchange.Metrics.Handlers
 
             public long MetricsWritten => 0;
 
-            public void Dispose()
-            {
-            }
-
-            public void SerializeMetric(in MetricReading reading)
+            public void Add(in MetricReading reading)
             {
             }
         }

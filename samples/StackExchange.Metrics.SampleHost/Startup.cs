@@ -1,12 +1,15 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using StackExchange.Metrics.Infrastructure;
 
 namespace StackExchange.Metrics.SampleHost
 {
@@ -25,18 +28,14 @@ namespace StackExchange.Metrics.SampleHost
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddMetricsCollector()
-                .AddDefaultSets()
-                .AddDefaultTag("role", "sample_host")
                 .UseExceptionHandler(ex => Console.WriteLine(ex))
                 .Configure(
                     o =>
                     {
-                        o.MetricsNamePrefix = "sample_host.";
                         o.SnapshotInterval = TimeSpan.FromSeconds(5);
                     }
                 );
 
-            services.AddSingleton<PerfCounters>();
             services.Configure<KestrelServerOptions>(o => o.AllowSynchronousIO = true);
         }
 
@@ -46,20 +45,27 @@ namespace StackExchange.Metrics.SampleHost
         public void Configure(IApplicationBuilder app)
         {
             app.UseRouting();
-            app.Use((ctx, next) =>
+            app.Use(async (ctx, next) =>
             {
-                var perfCounters = ctx.RequestServices.GetService<PerfCounters>();
-                perfCounters.IncrementMyCounter(ctx.Request.Path, MyCounterCategory.Example_One);
-                return next();
+                var appMetrics = ctx.RequestServices.GetService<AppMetricSource>();
+                appMetrics.OnRequest(ctx.Request.Path);
+                await next();
+                if (ctx.Response.StatusCode >= StatusCodes.Status400BadRequest)
+                {
+                    appMetrics.OnError(ctx.Request.Path, ctx.Response.StatusCode);
+                }
             });
 
             app.UseEndpoints(
                 e =>
                 {
                     e.Map("/", async ctx => await ctx.Response.BodyWriter.WriteAsync(_indexPageBytes));
+                    e.Map("/error", async _ => throw new Exception("BOOM"));
+                    e.Map("/status-code", async ctx => ctx.Response.StatusCode = int.TryParse(ctx.Request.Query["v"], out var statusCode) ? statusCode : StatusCodes.Status200OK);
                     e.Map("/metrics", async ctx =>
                     {
                         var collector = ctx.RequestServices.GetService<MetricsCollector>();
+                        var creationOptions = ctx.RequestServices.GetService<MetricSourceOptions>();
                         ctx.Response.ContentType = "text/plain";
                         using (var streamWriter = new StreamWriter(ctx.Response.Body, Encoding.UTF8, 1024, leaveOpen: true))
                         {
@@ -70,7 +76,7 @@ namespace StackExchange.Metrics.SampleHost
                             {
                                 var s = new string(' ', r.Next(5_000, 150_000));
                             }
-                            await collector.DumpAsync(streamWriter);
+                            await collector.DumpAsync(streamWriter, creationOptions);
                         }
                     });
                 }
