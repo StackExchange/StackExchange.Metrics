@@ -59,11 +59,11 @@ namespace StackExchange.Metrics.Infrastructure
         protected MetricSourceOptions Options { get; }
 
         /// <inheritdoc/>
-        void IMetricReadingWriter.WriteReadings(IMetricReadingBatch batch, DateTime timestamp)
+        void IMetricReadingWriter.Write(IMetricReadingBatch batch, DateTime timestamp)
         {
             foreach (IMetricReadingWriter metric in GetMetrics())
             {
-                metric.WriteReadings(batch, timestamp);
+                metric.Write(batch, timestamp);
             }
         }
 

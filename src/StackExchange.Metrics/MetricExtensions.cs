@@ -17,7 +17,7 @@ namespace StackExchange.Metrics
         {
             foreach (var source in sources)
             {
-                source.WriteReadings(batch, timestamp);
+                source.Write(batch, timestamp);
             }
         }
 
@@ -52,7 +52,7 @@ namespace StackExchange.Metrics
         private static ImmutableArray<MetricReading> GetReadings(this IMetricReadingWriter metric, DateTime timestamp)
         {
             var batch = new ArrayBatch();
-            metric.WriteReadings(batch, timestamp);
+            metric.Write(batch, timestamp);
             return batch.ToImmutableArray();
         }
 

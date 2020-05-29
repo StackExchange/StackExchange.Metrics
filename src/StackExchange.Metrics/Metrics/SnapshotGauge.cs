@@ -27,7 +27,7 @@ namespace StackExchange.Metrics.Metrics
         }
 
         /// <inheritdoc/>
-        protected override void WriteReadings(IMetricReadingBatch batch, DateTime timestamp)
+        protected override void Write(IMetricReadingBatch batch, DateTime timestamp)
         {
             var val = _getValueFunc();
             if (!val.HasValue || double.IsNaN(val.Value))

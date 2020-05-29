@@ -31,7 +31,7 @@ namespace StackExchange.Metrics.Metrics
         public void Increment(long amount = 1) => Interlocked.Add(ref _count, amount);
 
         /// <inheritdoc/>
-        protected override void WriteReadings(IMetricReadingBatch batch, DateTime timestamp)
+        protected override void Write(IMetricReadingBatch batch, DateTime timestamp)
         {
             var countSnapshot = Interlocked.Exchange(ref _count, 0);
             if (countSnapshot == 0)

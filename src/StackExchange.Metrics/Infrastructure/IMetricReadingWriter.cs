@@ -16,6 +16,6 @@ namespace StackExchange.Metrics.Infrastructure
         /// <param name="timestamp">
         /// Timestamp applied to all readings.
         /// </param>
-        void WriteReadings(IMetricReadingBatch batch, DateTime timestamp);
+        void Write(IMetricReadingBatch batch, DateTime timestamp);
     }
 }

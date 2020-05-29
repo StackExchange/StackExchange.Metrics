@@ -27,7 +27,7 @@ namespace StackExchange.Metrics.Metrics
         }
 
         /// <inheritdoc/>
-        protected override void WriteReadings(IMetricReadingBatch batch, DateTime timestamp)
+        protected override void Write(IMetricReadingBatch batch, DateTime timestamp)
         {
             var val = _getCountFunc();
             if (!val.HasValue || val.Value == 0)

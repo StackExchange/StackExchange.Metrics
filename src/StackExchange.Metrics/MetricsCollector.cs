@@ -224,7 +224,7 @@ namespace StackExchange.Metrics
 
                 foreach (var source in _sources)
                 {
-                    source.WriteReadings(batch, timestamp);
+                    source.Write(batch, timestamp);
                 }
 
                 if (_hasNewMetadata || DateTime.UtcNow - _lastMetadataFlushTime >= TimeSpan.FromDays(1))

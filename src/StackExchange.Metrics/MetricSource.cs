@@ -58,12 +58,12 @@ namespace StackExchange.Metrics
         }
 
         /// <inheritdoc/>
-        public void WriteReadings(IMetricReadingBatch batch, DateTime timestamp)
+        public void Write(IMetricReadingBatch batch, DateTime timestamp)
         {
             var metrics = _metrics;
             for (var i = 0; i < metrics.Length; i++)
             {
-                metrics[i].WriteReadings(batch, timestamp);
+                metrics[i].Write(batch, timestamp);
             }
         }
 
