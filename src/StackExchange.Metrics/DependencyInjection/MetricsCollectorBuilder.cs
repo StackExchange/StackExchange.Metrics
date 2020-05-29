@@ -9,18 +9,20 @@ namespace StackExchange.Metrics.DependencyInjection
     internal sealed class MetricsCollectorBuilder : IMetricsCollectorBuilder
     {       
         private readonly ImmutableArray<MetricEndpoint>.Builder _metricEndpoints;
-        private readonly ImmutableDictionary<string, string>.Builder _defaultTags;
         private Action<MetricsCollectorOptions> _configure;
 
         public MetricsCollectorBuilder(IServiceCollection services)
         {
             _metricEndpoints = ImmutableArray.CreateBuilder<MetricEndpoint>();
             _metricEndpoints.Add(new MetricEndpoint("Local", new LocalMetricHandler()));
-            _defaultTags = ImmutableDictionary.CreateBuilder<string, string>();
-            _defaultTags.Add("host", NameTransformers.Sanitize(Environment.MachineName));
 
             Options = new MetricsCollectorOptions();
             Services = services;
+
+            this.ConfigureSources(
+                o => o.DefaultTags.Add("host", Environment.MachineName)
+            );
+            this.AddDefaultSources();
         }
 
         public IServiceCollection Services { get; }
@@ -32,12 +34,6 @@ namespace StackExchange.Metrics.DependencyInjection
             return this;
         }
 
-        public IMetricsCollectorBuilder AddDefaultTag(string key, string value)
-        {
-            _defaultTags[key] = value;
-            return this;
-        }
-
         public IMetricsCollectorBuilder Configure(Action<MetricsCollectorOptions> configure)
         {
             _configure = configure;
@@ -46,9 +42,8 @@ namespace StackExchange.Metrics.DependencyInjection
 
         public MetricsCollectorOptions Build(IServiceProvider serviceProvider)
         {
-            Options.Sets = serviceProvider.GetServices<IMetricSet>();
+            Options.Sources = serviceProvider.GetServices<MetricSource>();
             Options.Endpoints = _metricEndpoints.ToImmutable();
-            Options.DefaultTags = _defaultTags.ToImmutable();
             _configure?.Invoke(Options);
             return Options;
         }

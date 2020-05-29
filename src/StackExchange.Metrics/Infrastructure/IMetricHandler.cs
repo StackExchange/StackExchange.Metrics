@@ -14,14 +14,14 @@ namespace StackExchange.Metrics.Infrastructure
         /// bytes written and number of metrics written.
         /// </summary>
         /// <returns>
-        /// An <see cref="IMetricBatch" /> used to add individual metrics.
+        /// An <see cref="IMetricReadingBatch" /> used to add individual readings.
         /// </returns>
-        IMetricBatch BeginBatch();
+        IMetricReadingBatch BeginBatch();
 
         /// <summary>
         /// Serializes metadata about metrics.
         /// </summary>
-        void SerializeMetadata(IEnumerable<MetaData> metadata);
+        void SerializeMetadata(IEnumerable<Metadata> metadata);
 
         /// <summary>
         /// Serializes a metric.

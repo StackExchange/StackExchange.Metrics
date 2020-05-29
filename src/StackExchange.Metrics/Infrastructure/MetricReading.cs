@@ -1,5 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
+using System.Collections.Immutable;
 
 namespace StackExchange.Metrics.Infrastructure
 {
@@ -17,9 +17,6 @@ namespace StackExchange.Metrics.Infrastructure
         /// <param name="type">
         /// Type of the metric.
         /// </param>
-        /// <param name="suffix">
-        /// Suffix of the metric.
-        /// </param>
         /// <param name="value">
         /// Value of the metric.
         /// </param>
@@ -29,12 +26,10 @@ namespace StackExchange.Metrics.Infrastructure
         /// <param name="timestamp">
         /// <see cref="DateTime"/> representing the time the metric was observed.
         /// </param>
-        public MetricReading(string name, MetricType type, string suffix, double value, IReadOnlyDictionary<string, string> tags, DateTime timestamp)
+        public MetricReading(string name, MetricType type, double value, ImmutableDictionary<string, string> tags, DateTime timestamp)
         {
             Name = name;
-            NameWithSuffix = !string.IsNullOrEmpty(suffix) ? name + suffix : name;
             Type = type;
-            Suffix = suffix;
             Value = value;
             Tags = tags;
             Timestamp = timestamp;
@@ -45,17 +40,9 @@ namespace StackExchange.Metrics.Infrastructure
         /// </summary>
         public string Name { get; }
         /// <summary>
-        /// Name of the metric with its suffix
-        /// </summary>
-        public string NameWithSuffix { get; }
-        /// <summary>
         /// Type of the metric.
         /// </summary>
         public MetricType Type { get; }
-        /// <summary>
-        /// Suffix of the metric.
-        /// </summary>
-        public string Suffix { get; }
         /// <summary>
         /// Value of the metric.
         /// </summary>
@@ -63,7 +50,7 @@ namespace StackExchange.Metrics.Infrastructure
         /// <summary>
         /// Tags associated with the metric.
         /// </summary>
-        public IReadOnlyDictionary<string, string> Tags { get; }
+        public ImmutableDictionary<string, string> Tags { get; }
         /// <summary>
         /// Timestamp that the metric was recorded at.
         /// </summary>
@@ -80,7 +67,7 @@ namespace StackExchange.Metrics.Infrastructure
         /// </param>
         public MetricReading Update(double delta, DateTime timestamp)
         {
-            return new MetricReading(Name, Type, Suffix, Value + delta, Tags, timestamp);
+            return new MetricReading(Name, Type, Value + delta, Tags, timestamp);
         }
     }
 }

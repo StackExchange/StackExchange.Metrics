@@ -52,7 +52,7 @@ namespace StackExchange.Metrics.Tests
 
         protected override ValueTask SendAsync(PayloadType type, ReadOnlySequence<byte> sequence) => _sendHandler(this, type, sequence);
 
-        protected override void SerializeMetadata(IBufferWriter<byte> writer, IEnumerable<MetaData> metadata)
+        protected override void SerializeMetadata(IBufferWriter<byte> writer, IEnumerable<Metadata> metadata)
         {
             var chunk = GetNextChunk(PayloadType.Metadata);
 
@@ -86,7 +86,7 @@ namespace StackExchange.Metrics.Tests
         protected new virtual string SerializeMetric(in MetricReading reading)
         {
             var sb = new StringBuilder();
-            sb.Append(reading.NameWithSuffix);
+            sb.Append(reading.Name);
             sb.Append('|');
             sb.Append(reading.Value);
             sb.Append('|');

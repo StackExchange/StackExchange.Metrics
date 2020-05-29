@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics.Tracing;
 using System.Threading;
@@ -41,14 +41,17 @@ namespace StackExchange.Metrics.Tests
 
             // add a callback for our counters
             var callCount = 0;
-            var resetEvent = new AutoResetEvent(false);
+            var timeout = TimeSpan.FromSeconds(2);
+            var callbackEvent = new AutoResetEvent(false);
+            var receiveEvent = new AutoResetEvent(false);
             diagnosticsCollector.AddCounterCallback(
                 CustomEventSource.SourceName,
                 CustomEventSource.CounterName,
                 v =>
                 {
                     Interlocked.Increment(ref callCount);
-                    resetEvent.Set();
+                    callbackEvent.Set();
+                    receiveEvent.WaitOne(timeout);
                 }
             );
 
@@ -64,15 +67,17 @@ namespace StackExchange.Metrics.Tests
             try
             {
                 // we should have received one event here
-                Assert.True(resetEvent.WaitOne(TimeSpan.FromSeconds(5)), "Did not receive initial counter metric value");
+                Assert.True(callbackEvent.WaitOne(timeout), "Did not receive initial counter metric value");
                 Assert.Equal(1, callCount);
+                receiveEvent.Set();
 
                 // increment the counter
                 CustomEventSource.Instance.IncrementCounter();
 
                 // shoulda received another event!
-                Assert.True(resetEvent.WaitOne(TimeSpan.FromSeconds(5)), "Did not receive updated counter metric value");
+                Assert.True(callbackEvent.WaitOne(timeout), "Did not receive updated counter metric value");
                 Assert.Equal(2, callCount);
+                receiveEvent.Set();
             }
             finally
             {
@@ -101,14 +106,17 @@ namespace StackExchange.Metrics.Tests
 
             // add a callback for our counters
             var callCount = 0;
-            var resetEvent = new AutoResetEvent(false);
+            var timeout = TimeSpan.FromSeconds(2);
+            var callbackEvent = new AutoResetEvent(false);
+            var receiveEvent = new AutoResetEvent(false);
             diagnosticsCollector.AddGaugeCallback(
                 CustomEventSource.SourceName,
                 CustomEventSource.GaugeName,
                 v =>
                 {
                     Interlocked.Increment(ref callCount);
-                    resetEvent.Set();
+                    callbackEvent.Set();
+                    receiveEvent.WaitOne(timeout);
                 }
             );
 
@@ -124,15 +132,17 @@ namespace StackExchange.Metrics.Tests
             try
             {
                 // we should have received one event here
-                Assert.True(resetEvent.WaitOne(TimeSpan.FromSeconds(5)), "Did not receive initial gauge metric value");
+                Assert.True(callbackEvent.WaitOne(timeout), "Did not receive initial gauge metric value");
                 Assert.Equal(1, callCount);
+                receiveEvent.Set();
 
                 // update the gauge
                 CustomEventSource.Instance.UpdateGauge();
 
                 // shoulda received another event!
-                Assert.True(resetEvent.WaitOne(TimeSpan.FromSeconds(5)), "Did not receive updated gauge metric value");
+                Assert.True(callbackEvent.WaitOne(timeout), "Did not receive updated gauge metric value");
                 Assert.Equal(2, callCount);
+                receiveEvent.Set();
             }
             finally
             {

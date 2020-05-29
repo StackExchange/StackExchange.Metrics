@@ -1,5 +1,4 @@
-﻿using System;
-using System.IO;
+﻿using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using StackExchange.Metrics.Handlers;
@@ -14,11 +13,10 @@ namespace StackExchange.Metrics
         /// <summary>
         /// Dumps the state of a <see cref="MetricsCollector" />.
         /// </summary>
-        public async static Task DumpAsync(this MetricsCollector collector, TextWriter textWriter, string[] excludedTags = null)
+        public async static Task DumpAsync(this MetricsCollector collector, TextWriter textWriter, MetricSourceOptions options)
         {
-            excludedTags ??= Array.Empty<string>();
             await textWriter.WriteLineAsync("DefaultTags:");
-            var defaultTags = collector.DefaultTags;
+            var defaultTags = options.DefaultTags;
             if (defaultTags.Count > 0)
             {
                 foreach (var t in defaultTags)
@@ -64,11 +62,10 @@ namespace StackExchange.Metrics
             var localHandler = endpoints.Select(x => x.Handler).OfType<LocalMetricHandler>().FirstOrDefault();
             if (localHandler != null)
             {
-                foreach (var reading in localHandler.GetReadings(reset: false).OrderBy(r => r.NameWithSuffix))
+                foreach (var reading in localHandler.GetReadings(reset: false).OrderBy(r => r.Name))
                 {
                     await textWriter.WriteAsync("Name = ");
                     await textWriter.WriteAsync(reading.Name);
-                    await textWriter.WriteAsync(reading.Suffix);
                     await textWriter.WriteAsync(", Value = ");
                     await textWriter.WriteAsync(reading.Value.ToString());
                     await textWriter.WriteAsync(", Type = ");
@@ -78,8 +75,8 @@ namespace StackExchange.Metrics
                     var i = 0;
                     foreach (var tag in reading.Tags)
                     {
-                        // Skip excluded tags
-                        if (excludedTags.Contains(tag.Key) || collector.DefaultTags.ContainsKey(tag.Key))
+                        // Skip default tags
+                        if (defaultTags.ContainsKey(tag.Key))
                         {
                             i++;
                             continue;

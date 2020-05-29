@@ -1,6 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -13,6 +11,28 @@ namespace StackExchange.Metrics.Tests
 {
     public class MetricsCollectorTests
     {
+        [Fact]
+        public void StopWithoutStart_Throws()
+        {
+            var source = new TestMetricSource();
+            var handler = new TestMetricHandler((handler, type, buffer) => default);
+            var collector = new MetricsCollector(
+                new MetricsCollectorOptions
+                {
+                    Endpoints = new[]
+                    {
+                        new MetricEndpoint("Handler", handler),
+                    },
+                    Sources = new[] { source },
+                    SnapshotInterval = TimeSpan.Zero,
+                    FlushInterval = TimeSpan.Zero,
+                    RetryInterval = TimeSpan.Zero
+                }
+            );
+
+            Assert.Throws<InvalidOperationException>(() => collector.Stop());
+        }
+
         [Fact]
         public async Task FailedSend_OnlyAffectsFailedHandler()
         {
@@ -59,19 +79,18 @@ namespace StackExchange.Metrics.Tests
                 MaxPayloadCount = 1000
             };
 
+            var metricSource = new TestMetricSource();
             var collector = new MetricsCollector(
                 new MetricsCollectorOptions
                 {
-                    DefaultTags = new Dictionary<string, string>
-                    {
-                        ["host"] = Environment.MachineName
-                    }.ToImmutableDictionary(),
                     Endpoints = new[]
                     {
                         new MetricEndpoint("Failed", failHandler),
                         new MetricEndpoint("Success", successHandler)
                     },
-                    SnapshotInterval = TimeSpan.FromMilliseconds(20),
+                    Sources = new[] { metricSource },
+                    SnapshotInterval = TimeSpan.Zero,
+                    FlushInterval = TimeSpan.Zero,
                     RetryInterval = TimeSpan.Zero
                 }
             );
@@ -79,8 +98,10 @@ namespace StackExchange.Metrics.Tests
             var metrics = new Counter[10];
             for (var i = 0; i < metrics.Length; i++)
             {
-                metrics[i] = collector.CreateMetric<Counter>("metric_" + i, "requests", string.Empty);
+                metrics[i] = metricSource.AddCounter("metric_" + i, "requests", string.Empty);
             }
+
+            collector.Start();
 
             // report some metrics
             foreach (var metric in metrics)
@@ -94,7 +115,7 @@ namespace StackExchange.Metrics.Tests
             var completed = completionEvent.Wait(TimeSpan.FromMilliseconds(2000));
             var pendingEvents = successHandler.GetPendingChunks(PayloadType.Counter);
 
-            collector.Shutdown();
+            collector.Stop();
             Assert.True(completed, $"Success handler did not complete successfully. {pendingEvents} pending");
         }
     }

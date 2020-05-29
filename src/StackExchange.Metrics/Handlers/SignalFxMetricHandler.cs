@@ -99,7 +99,7 @@ namespace StackExchange.Metrics.Handlers
         }
 
         /// <inheritdoc />
-        public IMetricBatch BeginBatch() => _activeHandler.BeginBatch();
+        public IMetricReadingBatch BeginBatch() => _activeHandler.BeginBatch();
 
         /// <inheritdoc />
         public void Dispose() => _activeHandler.Dispose();
@@ -109,7 +109,7 @@ namespace StackExchange.Metrics.Handlers
             => _activeHandler?.FlushAsync(delayBetweenRetries, maxRetries, afterSend, exceptionHandler) ?? default(ValueTask);
 
         /// <inheritdoc />
-        public void SerializeMetadata(IEnumerable<MetaData> metadata) => _activeHandler.SerializeMetadata(metadata);
+        public void SerializeMetadata(IEnumerable<Metadata> metadata) => _activeHandler.SerializeMetadata(metadata);
 
         /// <inheritdoc />
         public void SerializeMetric(in MetricReading reading) => _activeHandler.SerializeMetric(reading);
@@ -249,7 +249,7 @@ namespace StackExchange.Metrics.Handlers
             }
 
             /// <inheritdoc />
-            protected override void SerializeMetadata(IBufferWriter<byte> writer, IEnumerable<MetaData> metadata)
+            protected override void SerializeMetadata(IBufferWriter<byte> writer, IEnumerable<Metadata> metadata)
             {
                 // this particular implementation doesn't understand metadata
             }
@@ -336,7 +336,7 @@ namespace StackExchange.Metrics.Handlers
                     var epochConverter = (JsonConverter<DateTime>)options.GetConverter(typeof(DateTime));
 
                     writer.WriteStartObject(); // {
-                    writer.WriteString(s_metricProperty, reading.NameWithSuffix); // "metric": "name"
+                    writer.WriteString(s_metricProperty, reading.Name); // "metric": "name"
                     writer.WriteNumber(s_valueProperty, reading.Value); // ,"value": 1.23
                     if (reading.Tags.Count > 0)
                     {

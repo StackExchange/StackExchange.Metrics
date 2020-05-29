@@ -1,4 +1,5 @@
-using System;
+﻿using System;
+using System.Linq;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using StackExchange.Metrics.DependencyInjection;
@@ -17,6 +18,33 @@ namespace StackExchange.Metrics.Tests
         public MetricsCollectorBuilderTests(ITestOutputHelper output)
         {
             _output = output;
+        }
+
+        [Fact]
+        public void DefaultOptions_HasHostTag()
+        {
+            var services = CreateServices();
+            var builder = new MetricsCollectorBuilder(services);
+
+            var serviceProvider = services.BuildServiceProvider();
+            var options = builder.Build(serviceProvider);
+
+            var sourceOptions = serviceProvider.GetRequiredService<MetricSourceOptions>();
+
+            Assert.Contains(
+                sourceOptions.DefaultTags, x => x.Key == "host" && x.Value == Environment.MachineName.ToLower()
+            );
+        }
+
+
+        [Fact]
+        public void DefaultOptions_HasDefaultSources()
+        {
+            var options = CreateOptions();
+
+            Assert.Contains(options.Sources, x => x is AspNetMetricSource);
+            Assert.Contains(options.Sources, x => x is RuntimeMetricSource);
+            Assert.Contains(options.Sources, x => x is ProcessMetricSource);
         }
 
         [Fact]
@@ -60,84 +88,158 @@ namespace StackExchange.Metrics.Tests
         }
 
         [Fact]
-        public void Sets_Added()
+        public void Sources_Added()
         {
-            var metricSet = new TestMetricSet();
+            var metricSource = new TestMetricSource();
             var options = CreateOptions(
-                builder => builder.AddSet(metricSet)
+                builder => {
+                    builder.ClearSources();
+                    builder.AddSource(metricSource);
+                }
             );
 
-            Assert.Contains(options.Sets, x => ReferenceEquals(x, metricSet));
+            Assert.Contains(options.Sources, x => ReferenceEquals(x, metricSource));
         }
 
         [Fact]
-        public void Sets_RuntimeSetAdded()
+        public void Sources_RuntimeSourceAdded()
         {
             var options = CreateOptions(
-                builder => builder.AddRuntimeMetricSet()
+                builder =>
+                {
+                    builder.ClearSources();
+                    builder.AddRuntimeMetricSource();
+                }
             );
 
-            Assert.Contains(options.Sets, x => x is RuntimeMetricSet);
+            Assert.Single(options.Sources);
+            Assert.Contains(options.Sources, x => x is RuntimeMetricSource);
         }
 
         [Fact]
-        public void Sets_ProcessSetAdded()
+        public void Sources_RuntimeSourceAddedOnce()
         {
             var options = CreateOptions(
-                builder => builder.AddProcessMetricSet()
+                builder =>
+                {
+                    builder.ClearSources();
+                    builder.AddRuntimeMetricSource();
+                    builder.AddRuntimeMetricSource();
+                }
             );
 
-            Assert.Contains(options.Sets, x => x is ProcessMetricSet);
+            Assert.Single(options.Sources);
+            Assert.Contains(options.Sources, x => x is RuntimeMetricSource);
         }
 
         [Fact]
-        public void Sets_AspNetSetAdded()
+        public void Sources_ProcessSourceAdded()
         {
             var options = CreateOptions(
-                builder => builder.AddAspNetMetricSet()
+                builder =>
+                {
+                    builder.ClearSources();
+                    builder.AddProcessMetricSource();
+                }
             );
 
-            Assert.Contains(options.Sets, x => x is AspNetMetricSet);
+            Assert.Single(options.Sources);
+            Assert.Contains(options.Sources, x => x is ProcessMetricSource);
         }
 
         [Fact]
-        public void Sets_DefaultSetsAdded()
+        public void Sources_ProcessSourceAddedOnce()
         {
             var options = CreateOptions(
-                builder => builder.AddDefaultSets()
+                builder =>
+                {
+                    builder.ClearSources();
+                    builder.AddProcessMetricSource();
+                    builder.AddProcessMetricSource();
+                }
             );
 
-            Assert.Contains(options.Sets, x => x is AspNetMetricSet);
-            Assert.Contains(options.Sets, x => x is RuntimeMetricSet);
-            Assert.Contains(options.Sets, x => x is ProcessMetricSet);
+            Assert.Single(options.Sources);
+            Assert.Contains(options.Sources, x => x is ProcessMetricSource);
         }
 
         [Fact]
-        public void Tags_HostTagAddedByDefault()
+        public void Sources_AspNetSourceAdded()
         {
-            var options = CreateOptions();
+            var options = CreateOptions(
+                builder =>
+                {
+                    builder.ClearSources();
+                    builder.AddAspNetMetricSource();
+                }
+            );
 
-            Assert.Contains(options.DefaultTags, x => x.Key == "host" && x.Value == NameTransformers.Sanitize(Environment.MachineName));
+            Assert.Single(options.Sources);
+            Assert.Contains(options.Sources, x => x is AspNetMetricSource);
         }
 
         [Fact]
-        public void Tags_HostTagCanBeOverridden()
+        public void Sources_AspNetSourceAddedOnce()
         {
             var options = CreateOptions(
-                builder => builder.AddDefaultTag("host", "bob")
+                builder =>
+                {
+                    builder.ClearSources();
+                    builder.AddAspNetMetricSource();
+                    builder.AddAspNetMetricSource();
+                }
             );
 
-            Assert.Contains(options.DefaultTags, x => x.Key == "host" && x.Value == "bob");
+            Assert.Single(options.Sources);
+            Assert.Contains(options.Sources, x => x is AspNetMetricSource);
         }
 
         [Fact]
-        public void Tags_DefaultTagCanBeAdded()
+        public void Sources_DefaultSourcesAdded()
         {
             var options = CreateOptions(
-                builder => builder.AddDefaultTag("name", "value")
+                builder =>
+                {
+                    builder.ClearSources();
+                    builder.AddDefaultSources();
+                }
             );
 
-            Assert.Contains(options.DefaultTags, x => x.Key == "name" && x.Value == "value");
+            Assert.Equal(3, options.Sources.Count());
+            Assert.Contains(options.Sources, x => x is AspNetMetricSource);
+            Assert.Contains(options.Sources, x => x is RuntimeMetricSource);
+            Assert.Contains(options.Sources, x => x is ProcessMetricSource);
+        }
+
+        [Fact]
+        public void Sources_DefaultSourcesAddedOnce()
+        {
+            var options = CreateOptions(
+                builder =>
+                {
+                    builder.ClearSources();
+                    builder.AddDefaultSources();
+                    builder.AddDefaultSources();
+                }
+            );
+
+            Assert.Equal(3, options.Sources.Count());
+            Assert.Contains(options.Sources, x => x is AspNetMetricSource);
+            Assert.Contains(options.Sources, x => x is RuntimeMetricSource);
+            Assert.Contains(options.Sources, x => x is ProcessMetricSource);
+        }
+
+        [Fact]
+        public void Sources_Clear ()
+        {
+            var options = CreateOptions(
+                builder =>
+                {
+                    builder.ClearSources();
+                }
+            );
+
+            Assert.Empty(options.Sources);
         }
 
         [Fact]
@@ -155,41 +257,39 @@ namespace StackExchange.Metrics.Tests
         [Fact]
         public void Configure_ChangesSettings()
         {
-            var tagValueConverter = new TagValueConverterDelegate((name, value) => value);
-            var tagNameConverter = new Func<string, string>(x => x);
             var options = CreateOptions(
                 builder => builder.Configure(
                     o =>
                     {
                         o.FlushInterval = TimeSpan.Zero;
-                        o.MetricsNamePrefix = "tests.";
-                        o.PropertyToTagName = tagNameConverter;
                         o.RetryInterval = TimeSpan.Zero;
                         o.SnapshotInterval = TimeSpan.Zero;
-                        o.TagValueConverter = tagValueConverter;
                         o.ThrowOnPostFail = true;
                         o.ThrowOnQueueFull = true;
                     })
             );
 
             Assert.Equal(TimeSpan.Zero, options.FlushInterval);
-            Assert.Equal("tests.", options.MetricsNamePrefix);
-            Assert.StrictEqual(tagNameConverter, options.PropertyToTagName);
             Assert.Equal(TimeSpan.Zero, options.RetryInterval);
             Assert.Equal(TimeSpan.Zero, options.SnapshotInterval);
-            Assert.StrictEqual(tagValueConverter, options.TagValueConverter);
             Assert.True(options.ThrowOnQueueFull);
             Assert.True(options.ThrowOnPostFail);
 
         }
 
-        private MetricsCollectorOptions CreateOptions(Action<IMetricsCollectorBuilder> configure = null)
+        private ServiceCollection CreateServices()
         {
             var services = new ServiceCollection();
             services.AddSingleton<ITestOutputHelper>(_output);
             services.AddSingleton(typeof(ILogger<>), typeof(TestOutputLogger<>));
             services.AddSingleton<IDiagnosticsCollector, DiagnosticsCollector>();
+            services.AddSingleton<MetricSourceOptions>();
+            return services;
+        }
 
+        private MetricsCollectorOptions CreateOptions(Action<IMetricsCollectorBuilder> configure = null)
+        {
+            var services = CreateServices();
             var builder = new MetricsCollectorBuilder(services);
 
             configure?.Invoke(builder);

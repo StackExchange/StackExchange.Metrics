@@ -1,11 +1,11 @@
-﻿using System.Collections.Generic;
+﻿using System.Collections.Immutable;
 
 namespace StackExchange.Metrics.Infrastructure
 {
     /// <summary>
-    /// Describes a piece of time series metadata which can be sent to Bosun.
+    /// Describes a piece of time series metadata which can be sent to a metric handler.
     /// </summary>
-    public class MetaData
+    public class Metadata
     {
         /// <summary>
         /// The metric name.
@@ -18,7 +18,7 @@ namespace StackExchange.Metrics.Infrastructure
         /// <summary>
         /// Tags associated with a metric.
         /// </summary>
-        public IReadOnlyDictionary<string, string> Tags { get; }
+        public ImmutableDictionary<string, string> Tags { get; }
         /// <summary>
         /// The value of the metadata. For example, if Name = "desc", then Value = "your description text here"
         /// </summary>
@@ -31,7 +31,7 @@ namespace StackExchange.Metrics.Infrastructure
         /// <param name="name">The type of metadata being sent. Should be one of "rate", "desc", or "unit".</param>
         /// <param name="tags">Dictionary of tags keyed by name.</param>
         /// <param name="value">The value of the metadata. For example, if Name = "desc", then Value = "your description text here"</param>
-        public MetaData(string metric, string name, IReadOnlyDictionary<string, string> tags, string value)
+        public Metadata(string metric, string name, ImmutableDictionary<string, string> tags, string value)
         {
             Metric = metric;
             Name = name;

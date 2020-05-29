@@ -27,9 +27,9 @@ namespace StackExchange.Metrics.Infrastructure
         }
 
         /// <summary>
-        /// The maximum size of a single payload to an endpoint. It's best practice to set this to a size which can fit inside a 
+        /// The maximum size of a single payload to an endpoint. It's best practice to set this to a size which can fit inside a
         /// single initial TCP packet window. E.g. 10 x 1400 bytes.
-        /// 
+        ///
         /// HTTP Headers are not included in this size, so it's best to pick a value a bit smaller
         /// than the size of your initial TCP packet window. However, this property cannot be set to a size less than 1000.
         /// </summary>
@@ -41,7 +41,7 @@ namespace StackExchange.Metrics.Infrastructure
         public long MaxPayloadCount { get; set; } = 240;
 
         /// <inheritdoc />
-        public IMetricBatch BeginBatch() => new Batch(this);
+        public IMetricReadingBatch BeginBatch() => new Batch(this);
 
         private void SerializeMetric(PayloadType payloadType, PayloadTypeMetadata payloadMetadata, in MetricReading reading)
         {
@@ -81,9 +81,9 @@ namespace StackExchange.Metrics.Infrastructure
         /// Serializes metadata about available metrics into a format appropriate for the endpoint.
         /// </summary>
         /// <param name="metadata">
-        /// An <see cref="IEnumerable{T}" /> of <see cref="MetaData" /> representing the metadata to persist.
+        /// An <see cref="IEnumerable{T}" /> of <see cref="Metadata" /> representing the metadata to persist.
         /// </param>
-        public void SerializeMetadata(IEnumerable<MetaData> metadata)
+        public void SerializeMetadata(IEnumerable<Metadata> metadata)
         {
             var payloadMetadata = GetPayloadTypeMetadata(PayloadType.Metadata);
             var bufferWriter = payloadMetadata.BufferWriter;
@@ -266,10 +266,10 @@ namespace StackExchange.Metrics.Infrastructure
         /// An <see cref="IBufferWriter{T}"/>.
         /// </param>
         /// <param name="metadata">
-        /// An <see cref="IEnumerable{T}" /> of <see cref="MetaData" /> representing the metadata to persist.
+        /// An <see cref="IEnumerable{T}" /> of <see cref="Metadata" /> representing the metadata to persist.
         /// </param>
 
-        protected abstract void SerializeMetadata(IBufferWriter<byte> writer, IEnumerable<MetaData> metadata);
+        protected abstract void SerializeMetadata(IBufferWriter<byte> writer, IEnumerable<Metadata> metadata);
 
         /// <summary>
         /// Creates a <see cref="BufferWriter{T}" /> for a specific type of payload.
@@ -293,22 +293,18 @@ namespace StackExchange.Metrics.Infrastructure
         /// Overriding implementations can return the same <see cref="PayloadTypeMetadata" />
         /// instance for different kinds of payload.
         /// </remarks>
-        protected virtual PayloadTypeMetadata CreatePayloadTypeMetadata(PayloadType payloadType) 
+        protected virtual PayloadTypeMetadata CreatePayloadTypeMetadata(PayloadType payloadType)
             => new PayloadTypeMetadata(BufferWriter<byte>.Create(blockSize: MaxPayloadSize));
 
         private static PayloadType GetPayloadType(MetricType metricType)
         {
-            switch (metricType)
+            return metricType switch
             {
-                case MetricType.Counter:
-                    return PayloadType.Counter;
-                case MetricType.CumulativeCounter:
-                    return PayloadType.CumulativeCounter;
-                case MetricType.Gauge:
-                    return PayloadType.Gauge;
-                default:
-                    throw new ArgumentOutOfRangeException(nameof(metricType));
-            }
+                MetricType.Counter => PayloadType.Counter,
+                MetricType.CumulativeCounter => PayloadType.CumulativeCounter,
+                MetricType.Gauge => PayloadType.Gauge,
+                _ => throw new ArgumentOutOfRangeException(nameof(metricType)),
+            };
         }
 
         private PayloadTypeMetadata GetPayloadTypeMetadata(PayloadType payloadType)
@@ -321,7 +317,7 @@ namespace StackExchange.Metrics.Infrastructure
             return metadata;
         }
 
-        private class Batch : IMetricBatch
+        private class Batch : IMetricReadingBatch
         {
             private readonly BufferedMetricHandler _handler;
 
@@ -334,7 +330,7 @@ namespace StackExchange.Metrics.Infrastructure
             public long MetricsWritten { get; private set; }
 
             /// <inheritdoc />
-            public void SerializeMetric(in MetricReading reading)
+            public void Add(in MetricReading reading)
             {
                 var payloadType = GetPayloadType(reading.Type);
                 var payloadMetadata = _handler.GetPayloadTypeMetadata(payloadType);
@@ -343,10 +339,6 @@ namespace StackExchange.Metrics.Infrastructure
                 _handler.SerializeMetric(payloadType, payloadMetadata, reading);
                 MetricsWritten++;
                 BytesWritten += bufferWriter.Length - startBytes;
-            }
-
-            public void Dispose()
-            {
             }
         }
 

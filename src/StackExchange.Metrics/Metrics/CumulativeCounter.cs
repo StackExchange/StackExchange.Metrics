@@ -1,59 +1,52 @@
-﻿using StackExchange.Metrics.Handlers;
-using StackExchange.Metrics.Infrastructure;
-using System;
+﻿using System;
+using System.Collections.Immutable;
 using System.Threading;
+using StackExchange.Metrics.Handlers;
+using StackExchange.Metrics.Infrastructure;
 
 namespace StackExchange.Metrics.Metrics
 {
     /// <summary>
     /// A counter that is recorded using the deltas everytime it is incremented . Used for very low-volume events.
+    /// </summary>
     /// <remarks>
     /// When using a Bosun endpoint <see cref="BosunMetricHandler.EnableExternalCounters"/> must be true
     /// to be reported. You'll also need to make sure your infrastructure is setup with external counters enabled. This currently requires using tsdbrelay.
     /// See https://github.com/StackExchange/StackExchange.Metrics/blob/master/docs/MetricTypes.md#externalcounter
     /// </remarks>
-    /// </summary>
-    public class CumulativeCounter : MetricBase
+    public sealed class CumulativeCounter : MetricBase
     {
-        long _countSnapshot;
-        long _count;
+        private long _count;
 
         /// <summary>
-        /// The current value of this counter. This will reset to zero at each reporting interval.
+        /// Instantiates a new cumulative counter.
         /// </summary>
-        public long Count => _count;
+        public CumulativeCounter(string name, string unit, string description, MetricSourceOptions options, ImmutableDictionary<string, string> tags = null) : base(name, unit, description, options, tags)
+        {
+        }
 
         /// <summary>
         /// The type of metric (cumulative counter, in this case)
         /// </summary>
         public override MetricType MetricType => MetricType.CumulativeCounter;
 
-        /// <summary>
-        /// Increments the counter by one. If you need to increment by more than one at a time, it's probably too high volume for an external counter anyway.
-        /// </summary>
-        public void Increment()
+        /// <inheritdoc/>
+        protected override void Write(IMetricReadingBatch batch, DateTime timestamp)
         {
-            AssertAttached();
-            Interlocked.Increment(ref _count);
-        }
-
-        /// <summary>
-        /// See <see cref="MetricBase.Serialize"/>
-        /// </summary>
-        protected override void Serialize(IMetricBatch writer, DateTime now)
-        {
-            if (_countSnapshot > 0)
+            var countSnapshot = Interlocked.Exchange(ref _count, 0);
+            if (countSnapshot == 0)
             {
-                WriteValue(writer, _countSnapshot, now);
+                return;
             }
+
+            batch.Add(
+                CreateReading(countSnapshot, timestamp)
+            );
         }
 
         /// <summary>
-        /// See <see cref="MetricBase.PreSerialize"/>
+        /// Increments the counter by one. If you need to increment by more than one at a time, it's probably too high volume for an cumulative counter anyway.
         /// </summary>
-        protected override void PreSerialize()
-        {
-            _countSnapshot = Interlocked.Exchange(ref _count, 0);
-        }
+        public void Increment() => Interlocked.Increment(ref _count);
     }
 }

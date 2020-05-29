@@ -1,58 +1,49 @@
 ﻿using System;
-using StackExchange.Metrics.Infrastructure;
 
 namespace StackExchange.Metrics
 {
     /// <summary>
     /// Exposes functionality to create new metrics and to collect metrics.
     /// </summary>
-    public partial interface IMetricsCollector
+    public interface IMetricsCollector
     {
+        /// <summary>
+        /// An event called immediately before metrics are serialized.
+        /// </summary>
+        event Action BeforeSerialization;
+        /// <summary>
+        /// An event called immediately after metrics are serialized. It includes an argument with post-serialization information.
+        /// </summary>
+        event Action<AfterSerializationInfo> AfterSerialization;
+        /// <summary>
+        /// An event called immediately after metrics are posted to a metric handler. It includes an argument with information about the POST.
+        /// </summary>
+        event Action<AfterSendInfo> AfterSend;
+
+        /// <summary>
+        /// If true, we will generate an exception every time posting to the a metrics endpoint fails with a server error (response code 5xx).
+        /// </summary>
+        public bool ThrowOnPostFail { get; set; }
+        /// <summary>
+        /// If true, we will generate an exception when the metric queue is full. This would most commonly be caused by an extended outage of the
+        /// a metric handler. It is an indication that data is likely being lost.
+        /// </summary>
+        public bool ThrowOnQueueFull { get; set; }
         /// <summary>
         /// The length of time between metric reports (snapshots).
         /// </summary>
-        TimeSpan ReportingInterval { get; }
-
+        public TimeSpan ReportingInterval { get; }
         /// <summary>
-        /// Creates a metric (time series) and adds it to the collector. An exception will be thrown if a metric by the same name and tag values already exists.
+        /// The length of time between flush operations to an endpoint.
         /// </summary>
-        /// <param name="name">The metric name. If <paramref name="includePrefix"/>, global prefix <see cref="MetricsCollectorOptions.MetricsNamePrefix"/> will be prepended.</param>
-        /// <param name="unit">The units of the metric (e.g. "milliseconds").</param>
-        /// <param name="description">The metadata description of the metric.</param>
-        /// <param name="metricFactory">A delegate which will be called to instantiate the metric.</param>
-        /// <param name="includePrefix">Whether the <see cref="MetricsCollectorOptions.MetricsNamePrefix"/> will be prepended to the metric name.</param>
-        T CreateMetric<T>(string name, string unit, string description, Func<T> metricFactory, bool includePrefix = true) where T : MetricBase;
-
+        public TimeSpan FlushInterval { get; }
         /// <summary>
-        /// Creates a metric (time series) and adds it to the collector. An exception will be thrown if a metric by the same name and tag values already exists.
+        /// Number of times to retry a flush operation before giving up.
         /// </summary>
-        /// <param name="name">The metric name. If <paramref name="includePrefix"/>, global prefix <see cref="MetricsCollectorOptions.MetricsNamePrefix"/> will be prepended.</param>
-        /// <param name="unit">The units of the metric (e.g. "milliseconds").</param>
-        /// <param name="description">The metadata description of the metric.</param>
-        /// <param name="metric">A pre-instantiated metric, or null if the metric type has a default constructor.</param>
-        /// <param name="includePrefix">Whether the <see cref="MetricsCollectorOptions.MetricsNamePrefix"/> will be prepended to the metric name.</param>
-        T CreateMetric<T>(string name, string unit, string description, T metric = null, bool includePrefix = true) where T : MetricBase;
-
+        public int RetryCount { get; }
         /// <summary>
-        /// Creates a metric (time series) and adds it to the collector. If a metric by the same name and tag values already exists, then that metric is
-        /// returned.
+        /// The length of time to wait before retrying a failed flush operation to an endpoint.
         /// </summary>
-        /// <param name="name">The metric name. If <paramref name="includePrefix"/>, global prefix <see cref="MetricsCollectorOptions.MetricsNamePrefix"/> will be prepended.</param>
-        /// <param name="unit">The units of the metric (e.g. "milliseconds").</param>
-        /// <param name="description">The metadata description of the metric.</param>
-        /// <param name="metricFactory">A delegate which will be called to instantiate the metric.</param>
-        /// <param name="includePrefix">Whether the <see cref="MetricsCollectorOptions.MetricsNamePrefix"/> will be prepended to the metric name.</param>
-        T GetMetric<T>(string name, string unit, string description, Func<T> metricFactory, bool includePrefix = true) where T : MetricBase;
-
-        /// <summary>
-        /// Creates a metric (time series) and adds it to the collector. If a metric by the same name and tag values already exists, then that metric is
-        /// returned.
-        /// </summary>
-        /// <param name="name">The metric name. If <paramref name="includePrefix"/>, global prefix <see cref="MetricsCollectorOptions.MetricsNamePrefix"/> will be prepended.</param>
-        /// <param name="unit">The units of the metric (e.g. "milliseconds").</param>
-        /// <param name="description">The metadata description of the metric.</param>
-        /// <param name="metric">A pre-instantiated metric, or null if the metric type has a default constructor.</param>
-        /// <param name="includePrefix">Whether the <see cref="MetricsCollectorOptions.MetricsNamePrefix"/> will be prepended to the metric name.</param>
-        T GetMetric<T>(string name, string unit, string description, T metric = null, bool includePrefix = true) where T : MetricBase;
+        public TimeSpan RetryInterval { get; }
     }
 }

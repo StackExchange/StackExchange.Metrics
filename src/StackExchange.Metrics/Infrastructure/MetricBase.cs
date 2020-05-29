@@ -1,129 +1,100 @@
-﻿using StackExchange.Metrics.Metrics;
-using System;
+﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Reflection;
-using System.Runtime.CompilerServices;
+using System.Collections.Immutable;
+using StackExchange.Metrics.Metrics;
 
 namespace StackExchange.Metrics.Infrastructure
 {
     /// <summary>
-    /// The base class for all metrics (time series). Custom metric types may inherit from this directly. However, most users will want to inherit from a child
-    /// class, such as <see cref="Counter"/> or <see cref="AggregateGauge"/>.
+    /// The base class for all metrics (time series). Custom metric types may inherit from this directly. However, most users will want to use the factory methods
+    /// on classes, such as <see cref="Counter"/> or <see cref="AggregateGauge"/>.
     /// </summary>
-    public abstract class MetricBase
+    public abstract class MetricBase : IMetricReadingWriter, IMetricMetadataProvider
     {
-        struct MetricTypeInfo
-        {
-            public bool NeedsPreSerialize;
-        }
-
-        static readonly Dictionary<Type, MetricTypeInfo> s_typeInfoCache = new Dictionary<Type, MetricTypeInfo>();
-
-        static readonly string[] s_singleEmptyStringArray = {""};
-
         /// <summary>
         /// <see cref="MetricType" /> value indicating the type of metric.
         /// </summary>
         public abstract MetricType MetricType { get; }
-        /// <summary>
-        /// The collector that this metric is attached to. A metric must be attached to a collector in order to be recorded on.
-        /// </summary>
-        public MetricsCollector Collector { get; internal set; }
-        /// <summary>
-        /// True if this metric is attached to a collector. A metric must be attached to a collector in order to be recorded on.
-        /// </summary>
-        public bool IsAttached { get; internal set; }
 
         /// <summary>
-        /// An enumeration of metric name suffixes. In most cases, this will be a single-element collection where the value of the element is an empty string.
-        /// However, some metric types may actually serialize as multiple time series distinguished by metric names with different suffixes. The only built-in
-        /// metric type which does this is <see cref="AggregateGauge"/> where the suffixes will be things like "_avg", "_min", "_95", etc.
+        /// The metric name, excluding any suffixes
         /// </summary>
-        public IReadOnlyCollection<string> Suffixes => Array.AsReadOnly(SuffixesArray);
-        internal string[] SuffixesArray { get; private set; }
-        internal int SuffixCount => SuffixesArray.Length;
+        public string Name { get; }
+        /// <summary>
+        /// Description of this metric (time series) which will be sent to metric handlers as metadata.
+        /// </summary>
+        public string Description { get; }
+        /// <summary>
+        /// The units for this metric (time series) which will be sent to metric handlers as metadata. (example: "milliseconds")
+        /// </summary>
+        public string Unit { get; }
+        /// <summary>
+        /// Tags for this metric (time series).
+        /// </summary>
+        public ImmutableDictionary<string, string> Tags { get; }
 
-        IReadOnlyDictionary<string, string> _tags;
-        internal IReadOnlyDictionary<string, string> Tags => _tags ??= GetTags(Collector.DefaultTags, Collector.TagValueConverter, Collector.PropertyToTagName, Collector.TagsByTypeCache);
-
-        string _name;
-        readonly object _nameLock = new object();
+        private ImmutableArray<SuffixMetadata> _suffixes;
 
         /// <summary>
-        /// The metric name, including the global prefix (if applicable), but not including any suffixes (see <see cref="Suffixes"/>).
+        /// Metadata about suffixes associated with this metric. The only built-in metric type which has multiple suffixes
+        /// is <see cref="AggregateGauge"/> where the suffixes will be things like "_avg", "_min", "_95", etc.
         /// </summary>
-        public string Name
-        {
-            get { return _name; }
-            internal set
-            {
-                lock (_nameLock)
-                {
-                    if (_name != null)
-                        throw new InvalidOperationException("Metrics cannot be renamed.");
-
-                    if (value == null || !MetricValidation.IsValidMetricName(value))
-                        throw new Exception(value + " is not a valid metric name. Only characters in the regex class [a-zA-Z0-9\\-_./] are allowed.");
-
-                    _name = value;
-                }
-            }
-        }
-
-        /// <summary>
-        /// Description of this metric (time series) which will be sent to Bosun as metadata.
-        /// </summary>
-        public virtual string Description { get; set; }
-        /// <summary>
-        /// The units for this metric (time series) which will be sent to Bosun as metadata. (example: "milliseconds")
-        /// </summary>
-        public virtual string Unit { get; internal set; }
-
-        /// <summary>
-        /// If true, the metric's value will be immediately serialized after initialization. This is useful for counters where you want a zero value to be
-        /// recorded in Bosun every time the app restarts.
-        /// </summary>
-        public virtual bool SerializeInitialValue => MetricType == MetricType.Counter || MetricType == MetricType.CumulativeCounter;
+        protected ImmutableArray<SuffixMetadata> Suffixes => _suffixes.IsDefault ? (_suffixes = GetSuffixMetadata().ToImmutableArray()) : _suffixes;
 
         /// <summary>
         /// Instantiates the base class.
         /// </summary>
-        protected MetricBase()
+        protected MetricBase(string name, string unit, string description, MetricSourceOptions options, ImmutableDictionary<string, string> tags = null)
         {
-        }
-
-        internal MetricKey GetMetricKey(IReadOnlyDictionary<string, string> tags = null)
-        {
-            return new MetricKey(_name, tags ?? Tags);
-        }
-
-        /// <summary>
-        /// Called once per suffix in order to get a description.
-        /// </summary>
-        public virtual string GetDescription(int suffixIndex)
-        {
-            return Description;
-        }
-
-        /// <summary>
-        /// Called once per suffix in order to get the units.
-        /// </summary>
-        public virtual string GetUnit(int suffixIndex)
-        {
-            return Unit;
-        }
-
-        /// <summary>
-        /// Returns an enumerable of <see cref="MetaData"/> which which describes this metric.
-        /// </summary>
-        public virtual IEnumerable<MetaData> GetMetaData()
-        {
-            for (var i = 0; i < SuffixesArray.Length; i++)
+            if (name == null)
             {
-                var fullName = Name + SuffixesArray[i];
+                throw new ArgumentNullException(nameof(name));
+            }
 
-                var metricType = string.Empty;
+            if (options == null)
+            {
+                throw new ArgumentNullException(nameof(options));
+            }
+
+            name = options.MetricNameTransformer(name);
+            if (!options.MetricNameValidator(name))
+            {
+                throw new ArgumentException(name + " is not a valid metric name.", nameof(name));
+            }
+
+            var tagBuilder = options.DefaultTagsFrozen.ToBuilder();
+            if (tags != null)
+            {
+                foreach (var tag in tags)
+                {
+                    tagBuilder[tag.Key] = tag.Value;
+                }
+            }
+
+            Name = name;
+            Unit = unit;
+            Description = description;
+            Tags = tagBuilder.ToImmutable();
+        }
+
+        /// <summary>
+        /// Returns an <see cref="IEnumerable{T}"/> of suffix metadata for this metric. By default this contains
+        /// metadata for just the base metric (i.e. no suffix). The only built-in metric type which has more than one 
+        /// is <see cref="AggregateGauge"/> where the suffixes will be things like "_avg", "_min", "_95", etc.
+        /// </summary>
+        protected virtual IEnumerable<SuffixMetadata> GetSuffixMetadata()
+        {
+            yield return new SuffixMetadata(Name, Unit, Description);
+        }
+
+        /// <summary>
+        /// Returns an enumerable of <see cref="Metadata"/> which describes this metric.
+        /// </summary>
+        public virtual IEnumerable<Metadata> GetMetadata()
+        {
+            for (var i = 0; i < Suffixes.Length; i++)
+            {
+                string metricType;
                 switch (MetricType)
                 {
                     case MetricType.Counter:
@@ -139,275 +110,83 @@ namespace StackExchange.Metrics.Infrastructure
 
                 }
 
-                yield return new MetaData(fullName, MetadataNames.Rate, null, metricType);
+                var suffix = Suffixes[i];
 
-                var desc = GetDescription(i);
+                yield return new Metadata(suffix.Name, MetadataNames.Rate, Tags, metricType);
+
+                var desc = suffix.Description;
                 if (!string.IsNullOrEmpty(desc))
-                    yield return new MetaData(fullName, MetadataNames.Description, Tags, desc);
+                    yield return new Metadata(suffix.Name, MetadataNames.Description, Tags, desc);
 
-                var unit = GetUnit(i);
+                var unit = suffix.Unit;
                 if (!string.IsNullOrEmpty(unit))
-                    yield return new MetaData(fullName, MetadataNames.Unit, null, unit);
+                    yield return new Metadata(suffix.Name, MetadataNames.Unit, Tags, unit);
             }
         }
 
-        /// <summary>
-        /// This method will be called once to get an array of suffixes applicable to this metric. The returned array must never be modified after it is
-        /// returned.
-        /// </summary>
-        protected virtual string[] GetImmutableSuffixesArray()
-        {
-            return s_singleEmptyStringArray;
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal void SerializeInternal(IMetricBatch writer, DateTime now) => Serialize(writer, now);
+        /// <inheritdoc/>
+        void IMetricReadingWriter.Write(IMetricReadingBatch batch, DateTime timestamp) => Write(batch, timestamp);
 
         /// <summary>
-        /// Called when metrics should be serialized to a payload. You must call <see cref="WriteValue"/> in order for anything to be serialized.
-        ///
-        /// This is called in serial with all other metrics, so DO NOT do anything computationally expensive in this method. If you need to do expensive
-        /// computations (e.g. sorting a bunch of data), do it in <see cref="PreSerialize"/> which is called in parallel prior to this method.
+        /// Writes the readings for a metric into the specified <see cref="IMetricReadingBatch"/>.
         /// </summary>
-        /// <param name="writer">
-        /// A reference to an opaque object. Pass this as the first parameter to <see cref="WriteValue"/>. DO NOT retain a reference to this object or use it
-        /// in an asynchronous manner. It is only guaranteed to be in a valid state for the duration of this method call.
+        /// <param name="batch">
+        /// <see cref="IMetricReadingBatch"/> to write metrics into.
         /// </param>
-        /// <param name="now">The timestamp when serialization of all metrics started.</param>
-        protected abstract void Serialize(IMetricBatch writer, DateTime now);
-
-        internal bool NeedsPreSerializeCalled()
-        {
-            return GetMetricTypeInfo().NeedsPreSerialize;
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal void PreSerializeInternal()
-        {
-            PreSerialize();
-        }
+        /// <param name="timestamp">
+        /// Timestamp applied to all readings.
+        /// </param>
+        protected abstract void Write(IMetricReadingBatch batch, DateTime timestamp);
 
         /// <summary>
-        /// If this method is overriden, it will be called shortly before <see cref="Serialize"/>. Unlike Serialize, which is called on all metrics in serial,
-        /// PreSerialize is called in parallel, which makes it better place to do computationally expensive operations.
+        /// Creates a <see cref="MetricReading"/> with the specified value and timestamp and all other
+        /// properties inherited from this metric.
         /// </summary>
-        protected virtual void PreSerialize()
-        {
-        }
-
-        internal void LoadSuffixes()
-        {
-            SuffixesArray = GetImmutableSuffixesArray();
-        }
-
-        /// <summary>
-        /// Throws an exception if <see cref="IsAttached"/> is false. It is best practice for all metrics to call this method before recording any values.
-        /// </summary>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        protected void AssertAttached()
-        {
-            if (!IsAttached)
-            {
-                var ex = new InvalidOperationException("Attempting to record on a metric which is not attached to a MetricsCollector object.");
-                try
-                {
-                    ex.Data["Metric"] = Name;
-                    ex.Data["Tags"] = string.Join(",", Tags);
-                }
-                finally
-                {
-                    throw ex;
-                }
-            }
-        }
-
-        /// <summary>
-        /// This method serializes a time series record/value. This method must only be called from within <see cref="Serialize"/>.
-        /// </summary>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        protected void WriteValue(IMetricBatch writer, double value, DateTime now, int suffixIndex = 0)
-        {
-            writer.SerializeMetric(
-                new MetricReading(Name, MetricType, SuffixesArray[suffixIndex], value, Tags, now)
+        protected MetricReading CreateReading(double value, DateTime timestamp) =>
+            new MetricReading(
+                name: Name,
+                type: MetricType,
+                value: value,
+                tags: Tags,
+                timestamp: timestamp
             );
-        }
 
-        internal IReadOnlyDictionary<string, string> GetTags(
-            IReadOnlyDictionary<string, string> defaultTags,
-            TagValueConverterDelegate tagValueConverter,
-            Func<string, string> propertyToTagConverter,
-            Dictionary<Type, List<MetricTag>> tagsByTypeCache)
+        /// <summary>
+        /// Creates a <see cref="MetricReading"/> with the specified value and timestamp and all other
+        /// properties inherited from the specified suffix.
+        /// </summary>
+        protected MetricReading CreateReading(in SuffixMetadata suffix, double value, DateTime timestamp) =>
+            new MetricReading(
+                name: suffix.Name,
+                type: MetricType,
+                value: value,
+                tags: Tags,
+                timestamp: timestamp
+            );
+
+        /// <summary>
+        /// Metadata about a suffix.
+        /// </summary>
+        protected readonly struct SuffixMetadata
         {
-            var tags = new Dictionary<string, string>();
-            foreach (var tag in GetTagsList(defaultTags, propertyToTagConverter, tagsByTypeCache))
-            {
-                var value = tag.IsFromDefault ? defaultTags[tag.Name] : tag.GetValue(this);
-                if (tagValueConverter != null)
-                    value = tagValueConverter(tag.Name, value);
+            /// <summary>
+            /// Instantiates a new instance of <see cref="SuffixMetadata"/>
+            /// </summary>
+            public SuffixMetadata(string name, string unit, string description)
+                => (Name, Unit, Description) = (name, unit, description);
 
-                if (value == null)
-                {
-                    if (tag.IsOptional)
-                        continue;
-
-                    throw new InvalidOperationException(
-                        $"null is not a valid tag value for {GetType().FullName}.{tag.MemberInfo.Name}. This tag was declared as non-optional.");
-                }
-                if (!MetricValidation.IsValidTagValue(value))
-                {
-                    throw new InvalidOperationException(
-                        $"Invalid value for tag {GetType().FullName}.{tag.MemberInfo.Name}. \"{value}\" is not a valid tag value. " +
-                        $"Only characters in the regex class [a-zA-Z0-9\\-_./] are allowed.");
-                }
-
-                tags.Add(tag.Name, value);
-            }
-
-            if (tags.Count == 0)
-            {
-                throw new InvalidOperationException(
-                    $"At least one tag value must be specified for every metric. {GetType().FullName} was instantiated without any tag values.");
-            }
-
-            return tags;
-        }
-
-        List<MetricTag> GetTagsList(IReadOnlyDictionary<string, string> defaultTags, Func<string, string> propertyToTagConverter, Dictionary<Type, List<MetricTag>> tagsByTypeCache)
-        {
-            var type = GetType();
-            if (tagsByTypeCache.ContainsKey(type))
-                return tagsByTypeCache[type];
-
-            // build list of tag members of the current type
-            var members = type.GetMembers();
-            var tags = new List<MetricTag>();
-            foreach (var member in members)
-            {
-                var metricTag = member.GetCustomAttribute<MetricTagAttribute>();
-                if (metricTag != null)
-                    tags.Add(new MetricTag(member, metricTag, propertyToTagConverter));
-            }
-
-            // get default tags
-            var tagAttributes = GetTagAttributesData(type);
-            if (tagAttributes.IncludeByDefault || tagAttributes.IncludeByTag?.Count > 0)
-            {
-                foreach (var name in defaultTags.Keys)
-                {
-                    var explicitInclude = false; // assignment isn't actually used, but the compiler complains without it
-                    if (tagAttributes.IncludeByTag?.TryGetValue(name, out explicitInclude) == true)
-                    {
-                        if (!explicitInclude)
-                            continue;
-                    }
-                    else
-                    {
-                        if (!tagAttributes.IncludeByDefault)
-                            continue;
-                    }
-
-                    if (tags.Any(t => t.Name == name))
-                        continue;
-
-                    tags.Add(new MetricTag(name));
-                }
-            }
-
-            if (tags.Count == 0)
-                throw new TypeInitializationException(type.FullName, new Exception("Type does not contain any Bosun tags. Metrics must have at least one tag to be serializable."));
-
-            tags.Sort((a, b) => string.CompareOrdinal(a.Name, b.Name));
-            tagsByTypeCache[type] = tags;
-            return tags;
-        }
-
-        struct TagAttributesData
-        {
-            public bool IncludeByDefault;
-            public Dictionary<string, bool> IncludeByTag;
-        }
-
-        static TagAttributesData GetTagAttributesData(Type type)
-        {
-            var foundDefault = false;
-            var includeByDefault = true;
-            Dictionary<string, bool> includeByTag = null;
-
-            var objType = typeof(object);
-
-            while (true)
-            {
-                var exclude = type.GetCustomAttribute<ExcludeDefaultTagsAttribute>(false);
-                var restore = type.GetCustomAttribute<RestoreDefaultTagsAttribute>(false);
-
-                if (restore?.Tags.Length == 0)
-                {
-                    foundDefault = true;
-                    includeByDefault = true;
-                }
-                else if (exclude?.Tags.Length == 0)
-                {
-                    foundDefault = true;
-                    includeByDefault = false;
-                }
-
-                if (restore?.Tags.Length > 0)
-                {
-                    if (includeByTag == null)
-                        includeByTag = new Dictionary<string, bool>();
-
-                    foreach (var tag in restore.Tags)
-                    {
-                        includeByTag[tag] = true;
-                    }
-                }
-
-                if (exclude?.Tags.Length > 0)
-                {
-                    if (includeByTag == null)
-                        includeByTag = new Dictionary<string, bool>();
-
-                    foreach (var tag in exclude.Tags)
-                    {
-                        includeByTag[tag] = false;
-                    }
-                }
-
-                if (foundDefault)
-                    break;
-
-                type = type.BaseType;
-                if (type == objType || type == null)
-                    break;
-            }
-
-            return new TagAttributesData
-            {
-                IncludeByDefault = includeByDefault,
-                IncludeByTag = includeByTag,
-            };
-        }
-
-        MetricTypeInfo GetMetricTypeInfo()
-        {
-            var type = GetType();
-            if (s_typeInfoCache.TryGetValue(type, out var info))
-                return info;
-
-            lock (s_typeInfoCache)
-            {
-                if (s_typeInfoCache.TryGetValue(type, out info))
-                    return info;
-
-                var needsPreSerialize = type.GetMethod(nameof(PreSerialize), BindingFlags.Instance | BindingFlags.NonPublic).DeclaringType != typeof(MetricBase);
-
-                info = s_typeInfoCache[type] = new MetricTypeInfo
-                {
-                    NeedsPreSerialize = needsPreSerialize,
-                };
-
-                return info;
-            }
+            /// <summary>
+            /// Gets the fully-qualified name of the metric including the suffix.
+            /// </summary>
+            public string Name { get; }
+            /// <summary>
+            /// Gets the unit of the suffix.
+            /// </summary>
+            public string Unit { get; }
+            /// <summary>
+            /// Gets the description of the suffix.
+            /// </summary>
+            public string Description { get; }
         }
     }
 }

@@ -1,17 +1,59 @@
-﻿using StackExchange.Metrics.Infrastructure;
-using System;
+﻿using System;
 using System.Collections.Concurrent;
+using System.Collections.Immutable;
 using System.Threading;
+using StackExchange.Metrics.Infrastructure;
 
 namespace StackExchange.Metrics.Metrics
 {
     /// <summary>
-    /// Every data point is sent to Bosun. Good for low-volume events.
+    /// Every data point results in a <see cref="MetricReading"/>. Good for low-volume events.
     /// See https://github.com/StackExchange/StackExchange.Metrics/blob/master/docs/MetricTypes.md#eventgauge
     /// </summary>
-    public class EventGauge : MetricBase
+    public sealed class EventGauge : MetricBase
     {
-        readonly struct PendingMetric
+        private ConcurrentBag<PendingMetric> _pendingMetrics = new ConcurrentBag<PendingMetric>();
+
+        /// <summary>
+        /// Instantiates a new event gauge.
+        /// </summary>
+        internal EventGauge(string name, string unit, string description, MetricSourceOptions options, ImmutableDictionary<string, string> tags = null) : base(name, unit, description, options, tags)
+        {
+        }
+
+        /// <summary>
+        /// The type of metric (gauge).
+        /// </summary>
+        public override MetricType MetricType => MetricType.Gauge;
+
+        /// <summary>
+        /// Records a data point which will be sent to metrics handlers.
+        /// </summary>
+        public void Record(double value) => _pendingMetrics.Add(new PendingMetric(value, DateTime.UtcNow));
+
+        /// <summary>
+        /// Records a data point with an explicit timestamp which will be sent to metrics handlers.
+        /// </summary>
+        public void Record(double value, DateTime time) => _pendingMetrics.Add(new PendingMetric(value, time));
+
+        /// <inheritdoc/>
+        protected override void Write(IMetricReadingBatch batch, DateTime timestamp)
+        {
+            var pending = Interlocked.Exchange(ref _pendingMetrics, new ConcurrentBag<PendingMetric>());
+            if (pending == null || pending.Count == 0)
+            {
+                return;
+            }
+
+            foreach (var p in pending)
+            {
+                batch.Add(
+                    CreateReading(p.Value, p.Time)
+                );
+            }
+        }
+
+        private readonly struct PendingMetric
         {
             public PendingMetric(double value, DateTime time)
             {
@@ -21,55 +63,6 @@ namespace StackExchange.Metrics.Metrics
 
             public double Value { get; }
             public DateTime Time { get; }
-        }
-
-        ConcurrentBag<PendingMetric> _pendingSnapshot;
-        ConcurrentBag<PendingMetric> _pendingMetrics = new ConcurrentBag<PendingMetric>();
-
-        /// <summary>
-        /// The type of metric (gauge).
-        /// </summary>
-        public override MetricType MetricType => MetricType.Gauge;
-
-        /// <summary>
-        /// See <see cref="MetricBase.Serialize"/>
-        /// </summary>
-        protected override void Serialize(IMetricBatch writer, DateTime now)
-        {
-            var pending = _pendingSnapshot;
-            if (pending == null || pending.Count == 0)
-                return;
-            
-            foreach (var p in pending)
-            {
-                WriteValue(writer, p.Value, p.Time);
-            }
-        }
-
-        /// <summary>
-        /// See <see cref="MetricBase.PreSerialize"/>
-        /// </summary>
-        protected override void PreSerialize()
-        {
-            _pendingSnapshot = Interlocked.Exchange(ref _pendingMetrics, new ConcurrentBag<PendingMetric>());
-        }
-
-        /// <summary>
-        /// Records a data point which will be sent to Bosun.
-        /// </summary>
-        public void Record(double value)
-        {
-            AssertAttached();
-            _pendingMetrics.Add(new PendingMetric(value, DateTime.UtcNow));
-        }
-
-        /// <summary>
-        /// Records a data point with an explicit timestamp which will be sent to Bosun.
-        /// </summary>
-        public void Record(double value, DateTime time)
-        {
-            AssertAttached();
-            _pendingMetrics.Add(new PendingMetric(value, time));
         }
     }
 }
