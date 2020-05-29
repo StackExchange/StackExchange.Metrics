@@ -1,13 +1,9 @@
-﻿using System;
-using System.Threading.Tasks;
-using StackExchange.Metrics.Infrastructure;
+﻿using System.Threading.Tasks;
 
 namespace StackExchange.Metrics.Tests
 {
-
     public class TestMetricSource : MetricSource
     {
-
         private readonly TaskCompletionSource<object> _attachTask;
         private readonly TaskCompletionSource<object> _detachTask;
         private readonly TaskCompletionSource<object> _snapshotTask;
@@ -15,7 +11,6 @@ namespace StackExchange.Metrics.Tests
         public Task AttachTask => _attachTask.Task;
         public Task DetachTask => _detachTask.Task;
         public Task SnapshotTask => _snapshotTask.Task;
-
 
         public TestMetricSource() : base(TestCreationOptions.Value)
         {

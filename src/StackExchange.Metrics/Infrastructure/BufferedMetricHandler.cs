@@ -298,17 +298,13 @@ namespace StackExchange.Metrics.Infrastructure
 
         private static PayloadType GetPayloadType(MetricType metricType)
         {
-            switch (metricType)
+            return metricType switch
             {
-                case MetricType.Counter:
-                    return PayloadType.Counter;
-                case MetricType.CumulativeCounter:
-                    return PayloadType.CumulativeCounter;
-                case MetricType.Gauge:
-                    return PayloadType.Gauge;
-                default:
-                    throw new ArgumentOutOfRangeException(nameof(metricType));
-            }
+                MetricType.Counter => PayloadType.Counter,
+                MetricType.CumulativeCounter => PayloadType.CumulativeCounter,
+                MetricType.Gauge => PayloadType.Gauge,
+                _ => throw new ArgumentOutOfRangeException(nameof(metricType)),
+            };
         }
 
         private PayloadTypeMetadata GetPayloadTypeMetadata(PayloadType payloadType)

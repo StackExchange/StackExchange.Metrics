@@ -1,6 +1,4 @@
-﻿using System.Collections.Generic;
-using System.Diagnostics;
-using StackExchange.Metrics.Infrastructure;
+﻿using System.Diagnostics;
 
 namespace StackExchange.Metrics.Metrics
 {

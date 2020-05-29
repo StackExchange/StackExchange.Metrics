@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Microsoft.Extensions.Options;
+using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 
@@ -7,7 +8,7 @@ namespace StackExchange.Metrics
     /// <summary>
     /// Options used to customise how metrics are created.
     /// </summary>
-    public class MetricSourceOptions
+    public class MetricSourceOptions : IOptions<MetricSourceOptions>
     {
         private static readonly NameTransformerDelegate s_defaultMetricNameTransformer = NameTransformers.Combine(NameTransformers.CamelToLowerSnakeCase, NameTransformers.Sanitize);
         private static readonly NameTransformerDelegate s_defaultTagNameTransformer = NameTransformers.Combine(NameTransformers.CamelToLowerSnakeCase, NameTransformers.Sanitize);
@@ -165,5 +166,10 @@ namespace StackExchange.Metrics
 
             private void SyncFrozen() => _options.DefaultTagsFrozen = this.ToImmutableDictionary();
         }
+
+        /// <summary>
+        /// For easy usage without <see cref="Options.Create{TOptions}(TOptions)"/>.
+        /// </summary>
+        MetricSourceOptions IOptions<MetricSourceOptions>.Value => this;
     }
 }

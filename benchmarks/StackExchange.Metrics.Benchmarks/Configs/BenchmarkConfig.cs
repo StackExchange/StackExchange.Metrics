@@ -4,7 +4,7 @@ using BenchmarkDotNet.Diagnosers;
 namespace StackExchange.Metrics.Benchmarks
 {
     /// <summary>
-    /// BenchmarkDotNet configuration that tests against BosunReporter, SE.Metrics previous and current.
+    /// Shared BenchmarkDotNet configuration for all benchmarks.
     /// </summary>
     public class BenchmarkConfig : ManualConfig
     {

@@ -1,5 +1,4 @@
 ﻿using System;
-using StackExchange.Metrics.Infrastructure;
 using StackExchange.Metrics.Metrics;
 
 namespace StackExchange.Metrics.SampleHost
@@ -14,7 +13,6 @@ namespace StackExchange.Metrics.SampleHost
         private readonly SamplingGauge<RandomNumberType> _randomNumberByType;
 
         private readonly Random _rng;
-        //private readonly MetricTag<string> _routeTag = ;
 
         public AppMetricSource(MetricSourceOptions options) : base(options)
         {

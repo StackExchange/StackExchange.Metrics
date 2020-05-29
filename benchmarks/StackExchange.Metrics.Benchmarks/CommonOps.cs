@@ -1,6 +1,5 @@
 ﻿using System.Collections.Generic;
 using BenchmarkDotNet.Attributes;
-using StackExchange.Metrics.Infrastructure;
 using StackExchange.Metrics.Metrics;
 
 namespace StackExchange.Metrics.Benchmarks

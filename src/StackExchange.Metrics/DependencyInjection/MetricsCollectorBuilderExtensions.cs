@@ -2,7 +2,6 @@
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using StackExchange.Metrics;
 using StackExchange.Metrics.Handlers;
-using StackExchange.Metrics.Infrastructure;
 using StackExchange.Metrics.Metrics;
 
 namespace Microsoft.Extensions.DependencyInjection

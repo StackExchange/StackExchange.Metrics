@@ -1,6 +1,4 @@
-﻿using System;
-
-namespace StackExchange.Metrics.Infrastructure
+﻿namespace StackExchange.Metrics.Infrastructure
 {
     /// <summary>
     /// Exposes functionality used to add metric readings to a batch that will be

@@ -23,12 +23,7 @@ namespace StackExchange.Metrics.Metrics
         /// </summary>
         internal SnapshotGauge(Func<double?> getValueFunc, string name, string unit, string description, MetricSourceOptions options, ImmutableDictionary<string, string> tags = null) : base(name, unit, description, options, tags)
         {
-            if (getValueFunc == null)
-            {
-                throw new ArgumentNullException("getValueFunc");
-            }
-
-            _getValueFunc = getValueFunc;
+            _getValueFunc = getValueFunc ?? throw new ArgumentNullException("getValueFunc");
         }
 
         /// <inheritdoc/>
