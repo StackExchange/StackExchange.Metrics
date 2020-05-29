@@ -222,7 +222,7 @@ namespace StackExchange.Metrics
                     _batches[i] = _endpoints[i].Handler.BeginBatch();
                 }
 
-                foreach (IMetricReadingWriter source in _sources)
+                foreach (var source in _sources)
                 {
                     source.WriteReadings(batch, timestamp);
                 }
