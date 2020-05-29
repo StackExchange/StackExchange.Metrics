@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Microsoft.Extensions.Options;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -10,7 +11,7 @@ namespace StackExchange.Metrics
     /// <remarks>
     /// All options are optional. However, <see cref="MetricsCollector" /> will never send metrics unless <see cref="Endpoints"/> is set.
     /// </remarks>
-    public class MetricsCollectorOptions : MetricSourceOptions
+    public class MetricsCollectorOptions : MetricSourceOptions, IOptions<MetricsCollectorOptions>
     {
         /// <summary>
         /// Exceptions which occur on a background thread will be passed to this delegate.
@@ -49,5 +50,10 @@ namespace StackExchange.Metrics
         /// Number of times to retry when flushing metrics to an endpoint fails. Defaults to 3 attempts.
         /// </summary>
         public int RetryCount { get; set; } = 3;
+
+        /// <summary>
+        /// For easy usage without <see cref="Options.Create{TOptions}(TOptions)"/>.
+        /// </summary>
+        MetricsCollectorOptions IOptions<MetricsCollectorOptions>.Value => this;
     }
 }
