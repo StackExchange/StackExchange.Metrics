@@ -1,7 +1,7 @@
 ﻿namespace StackExchange.Metrics
 {
     /// <summary>
-    /// Represents the type and name of a tag that is added to a 
+    /// Represents the type and name of a tag that is added to a metric.
     /// </summary>
     /// <typeparam name="T">
     /// Type of the tag.
