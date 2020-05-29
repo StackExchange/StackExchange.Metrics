@@ -26,6 +26,7 @@ namespace StackExchange.Metrics.SampleHost
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddMetricsCollector()
+                .AddSource<AppMetricSource>()
                 .UseExceptionHandler(ex => Console.WriteLine(ex))
                 .Configure(
                     o =>
