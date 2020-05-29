@@ -1,5 +1,4 @@
 ﻿using System;
-using StackExchange.Metrics.Infrastructure;
 using StackExchange.Metrics.Metrics;
 
 namespace StackExchange.Metrics.SampleHost

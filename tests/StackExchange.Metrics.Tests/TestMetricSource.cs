@@ -1,6 +1,4 @@
-﻿using System;
-using System.Threading.Tasks;
-using StackExchange.Metrics.Infrastructure;
+﻿using System.Threading.Tasks;
 
 namespace StackExchange.Metrics.Tests
 {

@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Linq;
-using StackExchange.Metrics.Infrastructure;
 using StackExchange.Metrics.Metrics;
 using Xunit;
 

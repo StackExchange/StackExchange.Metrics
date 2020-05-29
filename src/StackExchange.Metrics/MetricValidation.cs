@@ -1,5 +1,4 @@
 ﻿using System.Text.RegularExpressions;
-using StackExchange.Metrics.Infrastructure;
 
 namespace StackExchange.Metrics
 {
