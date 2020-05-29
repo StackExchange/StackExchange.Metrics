@@ -194,7 +194,7 @@ namespace StackExchange.Metrics.Metrics
                     {
 #if DEBUG
                         if (_warmlist != null)
-                            Debug.WriteLine("BosunReporter: Re-using pre-warmed list for aggregate gauge.");
+                            Debug.WriteLine("StackExchange.Metrics: Re-using pre-warmed list for aggregate gauge.");
 #endif
                         _list = _warmlist ?? new List<double>();
                         _warmlist = null;
