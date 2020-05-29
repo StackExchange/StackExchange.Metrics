@@ -118,36 +118,23 @@ namespace StackExchange.Metrics.Metrics
         /// <inheritdoc/>
         protected override IEnumerable<SuffixMetadata> GetSuffixMetadata()
         {
+            static string GetDescription(string baseDescription, double percentile) =>
+                (PercentileToAggregateMode(percentile)) switch
+                {
+                    AggregateMode.Last => baseDescription + " (last)",
+                    AggregateMode.Average => baseDescription + " (average)",
+                    AggregateMode.Max => baseDescription + " (maximum)",
+                    AggregateMode.Min => baseDescription + " (minimum)",
+                    AggregateMode.Median => baseDescription + " (median)",
+                    AggregateMode.Percentile => baseDescription + " (" + DoubleToPercentileString(percentile) + ")",
+                    AggregateMode.Count => baseDescription + " (count of the number of events recorded)",
+                    _ => baseDescription,
+                };
+
             for (var i = 0; i < _percentiles.Length; i++)
             {
                 var name = Name + _suffixes[i];
-                var description = Description;
-                switch (PercentileToAggregateMode(_percentiles[i]))
-                {
-                    case AggregateMode.Last:
-                        description += " (last)";
-                        break;
-                    case AggregateMode.Average:
-                        description += " (average)";
-                        break;
-                    case AggregateMode.Max:
-                        description += " (maximum)";
-                        break;
-                    case AggregateMode.Min:
-                        description += " (minimum)";
-                        break;
-                    case AggregateMode.Median:
-                        description += " (median)";
-                        break;
-                    case AggregateMode.Percentile:
-                        description += " (" + DoubleToPercentileString(_percentiles[i]) + ")";
-                        break;
-                    case AggregateMode.Count:
-                        description += " (count of the number of events recorded)";
-                        break;
-                }
-
-                yield return new SuffixMetadata(name, Unit, description);
+                yield return new SuffixMetadata(name, Unit, GetDescription(Description, _percentiles[i]));
             }
         }
 
