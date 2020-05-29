@@ -37,7 +37,7 @@ namespace StackExchange.Metrics.Metrics
         public void Record(double value, DateTime time) => _pendingMetrics.Add(new PendingMetric(value, time));
 
         /// <inheritdoc/>
-        public override void WriteReadings(IMetricReadingBatch batch, DateTime timestamp)
+        protected override void WriteReadings(IMetricReadingBatch batch, DateTime timestamp)
         {
             var pending = Interlocked.Exchange(ref _pendingMetrics, new ConcurrentBag<PendingMetric>());
             if (pending == null || pending.Count == 0)

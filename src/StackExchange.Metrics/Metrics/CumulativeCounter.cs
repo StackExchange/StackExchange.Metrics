@@ -31,7 +31,7 @@ namespace StackExchange.Metrics.Metrics
         public override MetricType MetricType => MetricType.CumulativeCounter;
 
         /// <inheritdoc/>
-        public override void WriteReadings(IMetricReadingBatch batch, DateTime timestamp)
+        protected override void WriteReadings(IMetricReadingBatch batch, DateTime timestamp)
         {
             var countSnapshot = Interlocked.Exchange(ref _count, 0);
             if (countSnapshot == 0)

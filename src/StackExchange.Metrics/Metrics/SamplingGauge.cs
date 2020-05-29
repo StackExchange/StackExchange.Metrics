@@ -31,7 +31,7 @@ namespace StackExchange.Metrics.Metrics
         public void Record(double value) => Interlocked.Exchange(ref _value, value);
 
         /// <inheritdoc/>
-        public override void WriteReadings(IMetricReadingBatch batch, DateTime timestamp)
+        protected override void WriteReadings(IMetricReadingBatch batch, DateTime timestamp)
         {
             var value = Interlocked.Exchange(ref _value, double.NaN);
             if (double.IsNaN(value))

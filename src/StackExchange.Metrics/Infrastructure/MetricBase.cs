@@ -125,7 +125,18 @@ namespace StackExchange.Metrics.Infrastructure
         }
 
         /// <inheritdoc/>
-        public abstract void WriteReadings(IMetricReadingBatch batch, DateTime timestamp);
+        void IMetricReadingWriter.WriteReadings(IMetricReadingBatch batch, DateTime timestamp) => WriteReadings(batch, timestamp);
+
+        /// <summary>
+        /// Writes the readings for a metric into the specified <see cref="IMetricReadingBatch"/>.
+        /// </summary>
+        /// <param name="batch">
+        /// <see cref="IMetricReadingBatch"/> to write metrics into.
+        /// </param>
+        /// <param name="timestamp">
+        /// Timestamp applied to all readings.
+        /// </param>
+        protected abstract void WriteReadings(IMetricReadingBatch batch, DateTime timestamp);
 
         /// <summary>
         /// Creates a <see cref="MetricReading"/> with the specified value and timestamp and all other

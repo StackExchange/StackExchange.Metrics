@@ -91,9 +91,27 @@ namespace StackExchange.Metrics
         /// Type of metric to add.
         /// </typeparam>
         /// <param name="metric">
-        /// Instance of a metric. Usually created using one of the factory methods.
+        /// Instance of a metric.
         /// </param>
-        public TMetric Add<TMetric>(TMetric metric) where TMetric : IMetricReadingWriter
+        public TMetric Add<TMetric>(TMetric metric) where TMetric : MetricBase
+        {
+            _metrics = _metrics.Add(metric);
+            return metric;
+        }
+
+        /// <summary>
+        /// Adds a new metric to the source.
+        /// </summary>
+        /// <typeparam name="TTaggedMetric">
+        /// Type of tagged metric to add.
+        /// </typeparam>
+        /// <typeparam name="TMetric">
+        /// Type of metric.
+        /// </typeparam>
+        /// <param name="metric">
+        /// Instance of a metric.
+        /// </param>
+        public TTaggedMetric Add<TTaggedMetric, TMetric>(TTaggedMetric metric) where TTaggedMetric : TaggedMetricFactory<TMetric> where TMetric : MetricBase
         {
             _metrics = _metrics.Add(metric);
             return metric;

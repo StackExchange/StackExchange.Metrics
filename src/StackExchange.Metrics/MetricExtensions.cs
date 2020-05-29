@@ -32,9 +32,24 @@ namespace StackExchange.Metrics
         }
 
         /// <summary>
+        /// Gets readings for the passed source.
+        /// </summary>
+        public static ImmutableArray<MetricReading> GetReadings(this MetricSource source, DateTime timestamp) => GetReadings((IMetricReadingWriter)source, timestamp);
+
+        /// <summary>
+        /// Gets readings for the passed metric.
+        /// </summary>
+        public static ImmutableArray<MetricReading> GetReadings<TMetric>(this TaggedMetricFactory<TMetric> taggedMetric, DateTime timestamp) where TMetric : MetricBase => GetReadings((IMetricReadingWriter)taggedMetric, timestamp);
+
+        /// <summary>
+        /// Gets readings for the passed metric.
+        /// </summary>
+        public static ImmutableArray<MetricReading> GetReadings<TMetric>(this TMetric metric, DateTime timestamp) where TMetric : MetricBase => GetReadings((IMetricReadingWriter)metric, timestamp);
+
+        /// <summary>
         /// Gets readings for associated with a metric.
         /// </summary>
-        public static ImmutableArray<MetricReading> GetReadings(this IMetricReadingWriter metric, DateTime timestamp)
+        private static ImmutableArray<MetricReading> GetReadings(this IMetricReadingWriter metric, DateTime timestamp)
         {
             var batch = new ArrayBatch();
             metric.WriteReadings(batch, timestamp);

@@ -58,49 +58,49 @@ namespace StackExchange.Metrics
         /// Creates a new <see cref="AggregateGauge{<#= typeNames #>}" /> with the specified tags/aggregators and adds it to the <see cref="MetricSource" />.
         /// </summary>
         public virtual AggregateGauge<<#= typeNames #>> AddAggregateGauge<<#= typeNames #>>(IEnumerable<GaugeAggregator> aggregators, string name, string unit, string description, <#= ctorArgs #>) 
-            => Add(new AggregateGauge<<#= typeNames #>>(aggregators, name, unit, description, <#= argNames #>, Options));
+            => Add<AggregateGauge<<#= typeNames #>>, AggregateGauge>(new AggregateGauge<<#= typeNames #>>(aggregators, name, unit, description, <#= argNames #>, Options));
 
         /// <summary>
         /// Creates a new <see cref="AggregateGauge{<#= typeNames #>}" /> with the specified tags, using <see cref="GaugeAggregator.Default" /> aggregators and adds it to the <see cref="MetricSource" />.
         /// </summary>
         public virtual AggregateGauge<<#= typeNames #>> AddAggregateGauge<<#= typeNames #>>(string name, string unit, string description, <#= ctorArgs #>) 
-            => Add(new AggregateGauge<<#= typeNames #>>(GaugeAggregator.Default, name, unit, description, <#= argNames #>, Options));
+            => Add<AggregateGauge<<#= typeNames #>>, AggregateGauge>(new AggregateGauge<<#= typeNames #>>(GaugeAggregator.Default, name, unit, description, <#= argNames #>, Options));
 
         /// <summary>
         /// Creates a new <see cref="Counter{<#= typeNames #>}" /> with the specified tags and adds it to the <see cref="MetricSource" />.
         /// </summary>
         public virtual Counter<<#= typeNames #>> AddCounter<<#= typeNames #>>(string name, string unit, string description, <#= ctorArgs #>) 
-            => Add(new Counter<<#= typeNames #>>(name, unit, description, <#= argNames #>, Options));
+            => Add<Counter<<#= typeNames #>>, Counter>(new Counter<<#= typeNames #>>(name, unit, description, <#= argNames #>, Options));
 
         /// <summary>
         /// Creates a new <see cref="CumulativeCounter{<#= typeNames #>}" /> with the specified tags and adds it to the <see cref="MetricSource" />.
         /// </summary>
         public virtual CumulativeCounter<<#= typeNames #>> AddCumulativeCounter<<#= typeNames #>>(string name, string unit, string description, <#= ctorArgs #>) 
-            => Add(new CumulativeCounter<<#= typeNames #>>(name, unit, description, <#= argNames #>, Options));
+            => Add<CumulativeCounter<<#= typeNames #>>, CumulativeCounter>(new CumulativeCounter<<#= typeNames #>>(name, unit, description, <#= argNames #>, Options));
 
         /// <summary>
         /// Creates a new <see cref="EventGauge{<#= typeNames #>}" /> with the specified tags and adds it to the <see cref="MetricSource" />.
         /// </summary>
         public virtual EventGauge<<#= typeNames #>> AddEventGauge<<#= typeNames #>>(string name, string unit, string description, <#= ctorArgs #>) 
-            => Add(new EventGauge<<#= typeNames #>>(name, unit, description, <#= argNames #>, Options));
+            => Add<EventGauge<<#= typeNames #>>, EventGauge>(new EventGauge<<#= typeNames #>>(name, unit, description, <#= argNames #>, Options));
 
         /// <summary>
         /// Creates a new <see cref="SamplingGauge{<#= typeNames #>}" /> with the specified tags and adds it to the <see cref="MetricSource" />.
         /// </summary>
         public virtual SamplingGauge<<#= typeNames #>> AddSamplingGauge<<#= typeNames #>>(string name, string unit, string description, <#= ctorArgs #>) 
-            => Add(new SamplingGauge<<#= typeNames #>>(name, unit, description, <#= argNames #>, Options));
+            => Add<SamplingGauge<<#= typeNames #>>, SamplingGauge>(new SamplingGauge<<#= typeNames #>>(name, unit, description, <#= argNames #>, Options));
 
         /// <summary>
         /// Creates a new <see cref="SnapshotCounter{<#= typeNames #>}" /> with the specified tags and adds it to the <see cref="MetricSource" />.
         /// </summary>
         public virtual SnapshotCounter<<#= typeNames #>> AddSnapshotCounter<<#= typeNames #>>(Func<long?> getCountFunc, string name, string unit, string description, <#= ctorArgs #>) 
-            => Add(new SnapshotCounter<<#= typeNames #>>(getCountFunc, name, unit, description, <#= argNames #>, Options));
+            => Add<SnapshotCounter<<#= typeNames #>>, SnapshotCounter>(new SnapshotCounter<<#= typeNames #>>(getCountFunc, name, unit, description, <#= argNames #>, Options));
 
         /// <summary>
         /// Creates a new <see cref="SnapshotGauge{<#= typeNames #>}" /> with the specified tags and adds it to the <see cref="MetricSource" />.
         /// </summary>
         public virtual SnapshotGauge<<#= typeNames #>> AddSnapshotGauge<<#= typeNames #>>(Func<double?> getValueFunc, string name, string unit, string description, <#= ctorArgs #>) 
-            => Add(new SnapshotGauge<<#= typeNames #>>(getValueFunc, name, unit, description, <#= argNames #>, Options));
+            => Add<SnapshotGauge<<#= typeNames #>>, SnapshotGauge>(new SnapshotGauge<<#= typeNames #>>(getValueFunc, name, unit, description, <#= argNames #>, Options));
     }
     
     namespace Infrastructure

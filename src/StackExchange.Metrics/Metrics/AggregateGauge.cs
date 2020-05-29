@@ -325,7 +325,7 @@ namespace StackExchange.Metrics.Metrics
         }
 
         /// <inheritdoc/>
-        public override void WriteReadings(IMetricReadingBatch batch, DateTime timestamp)
+        protected override void WriteReadings(IMetricReadingBatch batch, DateTime timestamp)
         {
             CaptureSnapshot();
 

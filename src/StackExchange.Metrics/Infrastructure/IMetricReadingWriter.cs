@@ -5,7 +5,7 @@ namespace StackExchange.Metrics.Infrastructure
     /// <summary>
     /// Exposes a way to write <see cref="MetricReading"/> from a metric or metric source.
     /// </summary>
-    public interface IMetricReadingWriter
+    internal interface IMetricReadingWriter
     {
         /// <summary>
         /// Writes the readings for a metric into the specified <see cref="IMetricReadingBatch"/>.

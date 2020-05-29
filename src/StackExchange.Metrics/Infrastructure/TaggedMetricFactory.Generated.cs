@@ -22,49 +22,49 @@ namespace StackExchange.Metrics
         /// Creates a new <see cref="AggregateGauge{TTag1}" /> with the specified tags/aggregators and adds it to the <see cref="MetricSource" />.
         /// </summary>
         public virtual AggregateGauge<TTag1> AddAggregateGauge<TTag1>(IEnumerable<GaugeAggregator> aggregators, string name, string unit, string description, in MetricTag<TTag1> tag1) 
-            => Add(new AggregateGauge<TTag1>(aggregators, name, unit, description, tag1, Options));
+            => Add<AggregateGauge<TTag1>, AggregateGauge>(new AggregateGauge<TTag1>(aggregators, name, unit, description, tag1, Options));
 
         /// <summary>
         /// Creates a new <see cref="AggregateGauge{TTag1}" /> with the specified tags, using <see cref="GaugeAggregator.Default" /> aggregators and adds it to the <see cref="MetricSource" />.
         /// </summary>
         public virtual AggregateGauge<TTag1> AddAggregateGauge<TTag1>(string name, string unit, string description, in MetricTag<TTag1> tag1) 
-            => Add(new AggregateGauge<TTag1>(GaugeAggregator.Default, name, unit, description, tag1, Options));
+            => Add<AggregateGauge<TTag1>, AggregateGauge>(new AggregateGauge<TTag1>(GaugeAggregator.Default, name, unit, description, tag1, Options));
 
         /// <summary>
         /// Creates a new <see cref="Counter{TTag1}" /> with the specified tags and adds it to the <see cref="MetricSource" />.
         /// </summary>
         public virtual Counter<TTag1> AddCounter<TTag1>(string name, string unit, string description, in MetricTag<TTag1> tag1) 
-            => Add(new Counter<TTag1>(name, unit, description, tag1, Options));
+            => Add<Counter<TTag1>, Counter>(new Counter<TTag1>(name, unit, description, tag1, Options));
 
         /// <summary>
         /// Creates a new <see cref="CumulativeCounter{TTag1}" /> with the specified tags and adds it to the <see cref="MetricSource" />.
         /// </summary>
         public virtual CumulativeCounter<TTag1> AddCumulativeCounter<TTag1>(string name, string unit, string description, in MetricTag<TTag1> tag1) 
-            => Add(new CumulativeCounter<TTag1>(name, unit, description, tag1, Options));
+            => Add<CumulativeCounter<TTag1>, CumulativeCounter>(new CumulativeCounter<TTag1>(name, unit, description, tag1, Options));
 
         /// <summary>
         /// Creates a new <see cref="EventGauge{TTag1}" /> with the specified tags and adds it to the <see cref="MetricSource" />.
         /// </summary>
         public virtual EventGauge<TTag1> AddEventGauge<TTag1>(string name, string unit, string description, in MetricTag<TTag1> tag1) 
-            => Add(new EventGauge<TTag1>(name, unit, description, tag1, Options));
+            => Add<EventGauge<TTag1>, EventGauge>(new EventGauge<TTag1>(name, unit, description, tag1, Options));
 
         /// <summary>
         /// Creates a new <see cref="SamplingGauge{TTag1}" /> with the specified tags and adds it to the <see cref="MetricSource" />.
         /// </summary>
         public virtual SamplingGauge<TTag1> AddSamplingGauge<TTag1>(string name, string unit, string description, in MetricTag<TTag1> tag1) 
-            => Add(new SamplingGauge<TTag1>(name, unit, description, tag1, Options));
+            => Add<SamplingGauge<TTag1>, SamplingGauge>(new SamplingGauge<TTag1>(name, unit, description, tag1, Options));
 
         /// <summary>
         /// Creates a new <see cref="SnapshotCounter{TTag1}" /> with the specified tags and adds it to the <see cref="MetricSource" />.
         /// </summary>
         public virtual SnapshotCounter<TTag1> AddSnapshotCounter<TTag1>(Func<long?> getCountFunc, string name, string unit, string description, in MetricTag<TTag1> tag1) 
-            => Add(new SnapshotCounter<TTag1>(getCountFunc, name, unit, description, tag1, Options));
+            => Add<SnapshotCounter<TTag1>, SnapshotCounter>(new SnapshotCounter<TTag1>(getCountFunc, name, unit, description, tag1, Options));
 
         /// <summary>
         /// Creates a new <see cref="SnapshotGauge{TTag1}" /> with the specified tags and adds it to the <see cref="MetricSource" />.
         /// </summary>
         public virtual SnapshotGauge<TTag1> AddSnapshotGauge<TTag1>(Func<double?> getValueFunc, string name, string unit, string description, in MetricTag<TTag1> tag1) 
-            => Add(new SnapshotGauge<TTag1>(getValueFunc, name, unit, description, tag1, Options));
+            => Add<SnapshotGauge<TTag1>, SnapshotGauge>(new SnapshotGauge<TTag1>(getValueFunc, name, unit, description, tag1, Options));
     }
     
     namespace Infrastructure
@@ -270,49 +270,49 @@ namespace StackExchange.Metrics
         /// Creates a new <see cref="AggregateGauge{TTag1, TTag2}" /> with the specified tags/aggregators and adds it to the <see cref="MetricSource" />.
         /// </summary>
         public virtual AggregateGauge<TTag1, TTag2> AddAggregateGauge<TTag1, TTag2>(IEnumerable<GaugeAggregator> aggregators, string name, string unit, string description, in MetricTag<TTag1> tag1, in MetricTag<TTag2> tag2) 
-            => Add(new AggregateGauge<TTag1, TTag2>(aggregators, name, unit, description, tag1, tag2, Options));
+            => Add<AggregateGauge<TTag1, TTag2>, AggregateGauge>(new AggregateGauge<TTag1, TTag2>(aggregators, name, unit, description, tag1, tag2, Options));
 
         /// <summary>
         /// Creates a new <see cref="AggregateGauge{TTag1, TTag2}" /> with the specified tags, using <see cref="GaugeAggregator.Default" /> aggregators and adds it to the <see cref="MetricSource" />.
         /// </summary>
         public virtual AggregateGauge<TTag1, TTag2> AddAggregateGauge<TTag1, TTag2>(string name, string unit, string description, in MetricTag<TTag1> tag1, in MetricTag<TTag2> tag2) 
-            => Add(new AggregateGauge<TTag1, TTag2>(GaugeAggregator.Default, name, unit, description, tag1, tag2, Options));
+            => Add<AggregateGauge<TTag1, TTag2>, AggregateGauge>(new AggregateGauge<TTag1, TTag2>(GaugeAggregator.Default, name, unit, description, tag1, tag2, Options));
 
         /// <summary>
         /// Creates a new <see cref="Counter{TTag1, TTag2}" /> with the specified tags and adds it to the <see cref="MetricSource" />.
         /// </summary>
         public virtual Counter<TTag1, TTag2> AddCounter<TTag1, TTag2>(string name, string unit, string description, in MetricTag<TTag1> tag1, in MetricTag<TTag2> tag2) 
-            => Add(new Counter<TTag1, TTag2>(name, unit, description, tag1, tag2, Options));
+            => Add<Counter<TTag1, TTag2>, Counter>(new Counter<TTag1, TTag2>(name, unit, description, tag1, tag2, Options));
 
         /// <summary>
         /// Creates a new <see cref="CumulativeCounter{TTag1, TTag2}" /> with the specified tags and adds it to the <see cref="MetricSource" />.
         /// </summary>
         public virtual CumulativeCounter<TTag1, TTag2> AddCumulativeCounter<TTag1, TTag2>(string name, string unit, string description, in MetricTag<TTag1> tag1, in MetricTag<TTag2> tag2) 
-            => Add(new CumulativeCounter<TTag1, TTag2>(name, unit, description, tag1, tag2, Options));
+            => Add<CumulativeCounter<TTag1, TTag2>, CumulativeCounter>(new CumulativeCounter<TTag1, TTag2>(name, unit, description, tag1, tag2, Options));
 
         /// <summary>
         /// Creates a new <see cref="EventGauge{TTag1, TTag2}" /> with the specified tags and adds it to the <see cref="MetricSource" />.
         /// </summary>
         public virtual EventGauge<TTag1, TTag2> AddEventGauge<TTag1, TTag2>(string name, string unit, string description, in MetricTag<TTag1> tag1, in MetricTag<TTag2> tag2) 
-            => Add(new EventGauge<TTag1, TTag2>(name, unit, description, tag1, tag2, Options));
+            => Add<EventGauge<TTag1, TTag2>, EventGauge>(new EventGauge<TTag1, TTag2>(name, unit, description, tag1, tag2, Options));
 
         /// <summary>
         /// Creates a new <see cref="SamplingGauge{TTag1, TTag2}" /> with the specified tags and adds it to the <see cref="MetricSource" />.
         /// </summary>
         public virtual SamplingGauge<TTag1, TTag2> AddSamplingGauge<TTag1, TTag2>(string name, string unit, string description, in MetricTag<TTag1> tag1, in MetricTag<TTag2> tag2) 
-            => Add(new SamplingGauge<TTag1, TTag2>(name, unit, description, tag1, tag2, Options));
+            => Add<SamplingGauge<TTag1, TTag2>, SamplingGauge>(new SamplingGauge<TTag1, TTag2>(name, unit, description, tag1, tag2, Options));
 
         /// <summary>
         /// Creates a new <see cref="SnapshotCounter{TTag1, TTag2}" /> with the specified tags and adds it to the <see cref="MetricSource" />.
         /// </summary>
         public virtual SnapshotCounter<TTag1, TTag2> AddSnapshotCounter<TTag1, TTag2>(Func<long?> getCountFunc, string name, string unit, string description, in MetricTag<TTag1> tag1, in MetricTag<TTag2> tag2) 
-            => Add(new SnapshotCounter<TTag1, TTag2>(getCountFunc, name, unit, description, tag1, tag2, Options));
+            => Add<SnapshotCounter<TTag1, TTag2>, SnapshotCounter>(new SnapshotCounter<TTag1, TTag2>(getCountFunc, name, unit, description, tag1, tag2, Options));
 
         /// <summary>
         /// Creates a new <see cref="SnapshotGauge{TTag1, TTag2}" /> with the specified tags and adds it to the <see cref="MetricSource" />.
         /// </summary>
         public virtual SnapshotGauge<TTag1, TTag2> AddSnapshotGauge<TTag1, TTag2>(Func<double?> getValueFunc, string name, string unit, string description, in MetricTag<TTag1> tag1, in MetricTag<TTag2> tag2) 
-            => Add(new SnapshotGauge<TTag1, TTag2>(getValueFunc, name, unit, description, tag1, tag2, Options));
+            => Add<SnapshotGauge<TTag1, TTag2>, SnapshotGauge>(new SnapshotGauge<TTag1, TTag2>(getValueFunc, name, unit, description, tag1, tag2, Options));
     }
     
     namespace Infrastructure
@@ -525,49 +525,49 @@ namespace StackExchange.Metrics
         /// Creates a new <see cref="AggregateGauge{TTag1, TTag2, TTag3}" /> with the specified tags/aggregators and adds it to the <see cref="MetricSource" />.
         /// </summary>
         public virtual AggregateGauge<TTag1, TTag2, TTag3> AddAggregateGauge<TTag1, TTag2, TTag3>(IEnumerable<GaugeAggregator> aggregators, string name, string unit, string description, in MetricTag<TTag1> tag1, in MetricTag<TTag2> tag2, in MetricTag<TTag3> tag3) 
-            => Add(new AggregateGauge<TTag1, TTag2, TTag3>(aggregators, name, unit, description, tag1, tag2, tag3, Options));
+            => Add<AggregateGauge<TTag1, TTag2, TTag3>, AggregateGauge>(new AggregateGauge<TTag1, TTag2, TTag3>(aggregators, name, unit, description, tag1, tag2, tag3, Options));
 
         /// <summary>
         /// Creates a new <see cref="AggregateGauge{TTag1, TTag2, TTag3}" /> with the specified tags, using <see cref="GaugeAggregator.Default" /> aggregators and adds it to the <see cref="MetricSource" />.
         /// </summary>
         public virtual AggregateGauge<TTag1, TTag2, TTag3> AddAggregateGauge<TTag1, TTag2, TTag3>(string name, string unit, string description, in MetricTag<TTag1> tag1, in MetricTag<TTag2> tag2, in MetricTag<TTag3> tag3) 
-            => Add(new AggregateGauge<TTag1, TTag2, TTag3>(GaugeAggregator.Default, name, unit, description, tag1, tag2, tag3, Options));
+            => Add<AggregateGauge<TTag1, TTag2, TTag3>, AggregateGauge>(new AggregateGauge<TTag1, TTag2, TTag3>(GaugeAggregator.Default, name, unit, description, tag1, tag2, tag3, Options));
 
         /// <summary>
         /// Creates a new <see cref="Counter{TTag1, TTag2, TTag3}" /> with the specified tags and adds it to the <see cref="MetricSource" />.
         /// </summary>
         public virtual Counter<TTag1, TTag2, TTag3> AddCounter<TTag1, TTag2, TTag3>(string name, string unit, string description, in MetricTag<TTag1> tag1, in MetricTag<TTag2> tag2, in MetricTag<TTag3> tag3) 
-            => Add(new Counter<TTag1, TTag2, TTag3>(name, unit, description, tag1, tag2, tag3, Options));
+            => Add<Counter<TTag1, TTag2, TTag3>, Counter>(new Counter<TTag1, TTag2, TTag3>(name, unit, description, tag1, tag2, tag3, Options));
 
         /// <summary>
         /// Creates a new <see cref="CumulativeCounter{TTag1, TTag2, TTag3}" /> with the specified tags and adds it to the <see cref="MetricSource" />.
         /// </summary>
         public virtual CumulativeCounter<TTag1, TTag2, TTag3> AddCumulativeCounter<TTag1, TTag2, TTag3>(string name, string unit, string description, in MetricTag<TTag1> tag1, in MetricTag<TTag2> tag2, in MetricTag<TTag3> tag3) 
-            => Add(new CumulativeCounter<TTag1, TTag2, TTag3>(name, unit, description, tag1, tag2, tag3, Options));
+            => Add<CumulativeCounter<TTag1, TTag2, TTag3>, CumulativeCounter>(new CumulativeCounter<TTag1, TTag2, TTag3>(name, unit, description, tag1, tag2, tag3, Options));
 
         /// <summary>
         /// Creates a new <see cref="EventGauge{TTag1, TTag2, TTag3}" /> with the specified tags and adds it to the <see cref="MetricSource" />.
         /// </summary>
         public virtual EventGauge<TTag1, TTag2, TTag3> AddEventGauge<TTag1, TTag2, TTag3>(string name, string unit, string description, in MetricTag<TTag1> tag1, in MetricTag<TTag2> tag2, in MetricTag<TTag3> tag3) 
-            => Add(new EventGauge<TTag1, TTag2, TTag3>(name, unit, description, tag1, tag2, tag3, Options));
+            => Add<EventGauge<TTag1, TTag2, TTag3>, EventGauge>(new EventGauge<TTag1, TTag2, TTag3>(name, unit, description, tag1, tag2, tag3, Options));
 
         /// <summary>
         /// Creates a new <see cref="SamplingGauge{TTag1, TTag2, TTag3}" /> with the specified tags and adds it to the <see cref="MetricSource" />.
         /// </summary>
         public virtual SamplingGauge<TTag1, TTag2, TTag3> AddSamplingGauge<TTag1, TTag2, TTag3>(string name, string unit, string description, in MetricTag<TTag1> tag1, in MetricTag<TTag2> tag2, in MetricTag<TTag3> tag3) 
-            => Add(new SamplingGauge<TTag1, TTag2, TTag3>(name, unit, description, tag1, tag2, tag3, Options));
+            => Add<SamplingGauge<TTag1, TTag2, TTag3>, SamplingGauge>(new SamplingGauge<TTag1, TTag2, TTag3>(name, unit, description, tag1, tag2, tag3, Options));
 
         /// <summary>
         /// Creates a new <see cref="SnapshotCounter{TTag1, TTag2, TTag3}" /> with the specified tags and adds it to the <see cref="MetricSource" />.
         /// </summary>
         public virtual SnapshotCounter<TTag1, TTag2, TTag3> AddSnapshotCounter<TTag1, TTag2, TTag3>(Func<long?> getCountFunc, string name, string unit, string description, in MetricTag<TTag1> tag1, in MetricTag<TTag2> tag2, in MetricTag<TTag3> tag3) 
-            => Add(new SnapshotCounter<TTag1, TTag2, TTag3>(getCountFunc, name, unit, description, tag1, tag2, tag3, Options));
+            => Add<SnapshotCounter<TTag1, TTag2, TTag3>, SnapshotCounter>(new SnapshotCounter<TTag1, TTag2, TTag3>(getCountFunc, name, unit, description, tag1, tag2, tag3, Options));
 
         /// <summary>
         /// Creates a new <see cref="SnapshotGauge{TTag1, TTag2, TTag3}" /> with the specified tags and adds it to the <see cref="MetricSource" />.
         /// </summary>
         public virtual SnapshotGauge<TTag1, TTag2, TTag3> AddSnapshotGauge<TTag1, TTag2, TTag3>(Func<double?> getValueFunc, string name, string unit, string description, in MetricTag<TTag1> tag1, in MetricTag<TTag2> tag2, in MetricTag<TTag3> tag3) 
-            => Add(new SnapshotGauge<TTag1, TTag2, TTag3>(getValueFunc, name, unit, description, tag1, tag2, tag3, Options));
+            => Add<SnapshotGauge<TTag1, TTag2, TTag3>, SnapshotGauge>(new SnapshotGauge<TTag1, TTag2, TTag3>(getValueFunc, name, unit, description, tag1, tag2, tag3, Options));
     }
     
     namespace Infrastructure
@@ -787,49 +787,49 @@ namespace StackExchange.Metrics
         /// Creates a new <see cref="AggregateGauge{TTag1, TTag2, TTag3, TTag4}" /> with the specified tags/aggregators and adds it to the <see cref="MetricSource" />.
         /// </summary>
         public virtual AggregateGauge<TTag1, TTag2, TTag3, TTag4> AddAggregateGauge<TTag1, TTag2, TTag3, TTag4>(IEnumerable<GaugeAggregator> aggregators, string name, string unit, string description, in MetricTag<TTag1> tag1, in MetricTag<TTag2> tag2, in MetricTag<TTag3> tag3, in MetricTag<TTag4> tag4) 
-            => Add(new AggregateGauge<TTag1, TTag2, TTag3, TTag4>(aggregators, name, unit, description, tag1, tag2, tag3, tag4, Options));
+            => Add<AggregateGauge<TTag1, TTag2, TTag3, TTag4>, AggregateGauge>(new AggregateGauge<TTag1, TTag2, TTag3, TTag4>(aggregators, name, unit, description, tag1, tag2, tag3, tag4, Options));
 
         /// <summary>
         /// Creates a new <see cref="AggregateGauge{TTag1, TTag2, TTag3, TTag4}" /> with the specified tags, using <see cref="GaugeAggregator.Default" /> aggregators and adds it to the <see cref="MetricSource" />.
         /// </summary>
         public virtual AggregateGauge<TTag1, TTag2, TTag3, TTag4> AddAggregateGauge<TTag1, TTag2, TTag3, TTag4>(string name, string unit, string description, in MetricTag<TTag1> tag1, in MetricTag<TTag2> tag2, in MetricTag<TTag3> tag3, in MetricTag<TTag4> tag4) 
-            => Add(new AggregateGauge<TTag1, TTag2, TTag3, TTag4>(GaugeAggregator.Default, name, unit, description, tag1, tag2, tag3, tag4, Options));
+            => Add<AggregateGauge<TTag1, TTag2, TTag3, TTag4>, AggregateGauge>(new AggregateGauge<TTag1, TTag2, TTag3, TTag4>(GaugeAggregator.Default, name, unit, description, tag1, tag2, tag3, tag4, Options));
 
         /// <summary>
         /// Creates a new <see cref="Counter{TTag1, TTag2, TTag3, TTag4}" /> with the specified tags and adds it to the <see cref="MetricSource" />.
         /// </summary>
         public virtual Counter<TTag1, TTag2, TTag3, TTag4> AddCounter<TTag1, TTag2, TTag3, TTag4>(string name, string unit, string description, in MetricTag<TTag1> tag1, in MetricTag<TTag2> tag2, in MetricTag<TTag3> tag3, in MetricTag<TTag4> tag4) 
-            => Add(new Counter<TTag1, TTag2, TTag3, TTag4>(name, unit, description, tag1, tag2, tag3, tag4, Options));
+            => Add<Counter<TTag1, TTag2, TTag3, TTag4>, Counter>(new Counter<TTag1, TTag2, TTag3, TTag4>(name, unit, description, tag1, tag2, tag3, tag4, Options));
 
         /// <summary>
         /// Creates a new <see cref="CumulativeCounter{TTag1, TTag2, TTag3, TTag4}" /> with the specified tags and adds it to the <see cref="MetricSource" />.
         /// </summary>
         public virtual CumulativeCounter<TTag1, TTag2, TTag3, TTag4> AddCumulativeCounter<TTag1, TTag2, TTag3, TTag4>(string name, string unit, string description, in MetricTag<TTag1> tag1, in MetricTag<TTag2> tag2, in MetricTag<TTag3> tag3, in MetricTag<TTag4> tag4) 
-            => Add(new CumulativeCounter<TTag1, TTag2, TTag3, TTag4>(name, unit, description, tag1, tag2, tag3, tag4, Options));
+            => Add<CumulativeCounter<TTag1, TTag2, TTag3, TTag4>, CumulativeCounter>(new CumulativeCounter<TTag1, TTag2, TTag3, TTag4>(name, unit, description, tag1, tag2, tag3, tag4, Options));
 
         /// <summary>
         /// Creates a new <see cref="EventGauge{TTag1, TTag2, TTag3, TTag4}" /> with the specified tags and adds it to the <see cref="MetricSource" />.
         /// </summary>
         public virtual EventGauge<TTag1, TTag2, TTag3, TTag4> AddEventGauge<TTag1, TTag2, TTag3, TTag4>(string name, string unit, string description, in MetricTag<TTag1> tag1, in MetricTag<TTag2> tag2, in MetricTag<TTag3> tag3, in MetricTag<TTag4> tag4) 
-            => Add(new EventGauge<TTag1, TTag2, TTag3, TTag4>(name, unit, description, tag1, tag2, tag3, tag4, Options));
+            => Add<EventGauge<TTag1, TTag2, TTag3, TTag4>, EventGauge>(new EventGauge<TTag1, TTag2, TTag3, TTag4>(name, unit, description, tag1, tag2, tag3, tag4, Options));
 
         /// <summary>
         /// Creates a new <see cref="SamplingGauge{TTag1, TTag2, TTag3, TTag4}" /> with the specified tags and adds it to the <see cref="MetricSource" />.
         /// </summary>
         public virtual SamplingGauge<TTag1, TTag2, TTag3, TTag4> AddSamplingGauge<TTag1, TTag2, TTag3, TTag4>(string name, string unit, string description, in MetricTag<TTag1> tag1, in MetricTag<TTag2> tag2, in MetricTag<TTag3> tag3, in MetricTag<TTag4> tag4) 
-            => Add(new SamplingGauge<TTag1, TTag2, TTag3, TTag4>(name, unit, description, tag1, tag2, tag3, tag4, Options));
+            => Add<SamplingGauge<TTag1, TTag2, TTag3, TTag4>, SamplingGauge>(new SamplingGauge<TTag1, TTag2, TTag3, TTag4>(name, unit, description, tag1, tag2, tag3, tag4, Options));
 
         /// <summary>
         /// Creates a new <see cref="SnapshotCounter{TTag1, TTag2, TTag3, TTag4}" /> with the specified tags and adds it to the <see cref="MetricSource" />.
         /// </summary>
         public virtual SnapshotCounter<TTag1, TTag2, TTag3, TTag4> AddSnapshotCounter<TTag1, TTag2, TTag3, TTag4>(Func<long?> getCountFunc, string name, string unit, string description, in MetricTag<TTag1> tag1, in MetricTag<TTag2> tag2, in MetricTag<TTag3> tag3, in MetricTag<TTag4> tag4) 
-            => Add(new SnapshotCounter<TTag1, TTag2, TTag3, TTag4>(getCountFunc, name, unit, description, tag1, tag2, tag3, tag4, Options));
+            => Add<SnapshotCounter<TTag1, TTag2, TTag3, TTag4>, SnapshotCounter>(new SnapshotCounter<TTag1, TTag2, TTag3, TTag4>(getCountFunc, name, unit, description, tag1, tag2, tag3, tag4, Options));
 
         /// <summary>
         /// Creates a new <see cref="SnapshotGauge{TTag1, TTag2, TTag3, TTag4}" /> with the specified tags and adds it to the <see cref="MetricSource" />.
         /// </summary>
         public virtual SnapshotGauge<TTag1, TTag2, TTag3, TTag4> AddSnapshotGauge<TTag1, TTag2, TTag3, TTag4>(Func<double?> getValueFunc, string name, string unit, string description, in MetricTag<TTag1> tag1, in MetricTag<TTag2> tag2, in MetricTag<TTag3> tag3, in MetricTag<TTag4> tag4) 
-            => Add(new SnapshotGauge<TTag1, TTag2, TTag3, TTag4>(getValueFunc, name, unit, description, tag1, tag2, tag3, tag4, Options));
+            => Add<SnapshotGauge<TTag1, TTag2, TTag3, TTag4>, SnapshotGauge>(new SnapshotGauge<TTag1, TTag2, TTag3, TTag4>(getValueFunc, name, unit, description, tag1, tag2, tag3, tag4, Options));
     }
     
     namespace Infrastructure
@@ -1056,49 +1056,49 @@ namespace StackExchange.Metrics
         /// Creates a new <see cref="AggregateGauge{TTag1, TTag2, TTag3, TTag4, TTag5}" /> with the specified tags/aggregators and adds it to the <see cref="MetricSource" />.
         /// </summary>
         public virtual AggregateGauge<TTag1, TTag2, TTag3, TTag4, TTag5> AddAggregateGauge<TTag1, TTag2, TTag3, TTag4, TTag5>(IEnumerable<GaugeAggregator> aggregators, string name, string unit, string description, in MetricTag<TTag1> tag1, in MetricTag<TTag2> tag2, in MetricTag<TTag3> tag3, in MetricTag<TTag4> tag4, in MetricTag<TTag5> tag5) 
-            => Add(new AggregateGauge<TTag1, TTag2, TTag3, TTag4, TTag5>(aggregators, name, unit, description, tag1, tag2, tag3, tag4, tag5, Options));
+            => Add<AggregateGauge<TTag1, TTag2, TTag3, TTag4, TTag5>, AggregateGauge>(new AggregateGauge<TTag1, TTag2, TTag3, TTag4, TTag5>(aggregators, name, unit, description, tag1, tag2, tag3, tag4, tag5, Options));
 
         /// <summary>
         /// Creates a new <see cref="AggregateGauge{TTag1, TTag2, TTag3, TTag4, TTag5}" /> with the specified tags, using <see cref="GaugeAggregator.Default" /> aggregators and adds it to the <see cref="MetricSource" />.
         /// </summary>
         public virtual AggregateGauge<TTag1, TTag2, TTag3, TTag4, TTag5> AddAggregateGauge<TTag1, TTag2, TTag3, TTag4, TTag5>(string name, string unit, string description, in MetricTag<TTag1> tag1, in MetricTag<TTag2> tag2, in MetricTag<TTag3> tag3, in MetricTag<TTag4> tag4, in MetricTag<TTag5> tag5) 
-            => Add(new AggregateGauge<TTag1, TTag2, TTag3, TTag4, TTag5>(GaugeAggregator.Default, name, unit, description, tag1, tag2, tag3, tag4, tag5, Options));
+            => Add<AggregateGauge<TTag1, TTag2, TTag3, TTag4, TTag5>, AggregateGauge>(new AggregateGauge<TTag1, TTag2, TTag3, TTag4, TTag5>(GaugeAggregator.Default, name, unit, description, tag1, tag2, tag3, tag4, tag5, Options));
 
         /// <summary>
         /// Creates a new <see cref="Counter{TTag1, TTag2, TTag3, TTag4, TTag5}" /> with the specified tags and adds it to the <see cref="MetricSource" />.
         /// </summary>
         public virtual Counter<TTag1, TTag2, TTag3, TTag4, TTag5> AddCounter<TTag1, TTag2, TTag3, TTag4, TTag5>(string name, string unit, string description, in MetricTag<TTag1> tag1, in MetricTag<TTag2> tag2, in MetricTag<TTag3> tag3, in MetricTag<TTag4> tag4, in MetricTag<TTag5> tag5) 
-            => Add(new Counter<TTag1, TTag2, TTag3, TTag4, TTag5>(name, unit, description, tag1, tag2, tag3, tag4, tag5, Options));
+            => Add<Counter<TTag1, TTag2, TTag3, TTag4, TTag5>, Counter>(new Counter<TTag1, TTag2, TTag3, TTag4, TTag5>(name, unit, description, tag1, tag2, tag3, tag4, tag5, Options));
 
         /// <summary>
         /// Creates a new <see cref="CumulativeCounter{TTag1, TTag2, TTag3, TTag4, TTag5}" /> with the specified tags and adds it to the <see cref="MetricSource" />.
         /// </summary>
         public virtual CumulativeCounter<TTag1, TTag2, TTag3, TTag4, TTag5> AddCumulativeCounter<TTag1, TTag2, TTag3, TTag4, TTag5>(string name, string unit, string description, in MetricTag<TTag1> tag1, in MetricTag<TTag2> tag2, in MetricTag<TTag3> tag3, in MetricTag<TTag4> tag4, in MetricTag<TTag5> tag5) 
-            => Add(new CumulativeCounter<TTag1, TTag2, TTag3, TTag4, TTag5>(name, unit, description, tag1, tag2, tag3, tag4, tag5, Options));
+            => Add<CumulativeCounter<TTag1, TTag2, TTag3, TTag4, TTag5>, CumulativeCounter>(new CumulativeCounter<TTag1, TTag2, TTag3, TTag4, TTag5>(name, unit, description, tag1, tag2, tag3, tag4, tag5, Options));
 
         /// <summary>
         /// Creates a new <see cref="EventGauge{TTag1, TTag2, TTag3, TTag4, TTag5}" /> with the specified tags and adds it to the <see cref="MetricSource" />.
         /// </summary>
         public virtual EventGauge<TTag1, TTag2, TTag3, TTag4, TTag5> AddEventGauge<TTag1, TTag2, TTag3, TTag4, TTag5>(string name, string unit, string description, in MetricTag<TTag1> tag1, in MetricTag<TTag2> tag2, in MetricTag<TTag3> tag3, in MetricTag<TTag4> tag4, in MetricTag<TTag5> tag5) 
-            => Add(new EventGauge<TTag1, TTag2, TTag3, TTag4, TTag5>(name, unit, description, tag1, tag2, tag3, tag4, tag5, Options));
+            => Add<EventGauge<TTag1, TTag2, TTag3, TTag4, TTag5>, EventGauge>(new EventGauge<TTag1, TTag2, TTag3, TTag4, TTag5>(name, unit, description, tag1, tag2, tag3, tag4, tag5, Options));
 
         /// <summary>
         /// Creates a new <see cref="SamplingGauge{TTag1, TTag2, TTag3, TTag4, TTag5}" /> with the specified tags and adds it to the <see cref="MetricSource" />.
         /// </summary>
         public virtual SamplingGauge<TTag1, TTag2, TTag3, TTag4, TTag5> AddSamplingGauge<TTag1, TTag2, TTag3, TTag4, TTag5>(string name, string unit, string description, in MetricTag<TTag1> tag1, in MetricTag<TTag2> tag2, in MetricTag<TTag3> tag3, in MetricTag<TTag4> tag4, in MetricTag<TTag5> tag5) 
-            => Add(new SamplingGauge<TTag1, TTag2, TTag3, TTag4, TTag5>(name, unit, description, tag1, tag2, tag3, tag4, tag5, Options));
+            => Add<SamplingGauge<TTag1, TTag2, TTag3, TTag4, TTag5>, SamplingGauge>(new SamplingGauge<TTag1, TTag2, TTag3, TTag4, TTag5>(name, unit, description, tag1, tag2, tag3, tag4, tag5, Options));
 
         /// <summary>
         /// Creates a new <see cref="SnapshotCounter{TTag1, TTag2, TTag3, TTag4, TTag5}" /> with the specified tags and adds it to the <see cref="MetricSource" />.
         /// </summary>
         public virtual SnapshotCounter<TTag1, TTag2, TTag3, TTag4, TTag5> AddSnapshotCounter<TTag1, TTag2, TTag3, TTag4, TTag5>(Func<long?> getCountFunc, string name, string unit, string description, in MetricTag<TTag1> tag1, in MetricTag<TTag2> tag2, in MetricTag<TTag3> tag3, in MetricTag<TTag4> tag4, in MetricTag<TTag5> tag5) 
-            => Add(new SnapshotCounter<TTag1, TTag2, TTag3, TTag4, TTag5>(getCountFunc, name, unit, description, tag1, tag2, tag3, tag4, tag5, Options));
+            => Add<SnapshotCounter<TTag1, TTag2, TTag3, TTag4, TTag5>, SnapshotCounter>(new SnapshotCounter<TTag1, TTag2, TTag3, TTag4, TTag5>(getCountFunc, name, unit, description, tag1, tag2, tag3, tag4, tag5, Options));
 
         /// <summary>
         /// Creates a new <see cref="SnapshotGauge{TTag1, TTag2, TTag3, TTag4, TTag5}" /> with the specified tags and adds it to the <see cref="MetricSource" />.
         /// </summary>
         public virtual SnapshotGauge<TTag1, TTag2, TTag3, TTag4, TTag5> AddSnapshotGauge<TTag1, TTag2, TTag3, TTag4, TTag5>(Func<double?> getValueFunc, string name, string unit, string description, in MetricTag<TTag1> tag1, in MetricTag<TTag2> tag2, in MetricTag<TTag3> tag3, in MetricTag<TTag4> tag4, in MetricTag<TTag5> tag5) 
-            => Add(new SnapshotGauge<TTag1, TTag2, TTag3, TTag4, TTag5>(getValueFunc, name, unit, description, tag1, tag2, tag3, tag4, tag5, Options));
+            => Add<SnapshotGauge<TTag1, TTag2, TTag3, TTag4, TTag5>, SnapshotGauge>(new SnapshotGauge<TTag1, TTag2, TTag3, TTag4, TTag5>(getValueFunc, name, unit, description, tag1, tag2, tag3, tag4, tag5, Options));
     }
     
     namespace Infrastructure

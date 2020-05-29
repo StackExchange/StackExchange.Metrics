@@ -59,9 +59,9 @@ namespace StackExchange.Metrics.Infrastructure
         protected MetricSourceOptions Options { get; }
 
         /// <inheritdoc/>
-        public void WriteReadings(IMetricReadingBatch batch, DateTime timestamp)
+        void IMetricReadingWriter.WriteReadings(IMetricReadingBatch batch, DateTime timestamp)
         {
-            foreach (var metric in GetMetrics())
+            foreach (IMetricReadingWriter metric in GetMetrics())
             {
                 metric.WriteReadings(batch, timestamp);
             }
