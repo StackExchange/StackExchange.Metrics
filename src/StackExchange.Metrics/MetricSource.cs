@@ -11,6 +11,7 @@ namespace StackExchange.Metrics
     /// </summary>
     public partial class MetricSource : IMetricReadingWriter, IMetricMetadataProvider
     {
+        private readonly object _syncLock = new object();
         private ImmutableArray<IMetricReadingWriter> _metrics = ImmutableArray<IMetricReadingWriter>.Empty;
 
         /// <summary>
@@ -95,7 +96,10 @@ namespace StackExchange.Metrics
         /// </param>
         public TMetric Add<TMetric>(TMetric metric) where TMetric : MetricBase
         {
-            _metrics = _metrics.Add(metric);
+            lock (_syncLock)
+            {
+                _metrics = _metrics.Add(metric);
+            }
             return metric;
         }
 
@@ -113,7 +117,10 @@ namespace StackExchange.Metrics
         /// </param>
         public TTaggedMetric Add<TTaggedMetric, TMetric>(TTaggedMetric metric) where TTaggedMetric : TaggedMetricFactory<TMetric> where TMetric : MetricBase
         {
-            _metrics = _metrics.Add(metric);
+            lock (_syncLock)
+            {
+                _metrics = _metrics.Add(metric);
+            }
             return metric;
         }
 
