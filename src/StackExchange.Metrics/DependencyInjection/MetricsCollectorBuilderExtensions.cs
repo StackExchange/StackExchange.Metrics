@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using StackExchange.Metrics;
 using StackExchange.Metrics.Handlers;
@@ -11,6 +12,24 @@ namespace Microsoft.Extensions.DependencyInjection
     /// </summary>
     public static class MetricsCollectorBuilderExtensions
     {
+
+        /// <summary>
+        /// Removes any <see cref="MetricSource"/> instances registered for the collector.
+        /// </summary>
+        public static IMetricsCollectorBuilder ClearSources(this IMetricsCollectorBuilder builder)
+        {
+            builder.Services.RemoveAll<MetricSource>();
+            for (var i = builder.Services.Count - 1; i >= 0; i--)
+            {
+                if (builder.Services[i].ServiceType.IsSubclassOf(typeof(MetricSource)))
+                {
+                    builder.Services.RemoveAt(i);
+                }
+            }
+
+            return builder;
+        }
+
         /// <summary>
         /// Adds the default built-in <see cref="MetricSource" /> implementations to the collector.
         /// </summary>
@@ -19,28 +38,27 @@ namespace Microsoft.Extensions.DependencyInjection
             return builder.AddProcessMetricSource()
 #if NETCOREAPP
                 .AddAspNetMetricSource()
-                .AddRuntimeMetricSource()
+                .AddRuntimeMetricSource();
 #else
                 .AddGarbageCollectorMetricSource();
 #endif
-            ;
         }
 
         /// <summary>
         /// Adds a <see cref="ProcessMetricSource" /> to the collector.
         /// </summary>
-        public static IMetricsCollectorBuilder AddProcessMetricSource(this IMetricsCollectorBuilder builder) => builder.AddSource<ProcessMetricSource>();
+        public static IMetricsCollectorBuilder AddProcessMetricSource(this IMetricsCollectorBuilder builder) => builder.AddSourceIfMissing<ProcessMetricSource>();
 
 #if NETCOREAPP
         /// <summary>
         /// Adds a <see cref="RuntimeMetricSource" /> to the collector.
         /// </summary>
-        public static IMetricsCollectorBuilder AddRuntimeMetricSource(this IMetricsCollectorBuilder builder) => builder.AddSource<RuntimeMetricSource>();
+        public static IMetricsCollectorBuilder AddRuntimeMetricSource(this IMetricsCollectorBuilder builder) => builder.AddSourceIfMissing<RuntimeMetricSource>();
 
         /// <summary>
         /// Adds a <see cref="AspNetMetricSource" /> to the collector.
         /// </summary>
-        public static IMetricsCollectorBuilder AddAspNetMetricSource(this IMetricsCollectorBuilder builder) => builder.AddSource<AspNetMetricSource>();
+        public static IMetricsCollectorBuilder AddAspNetMetricSource(this IMetricsCollectorBuilder builder) => builder.AddSourceIfMissing<AspNetMetricSource>();
 #else
         /// <summary>
         /// Adds a <see cref="GarbageCollectorMetricSource" /> to the collector.
@@ -117,6 +135,15 @@ namespace Microsoft.Extensions.DependencyInjection
         {
             builder.Services.AddSingleton<T>(source);
             builder.Services.AddSingleton<MetricSource>(s => s.GetService<T>());
+            return builder;
+        }
+
+        private static IMetricsCollectorBuilder AddSourceIfMissing<T>(this IMetricsCollectorBuilder builder) where T : MetricSource
+        {
+            if (!builder.Services.Any(x => x.ServiceType == typeof(T)))
+            {
+                builder.AddSource<T>();
+            }
             return builder;
         }
     }
