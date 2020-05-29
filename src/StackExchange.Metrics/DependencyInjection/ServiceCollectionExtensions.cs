@@ -1,5 +1,4 @@
 ﻿using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Options;
 using StackExchange.Metrics;
 using StackExchange.Metrics.DependencyInjection;
 using StackExchange.Metrics.Infrastructure;
@@ -25,8 +24,8 @@ namespace Microsoft.Extensions.DependencyInjection
                 .AddSingleton<MetricsCollector>()
                 .AddSingleton<IMetricsCollector>(s => s.GetService<MetricsCollector>())
                 .AddSingleton<IHostedService>(s => s.GetService<MetricsCollector>())
-                .AddSingleton<IOptions<MetricsCollectorOptions>>(s => Options.Options.Create(builder.Build(s)))
-                .AddSingleton<IOptions<MetricSourceOptions>>(s => s.GetService<IOptions<MetricsCollectorOptions>>());
+                .AddSingleton<MetricSourceOptions>()
+                .AddSingleton<MetricsCollectorOptions>(s => builder.Build(s));
 #if NETCOREAPP
             services
                 .AddSingleton<DiagnosticsCollector>()

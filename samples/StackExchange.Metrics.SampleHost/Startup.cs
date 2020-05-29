@@ -26,6 +26,12 @@ namespace StackExchange.Metrics.SampleHost
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddMetricsCollector()
+                .ConfigureSources(
+                    o =>
+                    {
+                        o.DefaultTags.Add("host", Environment.MachineName);
+                    })
+                .AddDefaultSources().AddSource<AppMetricSource>()
                 .UseExceptionHandler(ex => Console.WriteLine(ex))
                 .Configure(
                     o =>
@@ -59,8 +65,7 @@ namespace StackExchange.Metrics.SampleHost
                 {
                     e.Map("/", async ctx => await ctx.Response.BodyWriter.WriteAsync(_indexPageBytes));
                     e.Map("/error", _ => throw new Exception("BOOM"));
-                    e.Map("/status-code", ctx =>
-                    {
+                    e.Map("/status-code", ctx => {
                         ctx.Response.StatusCode = int.TryParse(ctx.Request.Query["v"], out var statusCode) ? statusCode : StatusCodes.Status200OK;
                         return Task.CompletedTask;
                     });

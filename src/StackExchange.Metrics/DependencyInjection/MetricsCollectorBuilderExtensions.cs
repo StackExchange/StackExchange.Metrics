@@ -87,6 +87,19 @@ namespace Microsoft.Extensions.DependencyInjection
         }
 
         /// <summary>
+        /// Configures the default <see cref="MetricSourceOptions"/> used for <see cref="MetricSource"/> instances
+        /// passed to the collector.
+        /// </summary>
+        public static IMetricsCollectorBuilder ConfigureSources(this IMetricsCollectorBuilder builder, Action<MetricSourceOptions> action)
+        {
+            var options = new MetricSourceOptions();
+            action?.Invoke(options);
+            builder.Services.RemoveAll<MetricSourceOptions>();
+            builder.Services.AddSingleton(options);
+            return builder;
+        }
+
+        /// <summary>
         /// Registers an <see cref="MetricSource" /> for use with the collector.
         /// </summary>
         public static IMetricsCollectorBuilder AddSource<T>(this IMetricsCollectorBuilder builder) where T : MetricSource

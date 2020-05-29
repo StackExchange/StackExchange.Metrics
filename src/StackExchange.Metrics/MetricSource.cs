@@ -1,8 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Options;
 using StackExchange.Metrics.Infrastructure;
 using StackExchange.Metrics.Metrics;
 
@@ -21,17 +19,6 @@ namespace StackExchange.Metrics
         /// <param name="options">
         /// <see cref="MetricSourceOptions" /> representing the options to use when creating metrics in this source.
         /// </param>
-        [ActivatorUtilitiesConstructor]
-        public MetricSource(IOptions<MetricSourceOptions> options) : this(options.Value)
-        {
-        }
-
-        /// <summary>
-        /// Initializes a <see cref="MetricSource"/>.
-        /// </summary>
-        /// <param name="options">
-        /// <see cref="MetricSourceOptions" /> representing the options to use when creating metrics in this source.
-        /// </param>
         public MetricSource(MetricSourceOptions options)
         {
             Options = options ?? throw new ArgumentNullException(nameof(options));
@@ -42,12 +29,29 @@ namespace StackExchange.Metrics
         /// </summary>
         protected MetricSourceOptions Options { get; }
 
-        /// <inheritdoc/>
+        /// <summary>
+        /// Called when an <see cref="IMetricsCollector"/> is starting in order to attach
+        /// any event handlers, etc. the source may be attached to.
+        /// </summary>
+        /// <param name="collector">
+        /// An <see cref="IMetricsCollector"/>.
+        /// </param>
+        /// <remarks>
+        /// This method is typically overridden in derived implementations in order
+        /// to attach to the <see cref="IMetricsCollector.BeforeSerialization"/> event
+        /// so that a metric source can perform pre-snapshotting processing.
+        /// </remarks>
         public virtual void Attach(IMetricsCollector collector)
         {
         }
 
-        /// <inheritdoc/>
+        /// <summary>
+        /// Called when an <see cref="IMetricsCollector"/> is stopping in order to detach
+        /// any event handlers, etc. the source may be attached to.
+        /// </summary>
+        /// <param name="collector">
+        /// An <see cref="IMetricsCollector"/>.
+        /// </param>
         public virtual void Detach(IMetricsCollector collector)
         {
         }
