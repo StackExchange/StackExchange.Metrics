@@ -10,7 +10,7 @@ namespace StackExchange.Metrics
     /// <remarks>
     /// All options are optional. However, <see cref="MetricsCollector" /> will never send metrics unless <see cref="Endpoints"/> is set.
     /// </remarks>
-    public class MetricsCollectorOptions : MetricSourceOptions
+    public class MetricsCollectorOptions
     {
         /// <summary>
         /// Exceptions which occur on a background thread will be passed to this delegate.

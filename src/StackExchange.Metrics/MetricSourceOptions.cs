@@ -97,8 +97,6 @@ namespace StackExchange.Metrics
             set => _tagValueValidator = value ?? throw new ArgumentNullException(nameof(value));
         }
 
-        private ImmutableDictionary<string, string> _frozenDictionary = ImmutableDictionary<string, string>.Empty;
-
         /// <summary>
         /// Gets tag name/value pairs that are applied to all metrics.
         /// </summary>

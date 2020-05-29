@@ -3,6 +3,7 @@ using System.Buffers;
 using System.Collections;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
+using Microsoft.Diagnostics.Tracing.Parsers.MicrosoftWindowsTCPIP;
 
 namespace StackExchange.Metrics.Infrastructure
 {
@@ -128,6 +129,24 @@ namespace StackExchange.Metrics.Infrastructure
                 if ((uint)newCapacity > MaxArrayLength) newCapacity = MaxArrayLength;
                 if (newCapacity < min) newCapacity = min;
                 _capacity = newCapacity;
+                if (newCapacity != _items.Length)
+                {
+                    if (newCapacity > 0)
+                    {
+                        var newItems = _pool.Rent(newCapacity);
+                        if (_size > 0)
+                        {
+                            Array.Copy(_items, newItems, _size);
+                        }
+                        ReturnArray();
+                        _items = newItems;
+                    }
+                    else
+                    {
+                        ReturnArray();
+                        _size = 0;
+                    }
+                }
             }
         }
 
@@ -183,8 +202,13 @@ namespace StackExchange.Metrics.Infrastructure
 
             public bool MoveNext()
             {
-                _current = _list._items[_index++];
-                return true;
+                if ((uint)_index < (uint)_list._size)
+                {
+                    _current = _list._items[_index++];
+                    return true;
+                }
+
+                return false;
             }
 
             public T Current => _current;

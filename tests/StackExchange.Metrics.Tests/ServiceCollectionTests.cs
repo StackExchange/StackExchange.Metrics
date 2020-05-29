@@ -64,7 +64,20 @@ namespace StackExchange.Metrics.Tests
             Assert.Contains(
                 services,
                 descriptor => descriptor.Lifetime == ServiceLifetime.Singleton &&
-                              descriptor.ServiceType == typeof(IOptions<MetricsCollectorOptions>)
+                              descriptor.ServiceType == typeof(MetricsCollectorOptions)
+            );
+        }
+
+        [Fact]
+        public void MetricsSourceOptions_IsAddedAsSingleton()
+        {
+            var services = CreateServices();
+            services.AddMetricsCollector();
+
+            Assert.Contains(
+                services,
+                descriptor => descriptor.Lifetime == ServiceLifetime.Singleton &&
+                              descriptor.ServiceType == typeof(MetricSourceOptions)
             );
         }
 

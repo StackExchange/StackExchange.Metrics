@@ -1,6 +1,4 @@
-﻿using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Options;
+﻿using Microsoft.Extensions.Hosting;
 using StackExchange.Metrics.Infrastructure;
 using System;
 using System.Collections.Generic;
@@ -84,18 +82,6 @@ namespace StackExchange.Metrics
         /// Enumerable of all sources consumed by this collector.
         /// </summary>
         public IEnumerable<MetricSource> Sources => _sources.AsEnumerable();
-
-        /// <summary>
-        /// Instantiates a new collector. You should typically only instantiate one collector for the lifetime of your
-        /// application. It will manage the serialization of metrics and sending data to metric handlers.
-        /// </summary>
-        /// <param name="options">
-        /// <see cref="MetricsCollectorOptions" /> representing the options to use for this collector.
-        /// </param>
-        [ActivatorUtilitiesConstructor]
-        public MetricsCollector(IOptions<MetricsCollectorOptions> options) : this(options.Value)
-        {
-        }
 
         /// <summary>
         /// Instantiates a new collector. You should typically only instantiate one collector for the lifetime of your

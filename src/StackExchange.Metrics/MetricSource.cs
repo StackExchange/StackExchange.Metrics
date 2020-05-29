@@ -1,11 +1,6 @@
 ﻿using System;
-using System.Buffers;
-using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.Runtime.CompilerServices;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Options;
 using StackExchange.Metrics.Infrastructure;
 using StackExchange.Metrics.Metrics;
 
@@ -17,17 +12,6 @@ namespace StackExchange.Metrics
     public partial class MetricSource : IMetricReadingWriter, IMetricMetadataProvider
     {
         private ImmutableArray<IMetricReadingWriter> _metrics = ImmutableArray<IMetricReadingWriter>.Empty;
-
-        /// <summary>
-        /// Initializes a <see cref="MetricSource"/>.
-        /// </summary>
-        /// <param name="options">
-        /// <see cref="MetricSourceOptions" /> representing the options to use when creating metrics in this source.
-        /// </param>
-        [ActivatorUtilitiesConstructor]
-        public MetricSource(IOptions<MetricSourceOptions> options) : this(options.Value)
-        {
-        }
 
         /// <summary>
         /// Initializes a <see cref="MetricSource"/>.
