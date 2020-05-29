@@ -42,9 +42,9 @@ namespace StackExchange.Metrics.Tests
             {
                 collector.Stop();
 
-                // make sure we got snapshotted
+                // make sure we got detached
                 await Task.WhenAny(metricSource.DetachTask, Task.Delay(1000));
-                Assert.True(metricSource.SnapshotTask.IsCompleted, "Metric source was not detached");
+                Assert.True(metricSource.DetachTask.IsCompleted, "Metric source was not detached");
             }
         }
 
