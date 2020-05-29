@@ -155,24 +155,13 @@ namespace StackExchange.Metrics.Metrics
         {
             var ip = (int)(pct * 100.0);
             var lastDigit = ip % 10;
-
-            string ending;
-            switch (lastDigit)
+            string ending = lastDigit switch
             {
-                case 1:
-                    ending = "st";
-                    break;
-                case 2:
-                    ending = "nd";
-                    break;
-                case 3:
-                    ending = "rd";
-                    break;
-                default:
-                    ending = "th";
-                    break;
-            }
-
+                1 => "st",
+                2 => "nd",
+                3 => "rd",
+                _ => "th",
+            };
             return ip + ending + " percentile";
         }
 

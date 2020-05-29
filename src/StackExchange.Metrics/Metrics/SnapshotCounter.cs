@@ -23,12 +23,7 @@ namespace StackExchange.Metrics.Metrics
         /// </summary>
         internal SnapshotCounter(Func<long?> getCountFunc, string name, string unit, string description, MetricSourceOptions options, ImmutableDictionary<string, string> tags = null) : base(name, unit, description, options, tags)
         {
-            if (getCountFunc == null)
-            {
-                throw new ArgumentNullException("getCountFunc");
-            }
-
-            _getCountFunc = getCountFunc;
+            _getCountFunc = getCountFunc ?? throw new ArgumentNullException("getCountFunc");
         }
 
         /// <inheritdoc/>

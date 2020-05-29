@@ -23,7 +23,9 @@ namespace StackExchange.Metrics
 
         private bool _hasNewMetadata;
         private DateTime _lastMetadataFlushTime = DateTime.MinValue;
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("CodeQuality", "IDE0052:Remove unread private members", Justification = "Used to hold ref.")]
         private Task _flushTask;
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("CodeQuality", "IDE0052:Remove unread private members", Justification = "Used to hold ref.")]
         private Task _reportingTask;
         private CancellationTokenSource _shutdownTokenSource;
 
