@@ -85,7 +85,7 @@ namespace StackExchange.Metrics
                         await textWriter.WriteAsync(tag.Key);
                         await textWriter.WriteAsync(" = ");
                         await textWriter.WriteAsync(tag.Value);
-                        if (++i < reading.Tags.Count - 1)
+                        if (i++ < reading.Tags.Count - 1)
                         {
                             await textWriter.WriteAsync(", ");
                         }
