@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
@@ -66,8 +67,11 @@ namespace StackExchange.Metrics.SampleHost
                 e =>
                 {
                     e.Map("/", async ctx => await ctx.Response.BodyWriter.WriteAsync(_indexPageBytes));
-                    e.Map("/error", async _ => throw new Exception("BOOM"));
-                    e.Map("/status-code", async ctx => ctx.Response.StatusCode = int.TryParse(ctx.Request.Query["v"], out var statusCode) ? statusCode : StatusCodes.Status200OK);
+                    e.Map("/error", _ => throw new Exception("BOOM"));
+                    e.Map("/status-code", ctx => {
+                        ctx.Response.StatusCode = int.TryParse(ctx.Request.Query["v"], out var statusCode) ? statusCode : StatusCodes.Status200OK;
+                        return Task.CompletedTask;
+                    });
                     e.Map("/metrics", async ctx =>
                     {
                         var collector = ctx.RequestServices.GetService<MetricsCollector>();
