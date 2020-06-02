@@ -1,7 +1,9 @@
 ﻿using Microsoft.Extensions.Hosting;
 using StackExchange.Metrics;
 using StackExchange.Metrics.DependencyInjection;
+#if NETCOREAPP
 using StackExchange.Metrics.Infrastructure;
+#endif
 
 namespace Microsoft.Extensions.DependencyInjection
 {

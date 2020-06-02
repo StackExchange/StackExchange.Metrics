@@ -35,7 +35,10 @@ namespace StackExchange.Metrics
             MetricNameValidator = s_defaultMetricNameValidator;
             TagNameValidator = s_defaultTagNameValidator;
             TagValueValidator = s_defaultTagValueValidator;
-            DefaultTags = new TagDictionary(this);
+            DefaultTags = new TagDictionary(this)
+            {
+                ["host"] = Environment.MachineName
+            };
         }
 
         /// <summary>

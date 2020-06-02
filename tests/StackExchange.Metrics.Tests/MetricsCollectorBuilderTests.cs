@@ -21,33 +21,6 @@ namespace StackExchange.Metrics.Tests
         }
 
         [Fact]
-        public void DefaultOptions_HasHostTag()
-        {
-            var services = CreateServices();
-            var builder = new MetricsCollectorBuilder(services);
-
-            var serviceProvider = services.BuildServiceProvider();
-            var options = builder.Build(serviceProvider);
-
-            var sourceOptions = serviceProvider.GetRequiredService<MetricSourceOptions>();
-
-            Assert.Contains(
-                sourceOptions.DefaultTags, x => x.Key == "host" && x.Value == Environment.MachineName.ToLower()
-            );
-        }
-
-
-        [Fact]
-        public void DefaultOptions_HasDefaultSources()
-        {
-            var options = CreateOptions();
-
-            Assert.Contains(options.Sources, x => x is AspNetMetricSource);
-            Assert.Contains(options.Sources, x => x is RuntimeMetricSource);
-            Assert.Contains(options.Sources, x => x is ProcessMetricSource);
-        }
-
-        [Fact]
         public void Endpoints_LocalAddedByDefault()
         {
             var options = CreateOptions();

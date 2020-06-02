@@ -18,11 +18,6 @@ namespace StackExchange.Metrics.DependencyInjection
 
             Options = new MetricsCollectorOptions();
             Services = services;
-
-            this.ConfigureSources(
-                o => o.DefaultTags.Add("host", Environment.MachineName)
-            );
-            this.AddDefaultSources();
         }
 
         public IServiceCollection Services { get; }
