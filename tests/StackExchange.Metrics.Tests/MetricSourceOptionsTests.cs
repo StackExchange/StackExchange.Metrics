@@ -41,6 +41,17 @@ namespace StackExchange.Metrics.Tests
         }
 
         [Fact]
+        public void DefaultTags_HasTransformedHost()
+        {
+            var options = new MetricSourceOptions
+            {
+                TagValueTransformer = (_, __) => "qwertyYTREWQ"
+            };
+
+            Assert.True(options.DefaultTags.TryGetValue("host", out var value) && value == "qwertyYTREWQ");
+        }
+
+        [Fact]
         public void DefaultTags_TagValuesAreTransformed()
         {
             var options = new MetricSourceOptions

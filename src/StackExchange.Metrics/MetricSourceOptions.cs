@@ -47,10 +47,6 @@ namespace StackExchange.Metrics
             MetricNameValidator = s_defaultMetricNameValidator;
             TagNameValidator = s_defaultTagNameValidator;
             TagValueValidator = s_defaultTagValueValidator;
-            DefaultTags = new TagDictionary(this)
-            {
-                ["host"] = Environment.MachineName
-            };
         }
 
         /// <summary>
@@ -113,10 +109,26 @@ namespace StackExchange.Metrics
             set => _tagValueValidator = value ?? throw new ArgumentNullException(nameof(value));
         }
 
+        private IDictionary<string, string> _defaultTags;
         /// <summary>
         /// Gets tag name/value pairs that are applied to all metrics.
         /// </summary>
-        public IDictionary<string, string> DefaultTags { get; }
+        public IDictionary<string, string> DefaultTags
+        {
+            get
+            {
+                if (_defaultTags == null)
+                {
+                    _defaultTags = new TagDictionary(this);
+                    // important *not* to use an object initializer here
+                    // we want to be sure that we're calling the explicitly
+                    // implemented Add rather than the one defined on Dictionary
+                    _defaultTags.Add("host", Environment.MachineName);
+                }
+
+                return _defaultTags;
+            }
+        }
 
         /// <summary>
         /// Gets an immutable version of <see cref="DefaultTagsFrozen"/>.
