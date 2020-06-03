@@ -34,7 +34,7 @@ namespace StackExchange.Metrics.Tests
                 Assert.True(metricSource.AttachTask.IsCompleted, "Metric source was not attached");
 
                 // make sure we got snapshotted
-                await Task.WhenAny(metricSource.SnapshotTask, Task.Delay(2000));
+                await Task.WhenAny(metricSource.SnapshotTask, Task.Delay(30000));
                 Assert.True(metricSource.SnapshotTask.IsCompleted, "Metric source was not snapshotted");
             }
             finally
