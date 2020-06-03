@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Text.RegularExpressions;
 
 namespace StackExchange.Metrics
 {
@@ -10,9 +11,20 @@ namespace StackExchange.Metrics
     /// </summary>
     public class MetricSourceOptions : IOptions<MetricSourceOptions>
     {
+        
+        private static string SanitizeTag(string value)
+        {
+            if (string.IsNullOrEmpty(value)) return value;
+            return s_tagValueSanitizer.Replace(value, "").ToLowerInvariant();
+        }
+        private static readonly Regex s_tagValueSanitizer = new Regex(@"[^-\w./]", RegexOptions.Compiled);
         private static readonly NameTransformerDelegate s_defaultMetricNameTransformer = NameTransformers.Combine(NameTransformers.CamelToLowerSnakeCase, NameTransformers.Sanitize);
         private static readonly NameTransformerDelegate s_defaultTagNameTransformer = NameTransformers.Combine(NameTransformers.CamelToLowerSnakeCase, NameTransformers.Sanitize);
-        private static readonly TagValueTransformerDelegate s_defaultTagValueTransformer = (_, value) => value.ToString().ToLowerInvariant();
+        private static readonly TagValueTransformerDelegate s_defaultTagValueTransformer = (_, value) =>
+        {
+            if (value == null) return null;
+            return s_tagValueSanitizer.Replace(value.ToString(), "").ToLowerInvariant();
+        };
         private static readonly ValidationDelegate s_defaultMetricNameValidator = MetricValidation.IsValidMetricName;
         private static readonly ValidationDelegate s_defaultTagNameValidator = MetricValidation.IsValidTagName;
         private static readonly ValidationDelegate s_defaultTagValueValidator = MetricValidation.IsValidTagValue;
