@@ -9,7 +9,7 @@ Counters are for _counting_ things. The most common use case is to increment a c
 This is the basic counter type. It uses a `long` value and calls `Interlocked.Add()` internally to incrementing the value.
 
 ```csharp
-var counter = collector.CreateMetric<Counter>("my_counter", "units", "description");
+var counter = source.AddCounter("my_counter", "units", "description");
 
 // increment by 1
 counter.Increment();
@@ -24,7 +24,7 @@ A snapshot counter is useful when you only care about updating the counter once 
 
 ```csharp
 var count = 0;
-collector.CreateMetric("name", "unit", "desc", new SnapshotCounter(() => count++));
+var counter = source.AddSnapshotCounter(() => count++, "name", "unit", "desc");
 ```
 
 ### CumulativeCounter
@@ -60,13 +60,9 @@ For Bosun, you can enable/disable sending cumulative counter increments using `B
 The usage of `CumulativeCounter` is exactly the same as `Counter` except that you can only increment by 1.
 
 ```csharp
-var counter = collector.CreateMetric<ExternalCounter>("ext_counter", "units", "description");
+var counter = source.AddCumulativeCounter("ext_counter", "units", "description");
 counter.Increment();
 ```
-
-You can also inherit from `CumulativeCounter` in order to add tags (like any other metric type).
-
->  Note: tsdbrelay will automatically add the "host" tag. This means that metrics which inherit from CumulativeCounter are not required to have any tags. ExternalCounter excludes the "host" tag by default for the same reason.
 
 ## Gauges
 
@@ -77,7 +73,7 @@ Gauges describe a measurement at a point in time. A good example would be measur
 These are great for metrics where you want to record snapshots of a value, like CPU or memory usage. Pretend we have a method called `GetMemoryUsage` which returns a double. Now, let's write a snapshot gauge which calls that automatically at every metrics reporting interval.
 
 ```csharp
-collector.CreateMetric("memory_usage", units, desc, new SnapshotGauge(() => GetMemoryUsage()));
+source.AddSnapshotGauge("memory_usage", units, desc, new SnapshotGauge(() => GetMemoryUsage()));
 ```
 
 That's it. There's no reason to even assign the gauge to a variable.
@@ -89,7 +85,7 @@ That's it. There's no reason to even assign the gauge to a variable.
 These are ideal for low-volume event-based data where it's practical to send all of the data points to a metrics platform. If you have a measurable event which occurs once every few seconds, then, instead of aggregating, you may want to use an event gauge. Every time you call `.Record()` on an event gauge, the metric will be serialized and queued. The queued metrics will be sent to metrics handlers on the normal reporting interval, like all other metrics.
 
 ```csharp
-var myEvent = collector.CreateMetric<EventGauge>("my_event", units, desc);
+var myEvent = source.AddEventGauge("my_event", units, desc);
 someObject.OnSomeEvent += (sender, e) => myEvent.Record(someObject.Value);
 ```
 
@@ -113,36 +109,15 @@ All aggregators are reset at each reporting/snapshot interval. If no data points
 
 > By default, the minimum number of events which must be recorded before the AggregateGauge will report anything is one event per reporting interval. You can change this default by assigning your own `Func<int>` to the static `AggregateGauge.GetDefaultMinimumEvents` property. Or, you can override the `AggregateGauge.MinimumEvents` property on classes which inherit from AggregateGauge. This squelch feature does not apply to `Count` aggregators, which always report, regardless of how many events were recorded.
 
-Let's create a simple route-timing metric which has a `route` tag, and reports on the median, 95th percentile, and max values. First, create a class which defines this gauge type.
+Let's create a simple route-timing metric which has a `route` tag, and reports on the median, 95th percentile, and max values.
 
 ```csharp
-[GaugeAggregator(AggregateMode.Max)]
-[GaugeAggregator(AggregateMode.Median)]
-[GaugeAggregator(AggregateMode.Percentile, 0.95)]
-public class RouteTimingGauge : AggregateGauge
-{
-	[MetricTag] public readonly string Route;
-
-	public TestAggregateGauge(string route)
-	{
-		Route = route
-	}
-}
+var aggregators = new[] { GaugeAggregator.Max, GaugeAggregator.Median, GaugeAggregator.Percentile_95 };
+var gauge = source.AddAggregateGauge(aggregators, "route_rt", units, desc, new MetricTag<string>("route));
+gauge.Record("Test/Route", requestDuration);
 ```
 
-Then, instantiate the gauge for our route, and record timings to it.
-
-```csharp
-var testRouteTiming = collector.CreateMetric(
-                                          "route_tr",
-                                          units,
-                                          desc,
-                                          new RouteTimingGauge("Test/Route"));
-
-testRouteTiming.Record(requestDuration);
-```
-
-If median or percentile aggregators are used, then _all_ values passed to the `Record()` method are stored in a `List<double>` until the next reporting interval, and must be sorted at that time in order to calculate the aggregate values. If you're concerned about this performance overhead, run some benchmarks on sorting a `List<double>` where the count is the number of data points you expect in-between metric reporting intervals. When there are multiple gauge metrics, the sorting is performed in parallel.
+If median or percentile aggregators are used, then _all_ values passed to the `Record()` method are stored in a `List<double>` until the next reporting interval, and must be sorted at that time in order to calculate the aggregate values. If you're concerned about this performance overhead, run some benchmarks on sorting a `List<double>` where the count is the number of data points you expect in-between metric reporting intervals.
 
 > Aggregate gauges use locks to achieve thread-safety currently. This is an implementation detail which may change if there is concurrency pattern which is shown to improve performance in highly parallel environments. Using a spin-wait pattern was also tried, but didn't yield any detectable improvement in testing.
 
@@ -160,38 +135,108 @@ var sampler = collector.CreateMetric<SamplingGauge>("my_sampler", units, desc);
 sampler.Record(1.2);
 ```
 
-## Create Your Own
+## Advanced Usage
 
-The built-in metric types described above should work for most use cases. However, you can also write your own by inheriting from the abstract `MetricBase` class and writing an implementation for the `MetricType` property, and the `Serialize` method.
+### Create Your Own
+
+The built-in metric types described above should work for most use cases. However, you can also write your own by inheriting from the abstract `MetricBase` class and writing an implementation for the `MetricType` property, and the `Write` method.
 
 Both of the built-in counter types use a `long` as their value type. Here's how we might implement a floating point counter:
 
 ```csharp
 public class DoubleCounter : MetricBase
 {
+	private readonly object _lock = new object();
+	private double _value;
+
+	public DoubleCounter(string name, string unit, string description, MetricSourceOptions options, ImmutableDictionary<string, string> tags = null) : base(name, unit, description, options, tags)
+	{
+	}
+
 	// determines whether the metric is treated as a counter or gauge
-	public override MetricType Type { get; } = MetricType.Counter;
-	
-	private object _lock = new object();
-	public double Value { get; private set; }
-	
+	public override MetricType MetricType { get; } = MetricType.Counter;
+
 	public void Increment(double amount = 1.0)
 	{
 		// Interlocked doesn't have an Increment() for doubles, so we have to use another
 		// concurrency strategy. You should always keep thread-safety in mind when designing
 		// your own metrics.
-		lock (_lock) 
+		lock (_lock)
 		{
-			Value += amount;
+			_value += amount;
 		}
 	}
-	
+
 	// this method is called by the collector when it's time to post to the metrics handlers
-	protected override void Serialize(IMetricBatch writer, DateTime now)
+	protected override void Write(IMetricReadingBatch batch, DateTime timestamp)
 	{
-		// WriteValue is a protected method on MetricBase
-		WriteValue(writer, Value, now);
+		var countSnapshot = Interlocked.Exchange(ref _count, 0);
+		if (countSnapshot == 0)
+		{
+			return;
+		}
+
+		batch.Add(
+			CreateReading(countSnapshot, timestamp)
+		);
 	}
+}
+```
+
+To make it easy to add your metric to a `MetricSource` you should create extension methods to help consumers.
+
+```csharp
+public static class MetricSourceExtensions
+{
+	public  static DoubleCounter AddDoubleCounter(this MetricSource source, string name, string unit, string description) => source.Add(new DoubleCounter(name, unit, description, source.Options));
+}
+```
+
+### Tagging
+
+If you want to support adding tags to your new metric you should provide an implementation of `TaggedMetricFactory<TMetric, TTag1, ..., TTagN>` and extension methods to support its use by consumers.
+
+```csharp
+public class DoubleCounter<TTag1> : TaggedMetricFactory<DoubleCounter, TTag1>
+{
+	internal Counter(string name, string unit, string description, in MetricTag<TTag1> tag1, MetricSourceOptions options) : base(name, unit, description, options, tag1) { }
+
+	public void Increment(TTag1 tag1, double amount = 1.0d) => GetOrAdd(tag1).Increment(amount);
+
+	protected override DoubleCounter Create(ImmutableDictionary<string, string> tags) => new DoubleCounter(Name, Unit, Description, Options, tags);
+}
+
+public class DoubleCounter<TTag1, TTag2> : TaggedMetricFactory<DoubleCounter, TTag1, TTag2>
+{
+	internal Counter(string name, string unit, string description, in MetricTag<TTag1> tag1, in MetricTag<TTag2> tag2, MetricSourceOptions options) : base(name, unit, description, options, tag1, tag2) { }
+
+	public void Increment(TTag1 tag1, TTag1 tag2, double amount = 1.0d) => GetOrAdd(tag1, tag2).Increment(amount);
+
+	protected override DoubleCounter Create(ImmutableDictionary<string, string> tags) => new DoubleCounter(Name, Unit, Description, Options, tags);
+}
+
+// and so on for as many tags as you want to support
+
+public class DoubleCounter<TTag1, TTag2, ..., TTagN> : TaggedMetricFactory<DoubleCounter, TTag1, TTag2, ..., TTagN>
+{
+	internal Counter(string name, string unit, string description, in MetricTag<TTag1> tag1, in MetricTag<TTag2> tag2, ..., in MetricTag<TTagN> tagN, MetricSourceOptions options) : base(name, unit, description, options, tag1, tag2, ..., tagN) { }
+
+	public void Increment(TTag1 tag1, TTag1 tag2, ..., TTagN tagN, double amount = 1.0d) => GetOrAdd(tag1, tag2, ..., tagN).Increment(amount);
+
+	protected override DoubleCounter Create(ImmutableDictionary<string, string> tags) => new DoubleCounter(Name, Unit, Description, Options, tags);
+}
+
+public static class MetricSourceExtensions
+{
+	public static DoubleCounter<TTag> AddDoubleCounter<TTag>(this MetricSource source, string name, string unit, string description, in MetricTag<TTag> tag) 	=> source.Add(new DoubleCounter<TTag>(name, unit, description, tag, source.Options));
+
+	public static DoubleCounter<TTag1, TTag2> AddDoubleCounter<TTag1, TTag2>(this MetricSource source, string name, string unit, string description, in MetricTag<TTag1> tag1, in MetricTag<TTag2> tag2) 
+		=> source.Add(new DoubleCounter<TTag1, TTag2>(name, unit, description, tag1, tag2, source.Options));
+
+	// and so on for as many tags as you want to support
+
+	public static DoubleCounter<TTag1, TTag2, ..., TTagN> AddDoubleCounter<TTag1, TTag2>(this MetricSource source, string name, string unit, string description, in MetricTag<TTag1> tag1, in MetricTag<TTag2> tag2, ..., in MetricTag<TTagN> tagN) 
+		=> source.Add(new DoubleCounter<TTag1, TTag2, ..., TTagN>(name, unit, description, tag1, tag2, ..., tagN, source.Options));
 }
 ```
 
@@ -199,20 +244,17 @@ public class DoubleCounter : MetricBase
 
 Most metrics don't need multiple suffixes; however, it's supported in the case that a single instance of a metric class actually needs to serialize as multiple metrics. The primary use case is `AggregateGauge` which serializes into multiple aggregates (e.g. `metric_avg`, `metric_max`, etc.).
 
-The default is to have a single empty string suffix, but if your custom metric type needs to support multiple suffixes, then you'll need to override `GetImmutableSuffixesArray()`:
+The default is to have a single empty string suffix, but if your custom metric type needs to support multiple suffixes, then you'll need to override `GetSuffixMetadata()`:
 
 ```csharp
-protected override string[] GetImmutableSuffixesArray()
+protected virtual IEnumerable<SuffixMetadata> GetSuffixMetadata()
 {
-    // return array of suffixes
+	yield return new SuffixMetadata(Name + "_avg", Unit, Description + " (avg)");
+	yield return new SuffixMetadata(Name + "_max", Unit, Description + " (max)");
 }
 ```
 
-As the name implies, the list of suffixes must be immutable for the lifetime of the metric.
-
-In order to serialize the value associated with each suffix, `WriteValue()` takes an optional fourth parameter which is the suffix index (defaults to zero). This value is an index into the array returned by `GetImmutableSuffixesArray()`.
-
-If you'd like to use a different metadata description per suffix, you can also override `string GetDescription(int suffixIndex)`.
+This list of suffixes must be immutable for the lifetime of the metric; it is captured once when the metric is initialized.
 
 ### Examples
 

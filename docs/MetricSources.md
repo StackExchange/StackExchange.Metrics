@@ -1,10 +1,12 @@
-# Metric Sets
+# Metric Sources
 
-Metric sets are pre-packaged sets of metrics that are useful across different applications. These can be added to a `MetricsCollector` by specifying in the `IEnumerable<IMetricSet>` exposed at `MetricsCollectorOptions.Sets`.
+Metric sources are a way to consume metrics and their readings. These can be added to a `MetricsCollector` by specifying in the `IEnumerable<MetricSource>` exposed at `MetricsCollectorOptions.Sources`.
 
-## Built-in sets
+## Built-in sources
 
-### ProcessMetricSet
+We provide some built-in metric sources that can report basic metrics within an application. Built-in sources can be added to a collector using the `MetricsCollectorOptions.Sources` property or by calling `AddDefaultSources` on the `IMetricsCollectorBuilder` exposed by `AddMetricsCollector` on an `IServiceCollection`.
+
+### ProcessMetricSource
 
 Provides basic metrics for a .NET application. This set contains the following metrics:
 
@@ -13,7 +15,7 @@ Provides basic metrics for a .NET application. This set contains the following m
  - `dotnet.mem.virtual` - virtual memory for the process
  - `dotnet.mem.paged` - paged memory for the process
 
-### GarbageCollectionMetricSet (.NET Full Framework)
+### GarbageCollectionMetricSource (.NET Full Framework only)
 
 Provides metrics about the garbage collector (GC). This set contains the following metrics:
 
@@ -21,7 +23,7 @@ Provides metrics about the garbage collector (GC). This set contains the followi
  - `dotnet.mem.collections.gen1` - number of gen-1 collections
  - `dotnet.mem.collections.gen2` - number of gen-2 collections
 
-### RuntimeMetricSet (.NET Core)
+### RuntimeMetricSource (.NET Core only)
 
 Provides .NET Core runtime metrics which includes:
 
@@ -42,18 +44,31 @@ Provides .NET Core runtime metrics which includes:
  Note: The `dotnet.mem.` generation counters are only updated when the garbage collector runs.
  Until it runs, these counters will be zero and if allocations are low, these counters will be infrequently updated.
 
-### AspNetMetricSet (.NET Core)
+### AspNetMetricSource (.NET Core only)
 
  - `dotnet.kestrel.requests.per_sec` - requests per second
  - `dotnet.kestrel.requests.total` - total requests
  - `dotnet.kestrel.requests.current` - current requests
  - `dotnet.kestrel.requests.failed` - failed requests
 
-## Custom Metric Sets
+## Custom Metric Sources
 
-Custom metric sets can be defined by implementing the `IMetricSet` interface. Implementors need to implement two methods:
+Custom metric sets can be defined by instantiating `MetricSource` and calling the `Add*` methods or by deriving from `MetricSource`.
 
- - `Initialize` - this method is passed an `IMetricsCollector` and should be used to create metrics that the set defines. It can also be used to hook up long-lived metrics monitoring checks
- - `Snapshot` - this method can be optionally implemented and is executed everytime the collector snapshots metrics for reporting
+Typically an application will define an `AppMetricSource` as follows:
 
- Once defined `IMetricSet` implementations should be added to the `MetricsCollectorOptions` that is passed to the `MetricsCollector`.
+```cs
+public class AppMetricSource : MetricSource
+{
+    public Counter MyCounter { get; }
+    public SamplingGauge<string, HttpStatusCode> MyGaugeWithTags { get; }
+    
+    public AppMetricSource(MetricSourceOptions options) : base(options)
+    {
+        MyCounter = AddCounter("my_counter", "units", "description");
+        MyGaugeWithTags = AddCounter("my_gauge", "units", "description", new MetricTag<string>("route"), new MetricTag<HttpStatusCode>("status_code"));
+    }
+}
+```
+
+Custom metric sources can be configured using `MetricsCollectorOptions.Sources` in .NET full framework or the `AddSource` method on the `IMetricsCollectorBuilder` exposed by `AddMetricsCollector` on an `IServiceCollection`.

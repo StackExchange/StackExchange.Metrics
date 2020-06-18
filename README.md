@@ -21,23 +21,45 @@ MyGet Pre-release feed: https://www.myget.org/gallery/stackoverflow
 First, create a `MetricsCollector` object. This is the top-level container which will hold all of your metrics and handle sending them to various metric endpoints. Therefore, you should only instantiate one, and make it a global singleton.
 
 ```csharp
+public class AppMetricSource : MetricSource
+{
+    public static readonly MetricSourceOptions Options = new MetricSourceOptions
+    {
+        DefaultTags = 
+        {
+            ["host"]  = Environment.MachineName
+        }
+    };
+
+    public AppMetricSource() : base(Options)
+    {
+    }
+}
+
 var collector = new MetricsCollector(
     new MetricsCollectorOptions
     {
         ExceptionHandler = ex => HandleException(ex),
-	    MetricsNamePrefix = "app_name.",
 	    Endpoints = new[] {
 		    new MetricEndpoint("Bosun", new BosunMetricHandler(new Uri("http://bosun.mydomain.com:8070"))),
 		    new MetricEndpoint("SignalFx", new SignalFxMetricHandler(new Uri("https://mydomain.signalfx.com/api", "API_KEY"))),
 	    },
-	    PropertyToTagName = NameTransformers.CamelToLowerSnakeCase,
-	    DefaultTags = new Dictionary<string, string> 
-		{
-            {"host", NameTransformers.Sanitize(Environment.MachineName.ToLower())},
-            {"tier", "dev"}
+        Sources =  new[] {
+            new GarbageCollectorMetricSource(AppMetricSource.DefaultOptions), 
+            new ProcessMetricSource(AppMetricSource.DefaultOptions), 
+            new AppMetricSource() 
         }
     }
 );
+
+// start the collector; it'll start sending metrics
+collector.Start();
+
+// ...
+
+// and then, during application shutdown, stop the collector
+collector.Stop();
+
 ```
 
 #### .NET Core
@@ -45,24 +67,39 @@ var collector = new MetricsCollector(
 For .NET Core, you can configure a `MetricsCollector` in your `Startup.cs`. 
 
 Using the snippet below will register an `IHostedService` in the service collection that manages the lifetime of the `MetricsCollector`
-and configures it with the specified endpoints, metric sets and tags.
+and configures it with the specified endpoints and metric sources.
 
 ```csharp
+public class AppMetricSource : MetricSource
+{
+    public AppMetricSource(MetricSourceOptions options) : base(options)
+    {
+    }
+}
+
 public class Startup
 {
     public void ConfigureServices(IServiceCollection services)
     {
         services.AddMetricsCollector()
-            // add default metric sets
-            .AddDefaultSets()
-            // add additional tags across all metrics. By default we add the "host" tag
-            .AddDefaultTag("tier", "dev");
+            // configure things like default tags
+            .ConfigureSources(
+                o =>
+                {
+                    // NOTE: default tags include the host name by default
+                    p.DefaultTags.Add("tier", "dev");
+                }
+            )
+            // by default, common metric sources are added
+            // that includes ProcessMetricSource, AspNetMetricSource & RuntimeMetricSource
+            // here we add our application-specific metric source
+            .AddSource<AppMetricSource>()
             // add endpoints we care about. By default we add a `LocalMetricHandler` that 
             // just maintains the latest metrics in memory (useful for debugging)
             .AddBosunEndpoint(new Uri("http://bosun.mydomain.com:8070"))
             .AddSignalFxEndpoint(new Uri("https://mydomain.signalfx.com/api", "API_KEY"))
             .UseExceptionHandler(ex => HandleException(ex))
-            // tweak other parts of `MetricsCollectionOptions`
+            // tweak other options in of `MetricsCollectionOptions`
             .Configure(
                 o => {
                     o.SnapshotInterval = TimeSpan.FromSeconds(5);
@@ -77,32 +114,48 @@ public class Startup
  - [LocalMetricHandler](https://github.com/StackExchange/StackExchange.Metrics/blob/master/src/StackExchange.Metrics/Handlers/LocalMetricHandler.cs)
  - [SignalFxMetricHandler](https://github.com/StackExchange/StackExchange.Metrics/blob/master/src/StackExchange.Metrics/Handlers/SignalFxMetricHandler.cs)
 
+Metrics are configured in a `MetricSource`. Using our `AppMetricSource` above:
+
 Create a counter with only the default tags:
 
-```csharp
-var counter = collector.CreateMetric<Counter>("my_counter", "units", "description");
+```cs
+public class AppMetricSource : MetricSource
+{
+    public Counter MyCounter { get; }
+    
+    public AppMetricSource(MetricSourceOptions options) : base(options)
+    {
+        MyCounter = AddCounter("my_counter", "units", "description");
+    }
+}
 ```
 
 Increment the counter by 1:
 
-```csharp
-counter.Increment();
+```cs
+appSource.MyCounter.Increment();
 ```
 
 ### Using Tags
 
-Tags are used to subdivide data in various metric platforms. In StackExchange.Metrics, tag sets are defined as C# classes. For example:
+Tags are used to subdivide data in various metric platforms. In StackExchange.Metrics, tags are by specifying additional arguments when creating a metric. For example:
 
-```csharp
-public class SomeCounter : Counter
+```cs
+public class AppMetricSource : MetricSource
 {
-	[MetricTag] public readonly string SomeTag;
-	
-	public RouteCounter(string tag)
-	{
-		SomeTag = tag;
-	}
+    public Counter<string> MyCounterWithTag { get; }
+    
+    public AppMetricSource(MetricSourceOptions options) : base(options)
+    {
+        MyCounterWithTag = AddCounter("my_counter", "units", "description", new MetricTag<string>("some_tag"));
+    }
 }
+```
+
+Incrementing that counter works exactly the same as incrementing a counter without tags, but we need to specify the values:
+
+```cs
+appSource.MyCounter.Increment("tag_value");
 ```
 
 For more details, see the [Tags Documentation](https://github.com/StackExchange/StackExchange.Metrics/blob/master/docs/Tags.md).
@@ -130,18 +183,14 @@ __[Gauges](https://github.com/StackExchange/StackExchange.Metrics/blob/master/do
 
 If none of the built-in metric types meet your specific needs, it's easy to [create your own](https://github.com/StackExchange/StackExchange.Metrics/blob/master/docs/MetricTypes.md#create-your-own).
 
-### Metric Groups
+### Metric Sources
 
-Metric groups allow you to easily setup metrics which share the same name, but with different tag values. [See Documentation](https://github.com/StackExchange/StackExchange.Metrics/blob/master/docs/MetricGroup.md).
-
-### Metric sets
-
-Metric sets are pre-packaged sets of metrics that are useful across different applications. [See Documentation](https://github.com/StackExchange/StackExchange.Metrics/blob/master/docs/MetricSet.md) for further details.
+Metric sets are pre-packaged sources of metrics that are useful across different applications. [See Documentation](https://github.com/StackExchange/StackExchange.Metrics/blob/master/docs/MetricSources.md) for further details.
 
 ## Implementation Notes
 
-Periodically a `MetricsCollector` instance serializes all the metrics that it is responsible for collecting. 
-When it does so it serially calls Serialize on each metric which eventually results in a call to WriteValue. 
+Periodically a `MetricsCollector` instance serializes all the metrics from the sources attached to it.
+When it does so it serially calls `WriteReadings` on each metric. 
 WriteValue uses an `IMetricBatch` to assist in writing metrics into an endpoint-defined format using an 
 implementation of `IBufferWriter<byte>` for buffering purposes.
 
