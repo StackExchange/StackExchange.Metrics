@@ -26,6 +26,13 @@ namespace StackExchange.Metrics.SampleHost
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddMetricsCollector()
+                .ConfigureSources(
+                    options =>
+                    {
+                        options.DefaultTags["tier"] = "Local";
+                    }
+                )
+                .AddDefaultSources()
                 .AddSource<AppMetricSource>()
                 .UseExceptionHandler(ex => Console.WriteLine(ex))
                 .Configure(
