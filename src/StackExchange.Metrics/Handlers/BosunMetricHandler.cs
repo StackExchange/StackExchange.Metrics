@@ -15,7 +15,7 @@ namespace StackExchange.Metrics.Handlers
     /// <summary>
     /// Implements <see cref="BufferedMetricHandler" /> by sending data to a Bosun endpoint.
     /// </summary>
-    public class BosunMetricHandler : HttpJsonMetricHandler
+    public class BosunMetricHandler : BufferedHttpMetricHandler
     {
         static readonly byte[] s_comma;
         static readonly byte[] s_startArray;
@@ -94,7 +94,7 @@ namespace StackExchange.Metrics.Handlers
         public bool EnableExternalCounters { get; set; } = true;
 
         /// <inheritdoc />
-        protected override ValueTask SendCounterAsync(ReadOnlySequence<byte> sequence) => SendAsync(_metricUri, HttpMethod.Post, PayloadType.Counter, sequence);
+        protected override ValueTask SendCounterAsync(ReadOnlySequence<byte> sequence) => SendAsync(_metricUri, HttpMethod.Post, PayloadType.Counter, MediaTypes.Json, sequence);
 
         /// <inheritdoc />
         protected override ValueTask SendCumulativeCounterAsync(ReadOnlySequence<byte> sequence)
@@ -104,14 +104,14 @@ namespace StackExchange.Metrics.Handlers
                 return default;
             }
 
-            return SendAsync(_counterUri, HttpMethod.Post, PayloadType.CumulativeCounter, sequence);
+            return SendAsync(_counterUri, HttpMethod.Post, PayloadType.CumulativeCounter, MediaTypes.Json, sequence);
         }
 
         /// <inheritdoc />
-        protected override ValueTask SendGaugeAsync(ReadOnlySequence<byte> sequence) => SendAsync(_metricUri, HttpMethod.Post, PayloadType.Gauge, sequence);
+        protected override ValueTask SendGaugeAsync(ReadOnlySequence<byte> sequence) => SendAsync(_metricUri, HttpMethod.Post, PayloadType.Gauge, MediaTypes.Json, sequence);
 
         /// <inheritdoc />
-        protected override ValueTask SendMetadataAsync(ReadOnlySequence<byte> sequence) => SendAsync(_metadataUri, HttpMethod.Post, PayloadType.Metadata, sequence, gzip: false);
+        protected override ValueTask SendMetadataAsync(ReadOnlySequence<byte> sequence) => SendAsync(_metadataUri, HttpMethod.Post, PayloadType.Metadata, MediaTypes.Json, sequence, gzip: false);
 
         /// <inheritdoc />
         protected override void SerializeMetric(IBufferWriter<byte> writer, in MetricReading reading)

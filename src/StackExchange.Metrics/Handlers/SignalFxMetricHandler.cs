@@ -139,9 +139,9 @@ namespace StackExchange.Metrics.Handlers
         }
 
         /// <summary>
-        /// Implements <see cref="HttpJsonMetricHandler" /> by sending data to the SignalFX REST API.
+        /// Implements <see cref="BufferedHttpMetricHandler" /> by sending data to the SignalFX REST API.
         /// </summary>
-        private class JsonMetricHandler : HttpJsonMetricHandler
+        private class JsonMetricHandler : BufferedHttpMetricHandler
         {
             Uri _baseUri;
             Uri _metricUri;
@@ -255,13 +255,13 @@ namespace StackExchange.Metrics.Handlers
             }
 
             /// <inheritdoc />
-            protected override ValueTask SendCounterAsync(ReadOnlySequence<byte> sequence) => SendAsync(_metricUri, HttpMethod.Post, PayloadType.Counter, sequence);
+            protected override ValueTask SendCounterAsync(ReadOnlySequence<byte> sequence) => SendAsync(_metricUri, HttpMethod.Post, PayloadType.Counter, MediaTypes.Json, sequence);
 
             /// <inheritdoc />
-            protected override ValueTask SendCumulativeCounterAsync(ReadOnlySequence<byte> sequence) => SendAsync(_metricUri, HttpMethod.Post, PayloadType.CumulativeCounter, sequence);
+            protected override ValueTask SendCumulativeCounterAsync(ReadOnlySequence<byte> sequence) => SendAsync(_metricUri, HttpMethod.Post, PayloadType.CumulativeCounter, MediaTypes.Json, sequence);
 
             /// <inheritdoc />
-            protected override ValueTask SendGaugeAsync(ReadOnlySequence<byte> sequence) => SendAsync(_metricUri, HttpMethod.Post, PayloadType.Gauge, sequence);
+            protected override ValueTask SendGaugeAsync(ReadOnlySequence<byte> sequence) => SendAsync(_metricUri, HttpMethod.Post, PayloadType.Gauge, MediaTypes.Json, sequence);
 
             /// <inheritdoc />
             protected override ValueTask SendMetadataAsync(ReadOnlySequence<byte> sequence)

@@ -9,18 +9,19 @@ using System.Threading.Tasks;
 
 namespace StackExchange.Metrics.Infrastructure
 {
+
+
     /// <summary>
-    /// Abstract implementation of <see cref="BufferedMetricHandler" /> that posts JSON
-    /// to an HTTP endpoint.
+    /// Abstract implementation of <see cref="BufferedMetricHandler" /> that posts content to an HTTP endpoint.
     /// </summary>
-    public abstract class HttpJsonMetricHandler : BufferedMetricHandler
+    public abstract class BufferedHttpMetricHandler : BufferedMetricHandler
     {
         private readonly Lazy<HttpClient> _httpClientFactory;
 
         /// <summary>
-        /// Constructs an instance of <see cref="HttpJsonMetricHandler" /> that sends metric data using an <see cref="HttpClient" />.
+        /// Constructs an instance of <see cref="BufferedHttpMetricHandler" /> that sends metric data using an <see cref="HttpClient" />.
         /// </summary>
-        protected HttpJsonMetricHandler()
+        protected BufferedHttpMetricHandler()
         {
             _httpClientFactory = new Lazy<HttpClient>(CreateHttpClient);
         }
@@ -124,7 +125,7 @@ namespace StackExchange.Metrics.Infrastructure
         protected virtual HttpClient CreateHttpClient() => new HttpClient();
 
         /// <inheritdoc />
-        protected async ValueTask SendAsync(Uri uri, HttpMethod method, PayloadType payloadType, ReadOnlySequence<byte> sequence, bool gzip = true)
+        protected async ValueTask SendAsync(Uri uri, HttpMethod method, PayloadType payloadType, MediaTypeHeaderValue mediaType, ReadOnlySequence<byte> sequence, bool gzip = true)
         {
             if (uri == null)
             {
@@ -135,7 +136,7 @@ namespace StackExchange.Metrics.Infrastructure
             var postambleLength = GetPostambleLength(payloadType);
             var request = new HttpRequestMessage(method, uri)
             {
-                Content = new ReadOnlySequenceContent(gzip, payloadType, sequence, preambleLength, WritePreambleAsync, postambleLength, WritePostambleAsync)
+                Content = new ReadOnlySequenceContent(gzip, payloadType, mediaType, sequence, preambleLength, WritePreambleAsync, postambleLength, WritePostambleAsync)
             };
 
             var response = await _httpClientFactory.Value.SendAsync(request);
@@ -176,6 +177,7 @@ namespace StackExchange.Metrics.Infrastructure
             public ReadOnlySequenceContent(
                 bool gzip,
                 PayloadType type,
+                MediaTypeHeaderValue mediaType,
                 in ReadOnlySequence<byte> sequence, 
                 int preambleLength,
                 Func<Stream, PayloadType, Task> writePreamble, 
@@ -190,14 +192,12 @@ namespace StackExchange.Metrics.Infrastructure
                 _writePreamble = writePreamble;
                 _writePostamble = writePostamble;
 
-                Headers.ContentType = s_jsonHeader;
+                Headers.ContentType = mediaType;
                 if (gzip)
                 {
                     Headers.ContentEncoding.Add("gzip");
                 }
             }
-
-            static readonly MediaTypeHeaderValue s_jsonHeader = new MediaTypeHeaderValue("application/json");
 
             protected override async Task SerializeToStreamAsync(Stream stream, TransportContext context)
             {
