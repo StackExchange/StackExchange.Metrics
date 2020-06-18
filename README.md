@@ -90,9 +90,10 @@ public class Startup
                     p.DefaultTags.Add("tier", "dev");
                 }
             )
-            // by default, common metric sources are added
+            // add common metric sources
             // that includes ProcessMetricSource, AspNetMetricSource & RuntimeMetricSource
-            // here we add our application-specific metric source
+            .AddDefaultSources()
+            // and then add our application-specific metric source
             .AddSource<AppMetricSource>()
             // add endpoints we care about. By default we add a `LocalMetricHandler` that 
             // just maintains the latest metrics in memory (useful for debugging)
