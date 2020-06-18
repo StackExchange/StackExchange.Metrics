@@ -6,11 +6,11 @@ using System.Threading.Tasks;
 
 namespace StackExchange.Metrics.Infrastructure
 {
-    internal static class MemoryExtensions
+    public static class MemoryExtensions
     {
 #pragma warning disable RCS1231 // Make parameter ref read-only.
-        internal static ArraySegment<byte> GetArray(this Memory<byte> buffer) => GetArray((ReadOnlyMemory<byte>)buffer);
-        internal static ArraySegment<byte> GetArray(this ReadOnlyMemory<byte> buffer)
+        public static ArraySegment<byte> GetArray(this Memory<byte> buffer) => GetArray((ReadOnlyMemory<byte>)buffer);
+        public static ArraySegment<byte> GetArray(this ReadOnlyMemory<byte> buffer)
 #pragma warning restore RCS1231 // Make parameter ref read-only.
         {
             if (!MemoryMarshal.TryGetArray(buffer, out var segment))

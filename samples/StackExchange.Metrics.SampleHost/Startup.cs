@@ -34,6 +34,7 @@ namespace StackExchange.Metrics.SampleHost
                 )
                 .AddDefaultSources()
                 .AddSource<AppMetricSource>()
+                .AddEndpoint("My Endpoint", new MyCustomHandler(new Uri("http://127.0.0.1:8080")))
                 .UseExceptionHandler(ex => Console.WriteLine(ex))
                 .Configure(
                     o =>
