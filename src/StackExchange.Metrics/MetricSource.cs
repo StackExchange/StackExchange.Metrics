@@ -27,8 +27,8 @@ namespace StackExchange.Metrics
 
         /// <summary>
         /// Gets <see cref="MetricSourceOptions"/> that should be used when creating metrics in this source.
-        /// </summary>
-        protected MetricSourceOptions Options { get; }
+        /// </summary> 
+        public MetricSourceOptions Options { get; }
 
         /// <summary>
         /// Called when an <see cref="IMetricsCollector"/> is starting in order to attach
@@ -94,7 +94,7 @@ namespace StackExchange.Metrics
         /// <param name="metric">
         /// Instance of a metric.
         /// </param>
-        public TMetric Add<TMetric>(TMetric metric) where TMetric : MetricBase
+        public virtual TMetric Add<TMetric>(TMetric metric) where TMetric : MetricBase
         {
             lock (_syncLock)
             {
@@ -115,7 +115,7 @@ namespace StackExchange.Metrics
         /// <param name="metric">
         /// Instance of a metric.
         /// </param>
-        public TTaggedMetric Add<TTaggedMetric, TMetric>(TTaggedMetric metric) where TTaggedMetric : TaggedMetricFactory<TMetric> where TMetric : MetricBase
+        public virtual TTaggedMetric Add<TTaggedMetric, TMetric>(TTaggedMetric metric) where TTaggedMetric : TaggedMetricFactory<TMetric> where TMetric : MetricBase
         {
             lock (_syncLock)
             {
