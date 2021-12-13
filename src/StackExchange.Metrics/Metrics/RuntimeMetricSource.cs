@@ -58,7 +58,7 @@ namespace StackExchange.Metrics.Metrics
             }
 
             AddGaugeCallback("cpu-usage", "dotnet.cpu.usage", "percent", "% CPU usage");
-            AddGaugeCallback("working-set", "dotnet.mem.working_set", "megabytes", "Working set for the process");
+            AddGaugeCallback("working-set", "dotnet.mem.working_set", "bytes", "Working set for the process");
 
             // GC
             AddCounterCallback("gen-0-gc-count", "dotnet.mem.collections.gen0", "collections", "Number of gen-0 collections");
@@ -67,7 +67,7 @@ namespace StackExchange.Metrics.Metrics
             AddGaugeCallback("gen-0-size", "dotnet.mem.size.gen0", "bytes", "Total number of bytes in gen-0");
             AddGaugeCallback("gen-1-size", "dotnet.mem.size.gen1", "bytes", "Total number of bytes in gen-1");
             AddGaugeCallback("gen-2-size", "dotnet.mem.size.gen2", "bytes", "Total number of bytes in gen-2");
-            AddGaugeCallback("gc-heap-size", "dotnet.mem.size.heap", "megabytes", "Total number of bytes across all heaps");
+            AddGaugeCallback("gc-heap-size", "dotnet.mem.size.heap", "bytes", "Total number of bytes across all heaps");
             AddGaugeCallback("loh-size", "dotnet.mem.size.loh", "bytes", "Total number of bytes in the LOH");
             AddCounterCallback("alloc-rate", "dotnet.mem.allocation_rate", "bytes/sec", "Allocation Rate (Bytes / sec)");
 
