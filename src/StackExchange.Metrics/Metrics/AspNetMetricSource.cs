@@ -46,7 +46,7 @@ namespace StackExchange.Metrics.Metrics
                 diagnosticsCollector.AddGaugeCallback(MicrosoftAspNetCoreHostingEventSourceName, eventName, gauge.Record);
             }
 
-            AddCounterCallback("requests-per-sec", "dotnet.kestrel.requests.per_sec", "requests/sec", "Requests per second");
+            AddCounterCallback("requests-per-second", "dotnet.kestrel.requests.per_sec", "requests/sec", "Requests per second");
             AddGaugeCallback("total-requests", "dotnet.kestrel.requests.total", "requests", "Total requests");
             AddGaugeCallback("current-requests", "dotnet.kestrel.requests.current", "requests", "Currently executing requests");
             AddGaugeCallback("failed-requests", "dotnet.kestrel.requests.failed", "requests", "Failed requests");
