@@ -6,10 +6,40 @@ using System.Threading.Tasks;
 
 namespace StackExchange.Metrics.Infrastructure
 {
+    /// <summary>
+    /// Extension methods for <see cref="Memory{T}" />, <see cref="ReadOnlyMemory{T}"/> and <see cref="ReadOnlySequence{T}"/>.
+    /// </summary>
     public static class MemoryExtensions
     {
 #pragma warning disable RCS1231 // Make parameter ref read-only.
+        /// <summary>
+        /// Tries to return the underlying <see cref="ArraySegment{T}"/> representing a single segment
+        /// <see cref="Memory{T}"/>.
+        /// </summary>
+        /// <param name="buffer">
+        /// A <see cref="Memory{T}"/> instance.
+        /// </param>
+        /// <exception cref="InvalidOperationException">
+        /// Could not obtain the underlying <see cref="ArraySegment{T}"/> from the <see cref="Memory{T}"/>
+        /// </exception>
+        /// <returns>
+        /// An <see cref="ArraySegment{T}"/>.
+        /// </returns>
         public static ArraySegment<byte> GetArray(this Memory<byte> buffer) => GetArray((ReadOnlyMemory<byte>)buffer);
+
+        /// <summary>
+        /// Tries to return the underlying <see cref="ArraySegment{T}"/> representing a single segment
+        /// <see cref="ReadOnlyMemory{T}"/>.
+        /// </summary>
+        /// <param name="buffer">
+        /// A <see cref="ReadOnlyMemory{T}"/> instance.
+        /// </param>
+        /// <exception cref="InvalidOperationException">
+        /// Could not obtain the underlying <see cref="ArraySegment{T}"/> from the <see cref="ReadOnlyMemory{T}"/>
+        /// </exception>
+        /// <returns>
+        /// An <see cref="ArraySegment{T}"/>.
+        /// </returns>
         public static ArraySegment<byte> GetArray(this ReadOnlyMemory<byte> buffer)
 #pragma warning restore RCS1231 // Make parameter ref read-only.
         {

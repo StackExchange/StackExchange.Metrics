@@ -3,7 +3,7 @@ name: Build, Test & Package
 on:
   push:
     branches:
-    - master
+    - main
     paths-ignore:
     - 'docs/**' # Don't run workflow when files are only in the /docs directory
 
@@ -17,8 +17,6 @@ jobs:
       with:
         fetch-depth: 0
     - uses: actions/setup-dotnet@v1
-      with:
-          dotnet-version: '3.1.201'
     - name: .NET Build
       run: dotnet build Build.csproj -c Release --nologo /p:CI=true
     - name: .NET Test

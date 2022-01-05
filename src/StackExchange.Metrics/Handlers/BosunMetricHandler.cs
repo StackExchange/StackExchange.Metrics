@@ -54,7 +54,7 @@ namespace StackExchange.Metrics.Handlers
             _counterValues = new Dictionary<MetricKey, double>(MetricKeyComparer.Default);
             _jsonOptions = new JsonSerializerOptions
             {
-                IgnoreNullValues = true,
+                DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
                 Converters =
                 {
                     new JsonEpochConverter(),

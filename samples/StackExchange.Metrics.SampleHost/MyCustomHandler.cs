@@ -13,13 +13,11 @@ namespace StackExchange.Metrics.SampleHost
 {
     /// <summary>
     /// A simple handler that serializes metrics as plain text in the format:
-    /// &lt;metric_name&gt;,&ltmetric_value&gt;\n
+    /// &lt;metric_name&gt;,&lt;metric_value&gt;\n
     /// </summary>
     public class MyCustomHandler : BufferedHttpMetricHandler
     {
         private static readonly MediaTypeHeaderValue _plainText = new MediaTypeHeaderValue("text/plain");
-
-        private Uri _uri;
 
         /// <summary>
         /// Constructs a new handler pointing at the specified <see cref="System.Uri" />.
@@ -35,10 +33,7 @@ namespace StackExchange.Metrics.SampleHost
         /// <summary>
         /// Gets or sets the URI used by the handler.
         /// </summary>
-        public Uri Uri
-        {
-            get; set;
-        }
+        public Uri Uri { get; }
 
         // no pre or post-amble for this handler
         protected override int GetPostambleLength(PayloadType payloadType) => 0;
@@ -57,9 +52,9 @@ namespace StackExchange.Metrics.SampleHost
             return httpClient;
         }
 
-        protected override ValueTask SendCounterAsync(ReadOnlySequence<byte> sequence) => SendAsync(_uri, HttpMethod.Post, PayloadType.Counter, _plainText, sequence);
-        protected override ValueTask SendCumulativeCounterAsync(ReadOnlySequence<byte> sequence) => SendAsync(_uri, HttpMethod.Post, PayloadType.CumulativeCounter, _plainText, sequence);
-        protected override ValueTask SendGaugeAsync(ReadOnlySequence<byte> sequence) => SendAsync(_uri, HttpMethod.Post, PayloadType.Gauge, _plainText, sequence);
+        protected override ValueTask SendCounterAsync(ReadOnlySequence<byte> sequence) => SendAsync(Uri, HttpMethod.Post, PayloadType.Counter, _plainText, sequence);
+        protected override ValueTask SendCumulativeCounterAsync(ReadOnlySequence<byte> sequence) => SendAsync(Uri, HttpMethod.Post, PayloadType.CumulativeCounter, _plainText, sequence);
+        protected override ValueTask SendGaugeAsync(ReadOnlySequence<byte> sequence) => SendAsync(Uri, HttpMethod.Post, PayloadType.Gauge, _plainText, sequence);
         // this implementation doesn't support metadata
         protected override ValueTask SendMetadataAsync(ReadOnlySequence<byte> sequence) => default;
 
