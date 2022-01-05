@@ -16,7 +16,7 @@ namespace StackExchange.Metrics.Infrastructure
         /// <summary>
         /// Used by derived classes to pass the name, description and unit for a tag.
         /// </summary>
-        protected TaggedMetricFactory(string name, string description, string unit, MetricSourceOptions options)
+        protected TaggedMetricFactory(string name, string unit, string description, MetricSourceOptions options)
         {
             if (name == null)
             {
