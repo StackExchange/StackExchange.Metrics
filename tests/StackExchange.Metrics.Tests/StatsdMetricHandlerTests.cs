@@ -109,5 +109,42 @@ namespace StackExchange.Metrics.Tests
             resetEvent.Wait();
             return tcs.Task;
         }
+
+        [Fact]
+        public void SerializeMetric_WithNullConfiguration_DoesNotThrowMetricQueueFullException()
+        {
+            var handler = new StatsdMetricHandler(null, 0);
+            handler.MaxPayloadCount = 2;
+
+            var exception = Record.Exception(() =>
+            {
+                // serialize 3 metrics while MaxPayloadCount is set to 2
+                handler.SerializeMetric(SomeMetric());
+                handler.SerializeMetric(SomeMetric());
+                handler.SerializeMetric(SomeMetric());
+            });
+
+            Assert.Null(exception);
+        }
+
+        [Fact]
+        public void SerializeMetric_WithProperConfiguration_ThrowsMetricQueueFullException()
+        {
+            var handler = new StatsdMetricHandler("127.0.0.1", 1234);
+            handler.MaxPayloadCount = 2;
+
+            void SerializeFourMetrics()
+            {
+                // serialize 3 metrics while MaxPayloadCount is set to 2
+                handler.SerializeMetric(SomeMetric());
+                handler.SerializeMetric(SomeMetric());
+                handler.SerializeMetric(SomeMetric());
+            }
+
+            Assert.Throws<MetricQueueFullException>(SerializeFourMetrics);
+        }
+
+        private MetricReading SomeMetric() => new MetricReading("test.metrics", MetricType.Counter, _rng.Next(),
+            new Dictionary<string, string> { ["host"] = "test!" }.ToImmutableDictionary(), DateTime.UtcNow);
     }
 }
