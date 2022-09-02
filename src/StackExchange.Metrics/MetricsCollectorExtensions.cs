@@ -46,6 +46,9 @@ namespace StackExchange.Metrics
                     case SignalFxMetricHandler signalFxHandler:
                         await textWriter.WriteLineAsync(signalFxHandler.BaseUri?.AbsoluteUri ?? "null");
                         break;
+                    case StatsdMetricHandler signalFxHandler:
+                        await textWriter.WriteLineAsync(signalFxHandler.Host + " " + signalFxHandler.Port);
+                        break;
                     case LocalMetricHandler h:
                         await textWriter.WriteLineAsync("Local");
                         break;

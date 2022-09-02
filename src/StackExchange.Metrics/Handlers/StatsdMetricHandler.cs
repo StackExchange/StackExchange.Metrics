@@ -14,9 +14,103 @@ using System.Threading.Tasks;
 namespace StackExchange.Metrics.Handlers
 {
     /// <summary>
+    /// Implements <see cref="IMetricHandler" /> by sending data to a statsd endpoint.
+    /// </summary>
+    public class StatsdMetricHandler : IMetricHandler
+    {
+        string _host;
+        ushort _port;
+        IMetricHandler _activeHandler;
+
+        /// <summary>
+        /// Constructs a new <see cref="StatsdMetricHandler" /> pointing at the specified host and port.
+        /// </summary>
+        /// <param name="host">
+        /// Host of a statsd endpoint.
+        /// </param>
+        /// <param name="port">
+        /// Port of a stats endpoint.
+        /// </param>
+        /// <remarks>
+        /// If the host or port are set to <c>null</c>/<c>0</c> this handler will be deactivated (every operation is a no-op).
+        /// Otherwise it sends data to a StatsD endpoint via UDP.
+        /// </remarks>
+        public StatsdMetricHandler(string host, ushort port)
+        {
+            Host = host;
+            Port = port;
+        }
+
+        /// <summary>
+        /// Host to which we should send metrics to.
+        /// </summary>
+        public string Host
+        {
+            get => _host;
+            set
+            {
+                _host = value;
+                var oldHandler = _activeHandler;
+                if (oldHandler != null)
+                {
+                    oldHandler.Dispose();
+                }
+
+                _activeHandler = GetHandler();
+            }
+        }
+
+        /// <summary>
+        /// Port to which we should send metrics to.
+        /// </summary>
+        public ushort Port
+        {
+            get => _port;
+            set
+            {
+                _port = value;
+                var oldHandler = _activeHandler;
+                if (oldHandler != null)
+                {
+                    oldHandler.Dispose();
+                }
+
+                _activeHandler = GetHandler();
+            }
+        }
+
+        /// <inheritdoc />
+        public IMetricReadingBatch BeginBatch() => _activeHandler.BeginBatch();
+
+        /// <inheritdoc />
+        public void SerializeMetadata(IEnumerable<Metadata> metadata) => _activeHandler.SerializeMetadata(metadata);
+
+        /// <inheritdoc />
+        public void SerializeMetric(in MetricReading reading) => _activeHandler.SerializeMetric(reading);
+
+        /// <inheritdoc />
+        public ValueTask FlushAsync(TimeSpan delayBetweenRetries, int maxRetries, Action<AfterSendInfo> afterSend,
+            Action<Exception> exceptionHandler) =>
+            _activeHandler.FlushAsync(delayBetweenRetries, maxRetries, afterSend, exceptionHandler);
+
+        /// <inheritdoc />
+        public void Dispose() => _activeHandler.Dispose();
+
+        private IMetricHandler GetHandler()
+        {
+            if (_host == null || _port == 0)
+            {
+                return NoOpMetricHandler.Instance;
+            }
+
+            return new BufferedStatsdMetricHandler(_host, _port);
+        }
+    }
+
+    /// <summary>
     /// Implements <see cref="BufferedMetricHandler" /> by sending data to a statsd endpoint.
     /// </summary>
-    public class StatsdMetricHandler : BufferedMetricHandler
+    internal class BufferedStatsdMetricHandler : BufferedMetricHandler
     {
         const int ValueDecimals = 5;
         static readonly byte[] s_counter = Encoding.UTF8.GetBytes("c");
@@ -34,16 +128,7 @@ namespace StackExchange.Metrics.Handlers
         PayloadTypeMetadata _metricMetadata;
         PayloadTypeMetadata _metadataMetadata;
 
-        /// <summary>
-        /// Constructs a new <see cref="StatsdMetricHandler" /> pointing at the specified host and port.
-        /// </summary>
-        /// <param name="host">
-        /// Host of a statsd endpoint.
-        /// </param>
-        /// <param name="port">
-        /// Port of a stats endpoint.
-        /// </param>
-        public StatsdMetricHandler(string host, ushort port)
+        internal BufferedStatsdMetricHandler(string host, ushort port)
         {
             _host = host;
             _port = port;
@@ -166,7 +251,8 @@ namespace StackExchange.Metrics.Handlers
                 length += s_pipe.Length + s_hash.Length;
                 foreach (var tag in reading.Tags)
                 {
-                    length += encoding.GetByteCount(tag.Key) + s_colon.Length + encoding.GetByteCount(tag.Value) + s_comma.Length;
+                    length += encoding.GetByteCount(tag.Key) + s_colon.Length + encoding.GetByteCount(tag.Value) +
+                              s_comma.Length;
                 }
 
                 // take away the last comma
@@ -193,7 +279,8 @@ namespace StackExchange.Metrics.Handlers
                 var valueBytesWritten = 0;
                 if (valueIsWhole)
                 {
-                    if (!Utf8Formatter.TryFormat((long)reading.Value, buffer.AsSpan(bytesWritten, valueLength), out valueBytesWritten))
+                    if (!Utf8Formatter.TryFormat((long)reading.Value, buffer.AsSpan(bytesWritten, valueLength),
+                            out valueBytesWritten))
                     {
                         var ex = new InvalidOperationException(
                             "Span was not big enough to write metric value"
@@ -205,7 +292,8 @@ namespace StackExchange.Metrics.Handlers
                     }
                 }
                 // write the value as a fixed point (f5) decimal
-                else if (!Utf8Formatter.TryFormat(reading.Value, buffer.AsSpan(bytesWritten, valueLength), out valueBytesWritten, s_valueFormat))
+                else if (!Utf8Formatter.TryFormat(reading.Value, buffer.AsSpan(bytesWritten, valueLength),
+                             out valueBytesWritten, s_valueFormat))
                 {
                     var ex = new InvalidOperationException(
                         "Span was not big enough to write metric value"
@@ -260,7 +348,8 @@ namespace StackExchange.Metrics.Handlers
         /// <inheritdoc />
         protected override PayloadTypeMetadata CreatePayloadTypeMetadata(PayloadType payloadType)
         {
-            PayloadTypeMetadata CreatePayloadTypeMetadata() => new PayloadTypeMetadata(BufferWriter<byte>.Create(blockSize: MaxPayloadSize));
+            PayloadTypeMetadata CreatePayloadTypeMetadata() =>
+                new PayloadTypeMetadata(BufferWriter<byte>.Create(blockSize: MaxPayloadSize));
 
             switch (payloadType)
             {
@@ -294,7 +383,9 @@ namespace StackExchange.Metrics.Handlers
             async ValueTask<ClientSocketData> FetchClientSocketDataAsync()
             {
                 var hostAddresses = await Dns.GetHostAddressesAsync(_host);
-                var hostAddress = hostAddresses.FirstOrDefault(x => x.AddressFamily == AddressFamily.InterNetwork || x.AddressFamily == AddressFamily.InterNetworkV6);
+                var hostAddress = hostAddresses.FirstOrDefault(x =>
+                    x.AddressFamily == AddressFamily.InterNetwork ||
+                    x.AddressFamily == AddressFamily.InterNetworkV6);
                 if (hostAddress == null)
                 {
                     throw new ArgumentException("Unable to find an IPv4 or IPv6 address for host", nameof(_host));
@@ -323,7 +414,8 @@ namespace StackExchange.Metrics.Handlers
 
             return FetchSocketArgsAndSendAsync(_clientSocketDataTask, sequence);
 
-            async ValueTask FetchSocketArgsAndSendAsync(ValueTask<ClientSocketData> socketDataTask, ReadOnlySequence<byte> buffer)
+            async ValueTask FetchSocketArgsAndSendAsync(ValueTask<ClientSocketData> socketDataTask,
+                ReadOnlySequence<byte> buffer)
             {
                 await SendMetricAsync(await socketDataTask, buffer);
             }
@@ -412,6 +504,7 @@ namespace StackExchange.Metrics.Handlers
                     sequence.First.GetArray()
                 };
             }
+
             var list = new List<ArraySegment<byte>>();
             foreach (var b in sequence)
             {
@@ -457,6 +550,7 @@ namespace StackExchange.Metrics.Handlers
                 {
                     socket.Bind(new IPEndPoint(IPAddress.IPv6Any, 0));
                 }
+
                 return socket;
             }
         }
