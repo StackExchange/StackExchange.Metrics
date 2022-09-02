@@ -408,8 +408,7 @@ namespace StackExchange.Metrics.Handlers
 
             return FetchSocketArgsAndSendAsync(_clientSocketDataTask, sequence);
 
-            async ValueTask FetchSocketArgsAndSendAsync(ValueTask<ClientSocketData> socketDataTask,
-                ReadOnlySequence<byte> buffer)
+            async ValueTask FetchSocketArgsAndSendAsync(ValueTask<ClientSocketData> socketDataTask, ReadOnlySequence<byte> buffer)
             {
                 await SendMetricAsync(await socketDataTask, buffer);
             }
