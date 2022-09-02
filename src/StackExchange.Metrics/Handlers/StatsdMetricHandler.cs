@@ -251,8 +251,7 @@ namespace StackExchange.Metrics.Handlers
                 length += s_pipe.Length + s_hash.Length;
                 foreach (var tag in reading.Tags)
                 {
-                    length += encoding.GetByteCount(tag.Key) + s_colon.Length + encoding.GetByteCount(tag.Value) +
-                              s_comma.Length;
+                    length += encoding.GetByteCount(tag.Key) + s_colon.Length + encoding.GetByteCount(tag.Value) + s_comma.Length;
                 }
 
                 // take away the last comma
@@ -279,8 +278,7 @@ namespace StackExchange.Metrics.Handlers
                 var valueBytesWritten = 0;
                 if (valueIsWhole)
                 {
-                    if (!Utf8Formatter.TryFormat((long)reading.Value, buffer.AsSpan(bytesWritten, valueLength),
-                            out valueBytesWritten))
+                    if (!Utf8Formatter.TryFormat((long)reading.Value, buffer.AsSpan(bytesWritten, valueLength), out valueBytesWritten))
                     {
                         var ex = new InvalidOperationException(
                             "Span was not big enough to write metric value"
@@ -292,8 +290,7 @@ namespace StackExchange.Metrics.Handlers
                     }
                 }
                 // write the value as a fixed point (f5) decimal
-                else if (!Utf8Formatter.TryFormat(reading.Value, buffer.AsSpan(bytesWritten, valueLength),
-                             out valueBytesWritten, s_valueFormat))
+                else if (!Utf8Formatter.TryFormat(reading.Value, buffer.AsSpan(bytesWritten, valueLength), out valueBytesWritten, s_valueFormat))
                 {
                     var ex = new InvalidOperationException(
                         "Span was not big enough to write metric value"
@@ -348,8 +345,7 @@ namespace StackExchange.Metrics.Handlers
         /// <inheritdoc />
         protected override PayloadTypeMetadata CreatePayloadTypeMetadata(PayloadType payloadType)
         {
-            PayloadTypeMetadata CreatePayloadTypeMetadata() =>
-                new PayloadTypeMetadata(BufferWriter<byte>.Create(blockSize: MaxPayloadSize));
+            PayloadTypeMetadata CreatePayloadTypeMetadata() => new PayloadTypeMetadata(BufferWriter<byte>.Create(blockSize: MaxPayloadSize));
 
             switch (payloadType)
             {
@@ -383,9 +379,7 @@ namespace StackExchange.Metrics.Handlers
             async ValueTask<ClientSocketData> FetchClientSocketDataAsync()
             {
                 var hostAddresses = await Dns.GetHostAddressesAsync(_host);
-                var hostAddress = hostAddresses.FirstOrDefault(x =>
-                    x.AddressFamily == AddressFamily.InterNetwork ||
-                    x.AddressFamily == AddressFamily.InterNetworkV6);
+                var hostAddress = hostAddresses.FirstOrDefault(x => x.AddressFamily == AddressFamily.InterNetwork || x.AddressFamily == AddressFamily.InterNetworkV6);
                 if (hostAddress == null)
                 {
                     throw new ArgumentException("Unable to find an IPv4 or IPv6 address for host", nameof(_host));
