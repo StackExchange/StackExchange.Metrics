@@ -37,8 +37,31 @@ namespace StackExchange.Metrics.Handlers
         /// </remarks>
         public StatsdMetricHandler(string host, ushort port)
         {
-            Host = host;
-            Port = port;
+            _host = host;
+            _port = port;
+            _activeHandler = GetHandler();
+        }
+
+        /// <summary>
+        /// Gets or sets the maximum number of payloads we can keep before we consider our buffers full.
+        /// </summary>
+        public long MaxPayloadCount
+        {
+            get
+            {
+                if (_activeHandler is BufferedStatsdMetricHandler bufferedHandler)
+                {
+                    return bufferedHandler.MaxPayloadCount;
+                }
+                return 0;
+            }
+            set
+            {
+                if (_activeHandler is BufferedStatsdMetricHandler bufferedHandler)
+                {
+                    bufferedHandler.MaxPayloadCount = value;
+                }
+            }
         }
 
         /// <summary>
@@ -91,7 +114,7 @@ namespace StackExchange.Metrics.Handlers
         /// <inheritdoc />
         public ValueTask FlushAsync(TimeSpan delayBetweenRetries, int maxRetries, Action<AfterSendInfo> afterSend,
             Action<Exception> exceptionHandler) =>
-            _activeHandler.FlushAsync(delayBetweenRetries, maxRetries, afterSend, exceptionHandler);
+            _activeHandler?.FlushAsync(delayBetweenRetries, maxRetries, afterSend, exceptionHandler) ?? default(ValueTask);
 
         /// <inheritdoc />
         public void Dispose() => _activeHandler.Dispose();
