@@ -123,7 +123,7 @@ namespace StackExchange.Metrics.Handlers
 
             if (_baseUri.Scheme == "udp")
             {
-                return new StatsdMetricHandler(_baseUri.Host, (ushort)_baseUri.Port);
+                return new BufferedStatsdMetricHandler(_baseUri.Host, (ushort)_baseUri.Port);
             }
 
             if (_baseUri.Scheme == Uri.UriSchemeHttp || _baseUri.Scheme == Uri.UriSchemeHttps)

@@ -109,5 +109,27 @@ namespace StackExchange.Metrics.Tests
             resetEvent.Wait();
             return tcs.Task;
         }
+
+        [Fact]
+        public async Task DeactivatedUdpUri_Counter_ReceivesNoStatsd()
+        {
+            const ushort port = 1234;
+            var handler = new StatsdMetricHandler(null, port);
+            var utcNow = DateTime.UtcNow;
+            var reading = new MetricReading("test.metrics", MetricType.Counter, _rng.Next(), new Dictionary<string, string> { ["host"] = "test!" }.ToImmutableDictionary(), utcNow);
+
+            handler.SerializeMetric(reading);
+
+            void AfterSendAssertion(AfterSendInfo i)
+            {
+                Assert.Equal(0, i.BytesWritten);
+                Assert.Equal("", i.Endpoint);
+                Assert.True(i.Successful);
+            }
+
+            await handler.FlushAsync(
+                TimeSpan.Zero, 0, AfterSendAssertion, ex => _output.WriteLine(ex.ToString())
+            );
+        }
     }
 }

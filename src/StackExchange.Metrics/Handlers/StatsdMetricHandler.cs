@@ -14,9 +14,126 @@ using System.Threading.Tasks;
 namespace StackExchange.Metrics.Handlers
 {
     /// <summary>
+    /// Implements <see cref="IMetricHandler" /> by sending data to a statsd endpoint.
+    /// </summary>
+    public class StatsdMetricHandler : IMetricHandler
+    {
+        string _host;
+        ushort _port;
+        IMetricHandler _activeHandler;
+
+        /// <summary>
+        /// Constructs a new <see cref="StatsdMetricHandler" /> pointing at the specified host and port.
+        /// </summary>
+        /// <param name="host">
+        /// Host of a statsd endpoint.
+        /// </param>
+        /// <param name="port">
+        /// Port of a stats endpoint.
+        /// </param>
+        /// <remarks>
+        /// If the host or port are set to <c>null</c>/<c>0</c> this handler will be deactivated (every operation is a no-op).
+        /// Otherwise it sends data to a StatsD endpoint via UDP.
+        /// </remarks>
+        public StatsdMetricHandler(string host, ushort port)
+        {
+            _host = host;
+            _port = port;
+            _activeHandler = GetHandler();
+        }
+
+        /// <summary>
+        /// Gets or sets the maximum number of payloads we can keep before we consider our buffers full.
+        /// </summary>
+        public long MaxPayloadCount
+        {
+            get
+            {
+                if (_activeHandler is BufferedStatsdMetricHandler bufferedHandler)
+                {
+                    return bufferedHandler.MaxPayloadCount;
+                }
+                return 0;
+            }
+            set
+            {
+                if (_activeHandler is BufferedStatsdMetricHandler bufferedHandler)
+                {
+                    bufferedHandler.MaxPayloadCount = value;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Host to which we should send metrics to.
+        /// </summary>
+        public string Host
+        {
+            get => _host;
+            set
+            {
+                _host = value;
+                var oldHandler = _activeHandler;
+                if (oldHandler != null)
+                {
+                    oldHandler.Dispose();
+                }
+
+                _activeHandler = GetHandler();
+            }
+        }
+
+        /// <summary>
+        /// Port to which we should send metrics to.
+        /// </summary>
+        public ushort Port
+        {
+            get => _port;
+            set
+            {
+                _port = value;
+                var oldHandler = _activeHandler;
+                if (oldHandler != null)
+                {
+                    oldHandler.Dispose();
+                }
+
+                _activeHandler = GetHandler();
+            }
+        }
+
+        /// <inheritdoc />
+        public IMetricReadingBatch BeginBatch() => _activeHandler.BeginBatch();
+
+        /// <inheritdoc />
+        public void SerializeMetadata(IEnumerable<Metadata> metadata) => _activeHandler.SerializeMetadata(metadata);
+
+        /// <inheritdoc />
+        public void SerializeMetric(in MetricReading reading) => _activeHandler.SerializeMetric(reading);
+
+        /// <inheritdoc />
+        public ValueTask FlushAsync(TimeSpan delayBetweenRetries, int maxRetries, Action<AfterSendInfo> afterSend,
+            Action<Exception> exceptionHandler) =>
+            _activeHandler?.FlushAsync(delayBetweenRetries, maxRetries, afterSend, exceptionHandler) ?? default(ValueTask);
+
+        /// <inheritdoc />
+        public void Dispose() => _activeHandler.Dispose();
+
+        private IMetricHandler GetHandler()
+        {
+            if (_host == null || _port == 0)
+            {
+                return NoOpMetricHandler.Instance;
+            }
+
+            return new BufferedStatsdMetricHandler(_host, _port);
+        }
+    }
+
+    /// <summary>
     /// Implements <see cref="BufferedMetricHandler" /> by sending data to a statsd endpoint.
     /// </summary>
-    public class StatsdMetricHandler : BufferedMetricHandler
+    internal class BufferedStatsdMetricHandler : BufferedMetricHandler
     {
         const int ValueDecimals = 5;
         static readonly byte[] s_counter = Encoding.UTF8.GetBytes("c");
@@ -34,16 +151,7 @@ namespace StackExchange.Metrics.Handlers
         PayloadTypeMetadata _metricMetadata;
         PayloadTypeMetadata _metadataMetadata;
 
-        /// <summary>
-        /// Constructs a new <see cref="StatsdMetricHandler" /> pointing at the specified host and port.
-        /// </summary>
-        /// <param name="host">
-        /// Host of a statsd endpoint.
-        /// </param>
-        /// <param name="port">
-        /// Port of a stats endpoint.
-        /// </param>
-        public StatsdMetricHandler(string host, ushort port)
+        internal BufferedStatsdMetricHandler(string host, ushort port)
         {
             _host = host;
             _port = port;
@@ -412,6 +520,7 @@ namespace StackExchange.Metrics.Handlers
                     sequence.First.GetArray()
                 };
             }
+
             var list = new List<ArraySegment<byte>>();
             foreach (var b in sequence)
             {
@@ -457,6 +566,7 @@ namespace StackExchange.Metrics.Handlers
                 {
                     socket.Bind(new IPEndPoint(IPAddress.IPv6Any, 0));
                 }
+
                 return socket;
             }
         }
