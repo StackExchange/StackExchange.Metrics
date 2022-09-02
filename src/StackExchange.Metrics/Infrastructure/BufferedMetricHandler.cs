@@ -60,7 +60,11 @@ namespace StackExchange.Metrics.Infrastructure
                 payloadMetadata.FlushPositions.Add(startPosition);
             }
 
-            payloadMetadata.PayloadCount++;
+            // only increase payload count if we actually serialized a metric
+            if (endPosition > startPosition)
+            {
+                payloadMetadata.PayloadCount++;
+            }
         }
 
         /// <summary>
