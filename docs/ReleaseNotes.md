@@ -1,5 +1,18 @@
 # StackExchange.Metrics Release Notes
 
+## 2.0.7
+
+Changes:
+
+- [@hamvocke](https://github.com/StackExchange/hamvocke) - Resiliency fixes for `StatsdMetricHandler` in [#49](https://github.com/StackExchange/StackExchange.Metrics/pull/49)
+
+## 2.0.6
+
+Changes:
+
+ - [@xsoheilalizadeh](https://github.com/StackExchange/xsoheilalizadeh) - Fixed a metric name in [#43](https://github.com/StackExchange/StackExchange.Metrics/pull/43) and some unit typos in [#44](https://github.com/StackExchange/StackExchange.Metrics/pull/44)
+ - [@g3rv4](https://github.com/StackExchange/g3rv4) - Fixed `TaggedMetricFactory` constructor params order in [#45](https://github.com/StackExchange/StackExchange.Metrics/pull/45)
+
 ## 2.0.0
 
 Released for .NET Standard 2.0 and .NET Core 3.1
