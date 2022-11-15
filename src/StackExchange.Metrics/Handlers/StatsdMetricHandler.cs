@@ -307,7 +307,7 @@ namespace StackExchange.Metrics.Handlers
                             "Span was not big enough to write metric value"
                         );
 
-                        ex.Data.Add("Name", reading.Name.ToString());
+                        ex.Data.Add("Name", reading.Name);
                         ex.Data.Add("Value", valueAsLong.ToString());
                         ex.Data.Add("Size", valueLength.ToString());
                         throw ex;
@@ -320,7 +320,7 @@ namespace StackExchange.Metrics.Handlers
                         "Span was not big enough to write metric value"
                     );
 
-                    ex.Data.Add("Name", reading.Name.ToString());
+                    ex.Data.Add("Name", reading.Name);
                     ex.Data.Add("Value", value.ToString("f5"));
                     ex.Data.Add("Size", valueLength.ToString());
                     throw ex;
