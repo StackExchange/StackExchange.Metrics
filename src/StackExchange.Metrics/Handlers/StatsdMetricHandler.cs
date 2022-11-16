@@ -251,9 +251,10 @@ namespace StackExchange.Metrics.Handlers
             var length = encoding.GetByteCount(reading.Name) + s_colon.Length;
 
             // calculate the length needed to render the value
-            var value = reading.Value;
+            var value = Math.Abs(reading.Value);
+            var valueIsNegative = reading.Value < 0;
             var valueIsWhole = value % 1 == 0;
-            int valueLength = 1; // first digit
+            int valueLength = valueIsNegative ? 2 : 1; // first digit, plus negative sign if negative
             if (!valueIsWhole)
             {
                 valueLength += 1 + ValueDecimals; // + decimal point + decimal digits
@@ -308,7 +309,7 @@ namespace StackExchange.Metrics.Handlers
                         );
 
                         ex.Data.Add("Name", reading.Name);
-                        ex.Data.Add("Value", valueAsLong.ToString());
+                        ex.Data.Add("Value", reading.Value.ToString());
                         ex.Data.Add("Size", valueLength.ToString());
                         throw ex;
                     }
@@ -321,7 +322,7 @@ namespace StackExchange.Metrics.Handlers
                     );
 
                     ex.Data.Add("Name", reading.Name);
-                    ex.Data.Add("Value", value.ToString("f5"));
+                    ex.Data.Add("Value", reading.Value.ToString("f5"));
                     ex.Data.Add("Size", valueLength.ToString());
                     throw ex;
                 }
