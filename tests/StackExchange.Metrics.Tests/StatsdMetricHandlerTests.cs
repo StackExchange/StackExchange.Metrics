@@ -30,6 +30,9 @@ namespace StackExchange.Metrics.Tests
         [InlineData(2.443d)]
         [InlineData(1.1234457d)]
         [InlineData(9.1234457d)]
+        [InlineData(-1d)]
+        [InlineData(-2.443d)]
+        [InlineData(-9.1234457d)]
         public async Task UdpUri_Counter_ReceivesValidStatsd(double value)
         {
             var port = (ushort)_rng.Next(1024, 65535);
